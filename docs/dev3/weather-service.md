@@ -12,39 +12,28 @@ HTTP-сервис dev3 (#46, контракт согласован в #37). От
 
 ## Запуск
 
-Из папки `backend`, сеть и Postgres не нужны:
+В составе стека сервис `weather` поднимается из `docker-compose.yml` вместе с остальными:
+
+```bash
+docker compose up -d --build weather backend
+```
+
+Это тот же образ, что у backend, с другой командой (`uvicorn src.weather_service.main:app`).
+`data/` подключен только на чтение как `/data`, `DATA_DIR=/data`. Секреты из `.env` сервису
+не нужны, поэтому `env_file` у него нет. Healthcheck идет на `/health`, и backend стартует только
+после того, как сервис погоды здоров (`depends_on: condition: service_healthy`). Backend ходит
+в него по сети compose, адрес `WEATHER_SERVICE_URL=http://weather:8000`. Наружу опубликован
+порт `WEATHER_PORT` (8020 в слоте 0), только ради Swagger: `http://localhost:8020/docs`.
+
+Без Docker, из папки `backend`, сеть и Postgres не нужны:
 
 ```bash
 uv run uvicorn src.weather_service.main:app --port 8020
 ```
 
-Порт 8010 занят ML-сервисом, поэтому локально 8020. Данные читаются из `DATA_DIR`,
-пустое значение означает `data/` в репозитории: кэш прогнозов `data/nwp/`, SCADA — два CSV
-в `data/`. Всё загружается один раз на старте, около 5 секунд, дальше только читается.
-
-В compose сервис добавляет dev1. Предлагаемый блок: тот же образ, другая команда, порт
-наружу не публикуется.
-
-```yaml
-  weather:
-    build: ./backend
-    image: ${COMPOSE_PROJECT_NAME:-hackalem}-backend
-    restart: unless-stopped
-    command: ["uvicorn", "src.weather_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
-    environment:
-      DATA_DIR: /data
-    volumes:
-      - ./data:/data:ro
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request as u; u.urlopen('http://localhost:8000/health')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-```
-
-Backend обращается к нему по `WEATHER_SERVICE_URL=http://weather:8000`, это значение уже
-есть в `.env.example`.
+Данные читаются из `DATA_DIR`, пустое значение означает `data/` в репозитории: кэш прогнозов
+`data/nwp/`, SCADA — два CSV в `data/`. Всё загружается один раз на старте, около 5 секунд,
+дальше только читается.
 
 ## Эндпоинты
 
@@ -65,7 +54,12 @@ Backend обращается к нему по `WEATHER_SERVICE_URL=http://weathe
 - окно `/nwp` по умолчанию равно горизонту выпуска `as_of + 1 ч … as_of + 48 ч`, то есть ровно
   тому, что ждет `POST /predict`. Окно не больше 168 ч, у `/scada` и событий `/runs` —
   не больше 31 суток;
-- `lead_h` в строке `/nwp` считается от запуска прогона, а не от выпуска.
+- `lead_h` в строке `/nwp` считается от запуска прогона, а не от выпуска;
+- в каждой строке `/nwp` есть ветер хотя бы на одной высоте и `t2m`. Строка прогона без них
+  считается отсутствующей, и на этот час берется прогон старше, опубликованный к `as_of`.
+  Нет такого прогона — `NO_RUN_AVAILABLE` для этого источника. Так устроен и фолбэк ветра
+  в `AsOfStore` (#62). Температура нужна backend: на ней стоит проверка на обледенение,
+  и `t2m` в его `NwpRow` обязательна. В кэше `ifs` таких строк 216.
 
 ## Источники
 
@@ -148,17 +142,32 @@ curl -s "localhost:8020/runs?source=ifs&as_of=2026-01-31T02:00:00Z&status=used"
 | 503 | `DATA_UNAVAILABLE` | SCADA не загружена: нет файлов в `DATA_DIR` | факта нет, бэктест без него |
 | 500 | `INTERNAL_ERROR` | всё остальное | как отказ сервиса |
 
+## Как его читают соседи
+
+- **Backend dev1** (`backend/src/modules/forecast/clients/weather.py`, `HttpWeatherSource`)
+  спрашивает `GET /nwp?source=&as_of=&from=&to=` по одному источнику и берет `rows` из ответа,
+  и `GET /runs?as_of=&from=&to=` для пересчета. 404 `NO_RUN_AVAILABLE` у него штатный
+  `WEATHER_NO_RUN`: агент берет следующий источник. Сервис не ответил совсем — агент уходит
+  на запасной путь, `AsOfStore` в процессе backend, и пишет это в журнал решений.
+- **ML-сервис dev2** получает строки `rows` в `POST /predict` как есть, по схеме `WeatherRow`.
+
+Совместимость проверяет `backend/tests/weather_service/test_compat.py`: ответы валидируются копиями
+`NwpRow`, `NwpResponse`, `RunRow` backend и `WeatherRow` ML-сервиса
+(`tests/weather_service/consumer_schemas.py`), а 28 выпусков февраля прогоняются по закоммиченному
+кэшу. Поменялась схема у соседа — обновляется копия, и тест показывает, отвечает ли ей сервис.
+
 ## Проверка
 
 ```bash
 cd backend
-uv run pytest tests/weather_service                  # 35 тестов на синтетическом кэше
+uv run pytest tests/weather_service                  # синтетический кэш и закоммиченный кэш февраля
 uv run python -m src.weather_service.export_openapi  # пересобрать weather-openapi.json после изменения схем
 ```
 
 Тесты проверяют формы ответов; что ни одна строка `/nwp` не опубликована позже `as_of`
 на разных моментах, включая границу публикации прогона; совпадение с `AsOfStore`; ансамбль;
-статусы `/runs` и события; ошибки `NO_RUN_AVAILABLE`, `UNKNOWN_SOURCE`, `VALIDATION_ERROR`,
+фолбэк на прогон старше для часов без `t2m`; статусы `/runs` и события; совместимость со схемами
+backend и ML-сервиса; ошибки `NO_RUN_AVAILABLE`, `UNKNOWN_SOURCE`, `VALIDATION_ERROR`,
 `LEAKAGE_GUARD` и `DATA_UNAVAILABLE`.
 
 ## Известные ограничения
