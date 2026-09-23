@@ -200,3 +200,22 @@ def test_default_data_dir_hashes_repository_scada(monkeypatch):
     manifest = build_manifest(ISSUE, _nwp())
 
     assert all(len(entry["sha256"]) == 64 for entry in manifest["scada"].values())
+
+
+@pytest.mark.parametrize("field", ["issue_time", "as_of"])
+def test_naive_moment_is_rejected(data_dir, field):
+    # 07:00 по Астане без пояса иначе стал бы 07:00 UTC и сдвинул границу утечки на 5 ч.
+    naive = datetime(2026, 2, 1, 7, 0)
+    kwargs = {"as_of": naive} if field == "as_of" else {}
+    issue = naive if field == "issue_time" else ISSUE
+
+    with pytest.raises(ValueError, match="без часового пояса"):
+        build_manifest(issue, _nwp(), data_dir=data_dir, **kwargs)
+
+
+def test_naive_weather_column_is_rejected(data_dir):
+    nwp = _nwp()
+    nwp["available_at_utc"] = nwp["available_at_utc"].dt.tz_localize(None)
+
+    with pytest.raises(ValueError, match="available_at_utc без часового пояса"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)

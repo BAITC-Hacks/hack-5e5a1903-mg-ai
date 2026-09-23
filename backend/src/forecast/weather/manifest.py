@@ -72,7 +72,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.forecast.weather.asof import LeakageError
+from src.forecast.weather.asof import LeakageError, to_utc
 
 logger = logging.getLogger(__name__)
 
@@ -106,13 +106,14 @@ def build_manifest(
     """Паспорт выпуска ``issue_time`` по таблице погоды ``nwp`` из ``get_nwp``.
 
     ``as_of`` задается при пересчете: момент, на который взята погода. По умолчанию
-    совпадает с ``issue_time`` и не может быть раньше него.
+    совпадает с ``issue_time`` и не может быть раньше него. Время без часового пояса
+    отклоняется, как и в ``AsOfStore``: иначе местное время молча станет UTC.
     Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в паспорт
     не попадают. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
     ``data/`` в корне репозитория.
     """
-    issue = _utc(issue_time)
-    moment = _utc(as_of) if as_of is not None else issue
+    issue = to_utc(issue_time)
+    moment = to_utc(as_of) if as_of is not None else issue
     if moment < issue:
         raise ValueError(f"as_of {_iso(moment)} раньше момента выпуска {_iso(issue)}")
     root = _data_dir(data_dir)
@@ -166,6 +167,8 @@ def _prepare(nwp: pd.DataFrame) -> pd.DataFrame:
 
     frame = nwp.loc[nwp["source"].notna(), list(REQUIRED_COLUMNS)].copy()
     for column in ("valid_time_utc", "run_init_utc", "available_at_utc"):
+        if pd.api.types.is_datetime64_dtype(frame[column]) and not isinstance(frame[column].dtype, pd.DatetimeTZDtype):
+            raise ValueError(f"колонка {column} без часового пояса, нужен UTC")
         frame[column] = pd.to_datetime(frame[column], utc=True)
 
     for column in ("valid_time_utc", "run_init_utc"):
@@ -268,7 +271,7 @@ def _json_default(value: Any) -> Any:
 
 
 def _utc(value: datetime | pd.Timestamp | str) -> pd.Timestamp:
-    """Момент в UTC; время без пояса считается UTC, как в контракте."""
+    """Момент в UTC для сериализации; время без пояса считается UTC."""
     ts = pd.Timestamp(value)
     return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
 
