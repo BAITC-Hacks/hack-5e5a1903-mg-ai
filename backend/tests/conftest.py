@@ -16,6 +16,12 @@ os.environ.update(
         "ENVIRONMENT": "local",
         "DEBUG": "False",
         "SECRET_KEY": "test-secret-key-not-used-anywhere-else",
+        # ML-сервиса в тестах нет. Адрес заведомо закрытый, чтобы отказ был
+        # мгновенным и предсказуемым, а тесты живого пути подменяют транспорт.
+        "ML_SERVICE_URL": "http://127.0.0.1:1",
+        "ML_SERVICE_TIMEOUT": "0.2",
+        "WEATHER_SERVICE_URL": "http://127.0.0.1:1",
+        "WEATHER_SERVICE_TIMEOUT": "0.2",
     }
 )
 
