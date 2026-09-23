@@ -158,3 +158,9 @@ def test_metrics_are_served_from_artifacts(artifacts_dir):
     assert body["model_version"] == "lgbm-test"
     assert body["nmae_d1_pct"] == 16.4
     assert body["series"] == []
+
+
+def test_top_level_turbines_select_the_turbine(client):
+    body = client.post("/predict", json=make_request(turbines=["T2"])).json()
+    assert {point["turbine"] for point in body["forecast"]} == {"T2"}
+    assert body["capacity_mw"] == {"T2": 2.5}
