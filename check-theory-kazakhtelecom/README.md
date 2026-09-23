@@ -3,7 +3,7 @@
 Solution for the HackAlem AI case *"AI agent: analysis of organisational structure and
 functions"*. Everything the jury needs is in this folder: code, tests, test data, Docker
 files, run reports and a sample conclusion. Russian version with the engineering log:
-[docs/README.ru.md](docs/README.ru.md).
+[docs/README.ru.md](docs/README.ru.md). Quick start for administrators, in Russian: [ЗАПУСК.md](ЗАПУСК.md).
 
 Contents: [1. Project name](#1-project-name) · [2. Problem and users](#2-what-it-solves-and-for-whom) ·
 [3. What is implemented](#3-what-is-implemented) · [4. How it works](#4-how-it-works-user-flow) ·
