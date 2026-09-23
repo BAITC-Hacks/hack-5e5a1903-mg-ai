@@ -7,6 +7,22 @@ backend foundation with JWT authentication, running entirely through Docker Comp
 The case-specific application logic is not implemented yet, and nothing below claims
 otherwise.
 
+## Case solution: OrgDiff, organisational structure and functions analysis
+
+The solution of the case *"AI agent: analysis of organisational structure and
+functions"* lives in [check-theory-kazakhtelecom/](check-theory-kazakhtelecom/) and runs
+on its own with one command:
+
+```bash
+cd check-theory-kazakhtelecom
+cp .env.example .env          # OPENAI_API_KEY is optional
+docker compose up -d --build  # then open http://localhost:8765
+```
+
+Its README, [check-theory-kazakhtelecom/README.md](check-theory-kazakhtelecom/README.md),
+has the installation steps, the jury scenario on the control set, the tests and the
+measured results. The rest of this file describes the shared backend foundation.
+
 ## What is implemented
 
 - **Authentication API.** Login by email and password, returning an access and a

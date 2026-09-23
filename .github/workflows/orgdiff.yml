@@ -1,0 +1,56 @@
+# CI for the organisational-structure analysis agent (check-theory-kazakhtelecom/).
+# To activate: copy this file to .github/workflows/orgdiff.yml at the repository root.
+# Everything runs without an OpenAI key: lint, deterministic tests, Docker build and a
+# container smoke test over HTTP. Model-dependent tests are skipped automatically.
+name: orgdiff
+
+on:
+  push:
+    paths: ["check-theory-kazakhtelecom/**", ".github/workflows/orgdiff.yml"]
+  pull_request:
+    paths: ["check-theory-kazakhtelecom/**", ".github/workflows/orgdiff.yml"]
+
+defaults:
+  run:
+    working-directory: check-theory-kazakhtelecom
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q -m "not llm"
+      - name: Reference run on the control set (lexical tier must be 16/16)
+        run: uv run run.py --mode tfidf --out /tmp/report.md
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t orgdiff:ci .
+      - name: Smoke test over HTTP
+        run: |
+          docker run -d --name orgdiff -p 8765:8765 orgdiff:ci
+          for i in $(seq 1 20); do curl -fs localhost:8765/health && break; sleep 2; done
+          curl -fs localhost:8765/health
+          loc=$(curl -s -o /dev/null -w '%{redirect_url}' \
+            -F "before=@testdata/положение_ред8.pdf" -F "before=@testdata/структура_ред8.xlsx" \
+            -F "after=@testdata/положение_ред9.pdf" -F "after=@testdata/структура_ред9.xlsx" \
+            -F golden=1 localhost:8765/analyze)
+          job=${loc##*/}
+          for i in $(seq 1 60); do
+            s=$(curl -s localhost:8765/job/$job/status)
+            case "$s" in *'"done"'*) break;; *'"error"'*) echo "$s"; exit 1;; esac
+            sleep 3
+          done
+          curl -fs localhost:8765/job/$job/result.json | python3 -c "import json,sys; r=json.load(sys.stdin); g=r['golden']; print(g['recall'], g['precision_loss']); assert g['recall']>=0.85"
+          curl -fs -o /dev/null localhost:8765/job/$job/conclusion.docx
+          docker rm -f orgdiff
