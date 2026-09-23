@@ -1,0 +1,26 @@
+# Установка: make hooks
+# Она же ставит хук pre-push, запрещающий прямой push в main.
+# Разовый прогон по всему репозиторию: uvx pre-commit run --all-files
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # коммитить прямо в main нельзя, работаем в ветках features-dev{1,2,3}-<name>
+      - id: no-commit-to-branch
+        args: [--branch, main]
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      # не пустить приватный ключ в репозиторий
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.1
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

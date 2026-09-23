@@ -1,0 +1,25 @@
+# Проверка зависимостей на уязвимости перед мерджем.
+# Отдельный workflow, а не работа внутри ci.yml: новая CVE в чужой библиотеке
+# не должна красить бейдж CI, но обязана быть видна в pull request.
+name: Dependency audit
+
+on:
+  pull_request:
+  schedule:
+    # раз в сутки, чтобы свежая CVE не ждала следующего pull request
+    - cron: "0 6 * * *"
+
+jobs:
+  audit:
+    name: Known vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Audit dependencies
+        run: bash scripts/audit-deps.sh
