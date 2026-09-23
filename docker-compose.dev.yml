@@ -1,0 +1,10 @@
+# Оверлей для разработки: код монтируется внутрь, uvicorn с автоперезагрузкой.
+# Используется через `make dev`, то есть:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  backend:
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/migrations:/app/migrations
+      - ./backend/alembic.ini:/app/alembic.ini
