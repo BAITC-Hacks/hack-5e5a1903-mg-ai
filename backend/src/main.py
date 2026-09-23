@@ -12,6 +12,7 @@ from src.core.database import engine
 from src.core.exceptions import BusinessError
 from src.core.logger import setup_logging
 from src.modules.auth.router import router as auth_router
+from src.modules.forecast.router import router as forecast_router
 
 setup_logging()
 
@@ -61,6 +62,7 @@ def get_application() -> FastAPI:
 app = get_application()
 
 app.include_router(auth_router)
+app.include_router(forecast_router)
 
 
 @app.get("/health", tags=["System"])
