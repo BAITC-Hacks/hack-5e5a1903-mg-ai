@@ -82,10 +82,10 @@ def load(artifacts_dir: Path, info: ModelInfo) -> LgbmPredictor:
         raise FileNotFoundError(f"Нет бустеров lgbm_p50_s*.txt в {artifacts_dir}")
     boosters = [lgb.Booster(model_file=str(path)) for path in files]
     calibration = Calibration(json.loads((artifacts_dir / CALIBRATION_FILE).read_text(encoding="utf-8")))
-    return LgbmPredictor(info, boosters, calibration, _load_members(artifacts_dir))
+    return LgbmPredictor(info, boosters, calibration, load_members(artifacts_dir))
 
 
-def _load_members(artifacts_dir: Path) -> dict:
+def load_members(artifacts_dir: Path) -> dict:
     members = {}
     for name in MEMBERS:
         try:

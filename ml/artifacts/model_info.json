@@ -1,6 +1,6 @@
 {
-  "name": "LightGBM на SCADA, 5 бустеров",
-  "version": "lgbm-scada-2026-01-31-v1",
+  "name": "Ансамбль на SCADA: LightGBM, ExtraTrees, MLP",
+  "version": "ensemble-scada-2026-01-31-v2",
   "kind": "lightgbm_quantile",
   "quantiles": [
     0.1,
@@ -109,127 +109,127 @@
   "power_curve": [
     {
       "wind_ms": 0.0,
-      "power_norm": 0.01
+      "power_norm": 0.0103
     },
     {
       "wind_ms": 0.5,
-      "power_norm": 0.01
-    },
-    {
-      "wind_ms": 1.0,
-      "power_norm": 0.01
-    },
-    {
-      "wind_ms": 1.5,
-      "power_norm": 0.01
-    },
-    {
-      "wind_ms": 2.0,
       "power_norm": 0.0102
     },
     {
+      "wind_ms": 1.0,
+      "power_norm": 0.0101
+    },
+    {
+      "wind_ms": 1.5,
+      "power_norm": 0.0104
+    },
+    {
+      "wind_ms": 2.0,
+      "power_norm": 0.0112
+    },
+    {
       "wind_ms": 2.5,
-      "power_norm": 0.0116
+      "power_norm": 0.0124
     },
     {
       "wind_ms": 3.0,
-      "power_norm": 0.0162
+      "power_norm": 0.0182
     },
     {
       "wind_ms": 3.5,
-      "power_norm": 0.0298
+      "power_norm": 0.0284
     },
     {
       "wind_ms": 4.0,
-      "power_norm": 0.0474
+      "power_norm": 0.0472
     },
     {
       "wind_ms": 4.5,
-      "power_norm": 0.0704
+      "power_norm": 0.0736
     },
     {
       "wind_ms": 5.0,
-      "power_norm": 0.1043
+      "power_norm": 0.1093
     },
     {
       "wind_ms": 5.5,
-      "power_norm": 0.1499
+      "power_norm": 0.1548
     },
     {
       "wind_ms": 6.0,
-      "power_norm": 0.21
+      "power_norm": 0.2138
     },
     {
       "wind_ms": 6.5,
-      "power_norm": 0.2795
+      "power_norm": 0.2877
     },
     {
       "wind_ms": 7.0,
-      "power_norm": 0.3757
+      "power_norm": 0.3746
     },
     {
       "wind_ms": 7.5,
-      "power_norm": 0.4566
+      "power_norm": 0.4599
     },
     {
       "wind_ms": 8.0,
-      "power_norm": 0.5258
+      "power_norm": 0.5338
     },
     {
       "wind_ms": 8.5,
-      "power_norm": 0.6092
+      "power_norm": 0.6181
     },
     {
       "wind_ms": 9.0,
-      "power_norm": 0.6962
+      "power_norm": 0.7009
     },
     {
       "wind_ms": 9.5,
-      "power_norm": 0.7672
+      "power_norm": 0.7758
     },
     {
       "wind_ms": 10.0,
-      "power_norm": 0.8411
+      "power_norm": 0.8482
     },
     {
       "wind_ms": 10.5,
-      "power_norm": 0.9121
+      "power_norm": 0.9101
     },
     {
       "wind_ms": 11.0,
-      "power_norm": 0.9546
+      "power_norm": 0.9632
     },
     {
       "wind_ms": 11.5,
-      "power_norm": 0.9848
+      "power_norm": 0.9843
     },
     {
       "wind_ms": 12.0,
-      "power_norm": 0.9881
+      "power_norm": 0.986
     },
     {
       "wind_ms": 12.5,
-      "power_norm": 0.9888
+      "power_norm": 0.9881
     },
     {
       "wind_ms": 13.0,
-      "power_norm": 0.9891
+      "power_norm": 0.9884
     },
     {
       "wind_ms": 13.5,
-      "power_norm": 0.989
+      "power_norm": 0.9884
     },
     {
       "wind_ms": 14.0,
-      "power_norm": 0.99
+      "power_norm": 0.9888
     },
     {
       "wind_ms": 14.5,
-      "power_norm": 0.99
+      "power_norm": 0.9888
     },
     {
       "wind_ms": 15.0,
-      "power_norm": 0.99
+      "power_norm": 0.9893
     },
     {
       "wind_ms": 15.5,
@@ -237,80 +237,80 @@
     },
     {
       "wind_ms": 16.0,
-      "power_norm": 0.99
+      "power_norm": 0.991
     },
     {
       "wind_ms": 16.5,
-      "power_norm": 0.99
+      "power_norm": 0.9921
     },
     {
       "wind_ms": 17.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 17.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 18.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 18.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 19.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 19.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 20.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 20.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 21.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 21.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 22.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 22.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 23.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 23.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 24.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 24.5,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     },
     {
       "wind_ms": 25.0,
-      "power_norm": 0.99
+      "power_norm": 0.9923
     }
   ],
-  "notes": "P50 — среднее 5 бустеров LightGBM (квантиль 0,5), обучены на ветре и температуре SCADA. В бою на вход идет ветер ступицы и температура, усредненные по пришедшим моделям погоды. P10/P90 — P50 плюс поправки из calibration.json по уровню прогноза, разбросу моделей погоды и заблаговременности."
+  "notes": "P50 — среднее трех моделей: 5 бустеров LightGBM (квантиль 0,5), ExtraTrees и MLP, все обучены на ветре и температуре SCADA. В бою на вход идет ветер ступицы и температура, усредненные по пришедшим моделям погоды. P10/P90 — P50 плюс поправки из calibration.json по уровню прогноза, разбросу моделей погоды и заблаговременности."
 }
