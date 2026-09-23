@@ -39,6 +39,7 @@
 - `backend/src/analysis/tz_check.py` — проверка пояса SCADA (#10), генерирует `reports/tz_check.md`.
   Использует ERA5 как дополнительную диагностику, поэтому лежит вне `src/forecast`.
 - Тесты: `backend/tests/forecast/test_asof.py` (синтетический кэш в `synthetic_nwp.py`),
+  `backend/tests/forecast/test_asof_real_cache.py` (закоммиченный кэш `data/nwp`),
   `backend/tests/forecast/test_scada.py`, `backend/tests/test_tz_check.py`.
 
 Отчеты по SCADA пересобираются из папки `backend`, сеть не нужна:
