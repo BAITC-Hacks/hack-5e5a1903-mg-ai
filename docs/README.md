@@ -13,6 +13,7 @@
 - Предложенные, но не внедренные инструменты: [proposals.md](proposals.md)
 - Backend: разбор FastAPI-шаблона, как добавлять модули: [backend.md](backend.md)
 - Контракт API между фронтендом, бэкендом и сервисами команды: [api-contract.md](api-contract.md)
+- ML-сервис: эндпоинты, контракт, как подключить обученную модель: [../ml/README.md](../ml/README.md)
 - Почему приняты основные решения: [adr/](adr/)
 - Исследование нашего кейса про прогноз выработки ВЭС, бриф и разбор: [research/wind-forecast-case/](research/wind-forecast-case/)
 
