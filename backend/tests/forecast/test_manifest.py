@@ -253,3 +253,29 @@ def test_row_without_source_but_with_weather_is_leakage(data_dir, column, value)
 
     with pytest.raises(LeakageError, match="без source"):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+@pytest.mark.parametrize(
+    ("run_init_shift_h", "available_shift_h"),
+    [(6, -1), (0, 0)],
+    ids=["run-started-after-issue", "zero-delay"],
+)
+def test_available_at_earlier_than_registry_allows_is_leakage(data_dir, run_init_shift_h, available_shift_h):
+    # GFS публикуется через 7 ч после запуска: прогон 18z не может быть доступен раньше 01:00.
+    nwp = _nwp()
+    run_init = pd.Timestamp("2026-01-31 18:00", tz="UTC") + pd.Timedelta(hours=run_init_shift_h)
+    nwp.loc[0, "run_init_utc"] = run_init
+    nwp.loc[0, "available_at_utc"] = run_init + pd.Timedelta(hours=available_shift_h)
+
+    with pytest.raises(LeakageError, match="раньше, чем прогон мог выйти"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+def test_unknown_source_needs_available_at_not_before_run_init(data_dir):
+    nwp = _nwp()
+    nwp["source"] = "ensemble"
+    assert build_manifest(ISSUE, nwp, data_dir=data_dir)["max_available_at_utc"] == "2026-02-01T01:00:00Z"
+
+    nwp.loc[0, "available_at_utc"] = nwp.loc[0, "run_init_utc"] - pd.Timedelta(minutes=1)
+    with pytest.raises(LeakageError, match="ensemble"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)

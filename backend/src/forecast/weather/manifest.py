@@ -65,6 +65,7 @@ import json
 import logging
 import os
 import subprocess
+from collections.abc import Mapping
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -73,6 +74,7 @@ import numpy as np
 import pandas as pd
 
 from src.forecast.weather.asof import VALUE_COLUMNS, LeakageError, to_utc
+from src.forecast.weather.sources import SOURCES, Source
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,7 @@ def build_manifest(
     version: int = 1,
     config: Any = None,
     data_dir: str | Path | None = None,
+    sources: Mapping[str, Source] | None = None,
 ) -> dict[str, Any]:
     """Паспорт выпуска ``issue_time`` по таблице погоды ``nwp`` из ``get_nwp``.
 
@@ -113,6 +116,10 @@ def build_manifest(
     паспорт не попадают, если в них нет ни прогона, ни значений погоды; иначе
     их время публикации не проверить, и это ``LeakageError``. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
     ``data/`` в корне репозитория.
+
+    ``available_at_utc`` не берется на веру: у источника из реестра ``sources``
+    (по умолчанию ``SOURCES``, как у ``AsOfStore``) он не раньше ``run_init_utc``
+    плюс задержка публикации, у неизвестного источника — не раньше ``run_init_utc``.
     """
     issue = to_utc(issue_time)
     moment = to_utc(as_of) if as_of is not None else issue
@@ -122,8 +129,9 @@ def build_manifest(
 
     unknown = frame["available_at_utc"].isna()
     if unknown.any():
-        sources = sorted(frame.loc[unknown, "source"].astype(str).unique())
-        raise LeakageError(f"available_at_utc не задан у {int(unknown.sum())} строк погоды, источники {sources}")
+        names = sorted(frame.loc[unknown, "source"].astype(str).unique())
+        raise LeakageError(f"available_at_utc не задан у {int(unknown.sum())} строк погоды, источники {names}")
+    _check_publication_delay(frame, SOURCES if sources is None else sources)
 
     max_available = frame["available_at_utc"].max() if not frame.empty else None
     if max_available is not None and max_available > moment:
@@ -171,6 +179,18 @@ def _check_version(version: int, issue: pd.Timestamp, moment: pd.Timestamp) -> N
         raise ValueError(f"версия 1 берет погоду на момент выпуска {_iso(issue)}, а не на {_iso(moment)}")
     if version > 1 and moment == issue:
         raise ValueError(f"пересчет (версия {version}) идет по прогону, вышедшему после выпуска {_iso(issue)}, as_of должен быть позже")
+
+
+def _check_publication_delay(frame: pd.DataFrame, sources: Mapping[str, Source]) -> None:
+    """``available_at_utc`` не раньше, чем прогон мог выйти по реестру источников."""
+    delay = frame["source"].map(lambda name: sources[name].delay if name in sources else pd.Timedelta(0))
+    early = frame["available_at_utc"] < frame["run_init_utc"] + pd.to_timedelta(delay)
+    if early.any():
+        first = frame.loc[early].iloc[0]
+        raise LeakageError(
+            f"{int(early.sum())} строк погоды доступны раньше, чем прогон мог выйти: например {first['source']} "
+            f"прогон {_iso(first['run_init_utc'])} с available_at_utc {_iso(first['available_at_utc'])}"
+        )
 
 
 def _prepare(nwp: pd.DataFrame) -> pd.DataFrame:
