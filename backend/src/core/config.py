@@ -35,11 +35,11 @@ class Settings(BaseSettings):
             path=self.POSTGRES_DB,
         )
 
-    # Соседние сервисы: погода (dev3) и модель (dev2). Вызовы всегда с таймаутом,
+    # Соседние сервисы: модель (dev2) и погода (dev3). Вызов всегда с таймаутом,
     # отказ превращается в BusinessError, а не в 500.
+    ML_SERVICE_URL: str = "http://ml:8000"
     WEATHER_SERVICE_URL: str = "http://weather:8000"
     WEATHER_SERVICE_TIMEOUT: float = 15.0
-    ML_SERVICE_URL: str = "http://ml:8000"
     ML_SERVICE_TIMEOUT: float = 30.0
 
     SECRET_KEY: str

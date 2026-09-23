@@ -26,7 +26,6 @@ HackAlem AI — проект команды из трех разработчик
 | Автоформат | `make fmt` | `cd backend && uv run ruff format . && uv run ruff check --fix .` |
 | Применить миграции | `make migrate` | `docker compose exec backend alembic upgrade head` |
 | Создать миграцию | `make makemigrations m="имя"` | `docker compose exec backend alembic revision --autogenerate -m "имя"` |
-| Команда пайплайна прогноза | `make pipeline cmd="replay --start 2026-01-31 --end 2026-02-27"` | `docker compose run --rm pipeline replay --start 2026-01-31 --end 2026-02-27` |
 | Тесты и линтер ML-сервиса | `make ml-test && make ml-lint` | `cd ml && uv run pytest && uv run ruff check . && uv run ruff format --check .` |
 | Обновить контракт ML-сервиса | `make ml-openapi` | `cd ml && uv run python scripts/export_openapi.py` |
 | Погасить стек | `make down` | `docker compose down` |

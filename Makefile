@@ -1,9 +1,7 @@
-.PHONY: install hooks run dev down logs ps migrate makemigrations seed test lint fmt audit check protect-main pipeline ml-install ml-test ml-lint ml-fmt ml-openapi
+.PHONY: install hooks run demo dev down logs ps migrate makemigrations seed test lint fmt audit check protect-main ml-install ml-test ml-lint ml-fmt ml-openapi
 
 COMPOSE     := docker compose
 # пайплайн прогноза выполняется в образе backend разовым контейнером,
-# тома data/, outputs/ и reports/ описаны сервисом pipeline
-PIPELINE    := $(COMPOSE) run --rm pipeline
 COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 # pytest и ruff берут настройки из backend/pyproject.toml, поэтому запускаются из backend
 BACKEND     := cd backend && uv
@@ -23,6 +21,14 @@ hooks:
 ## run — поднять весь стек (БД + backend) в фоне
 run:
 	$(COMPOSE) up -d --build
+
+## demo — поднять всё и подготовить к показу: стек, миграции, администратор
+demo: run
+	bash scripts/wait-healthy.sh db
+	bash scripts/wait-healthy.sh backend
+	$(MAKE) migrate
+	$(MAKE) seed
+	@echo "Интерфейс: http://localhost:$${FRONTEND_PORT:-3000}"
 
 ## dev — то же, но с автоперезагрузкой кода и логами в терминале
 dev:
@@ -47,10 +53,6 @@ migrate:
 ## makemigrations m="имя" — создать миграцию по изменениям моделей
 makemigrations:
 	$(COMPOSE) exec backend alembic revision --autogenerate -m "$(m)"
-
-## pipeline cmd="replay --start 2026-01-31 --end 2026-02-27" — выполнить команду пайплайна в Docker
-pipeline:
-	$(PIPELINE) $(cmd)
 
 ## seed — создать первого администратора (пароль из SEED_ADMIN_PASSWORD или случайный)
 seed:
