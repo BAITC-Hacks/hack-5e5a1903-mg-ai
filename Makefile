@@ -84,6 +84,9 @@ ml-install:
 ml-test:
 	$(ML) run pytest
 
+ml-train:
+	$(ML) run python -m training.train
+
 ## ml-lint — стиль и форматирование ML-сервиса
 ml-lint:
 	$(ML) run ruff check .

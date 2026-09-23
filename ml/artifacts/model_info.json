@@ -1,0 +1,295 @@
+{
+  "name": "LightGBM на SCADA, 5 бустеров",
+  "version": "lgbm-scada-2026-01-31-v1",
+  "kind": "lightgbm_quantile",
+  "quantiles": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "trained_until_utc": "2026-01-31T17:00:00+00:00",
+  "training_period_start_utc": "2023-03-10T18:00:00+00:00",
+  "train_rows": 47757,
+  "walk_forward": "80/20 по случайным дням (seed 42). Проверка на 211 днях: выпуск 02:00 UTC, погода из архива на момент выпуска. Итоговые бустеры обучены на всех днях до 31.01.2026.",
+  "turbines": [
+    "T1",
+    "T2",
+    "station"
+  ],
+  "capacity_mw": {
+    "T1": 2.5,
+    "T2": 2.5,
+    "station": 5.0
+  },
+  "inputs": {
+    "sources": [
+      {
+        "name": "ifs",
+        "required": false
+      },
+      {
+        "name": "ifs025",
+        "required": false
+      },
+      {
+        "name": "gfs",
+        "required": false
+      },
+      {
+        "name": "icon",
+        "required": false
+      },
+      {
+        "name": "gem",
+        "required": false
+      }
+    ],
+    "variables": [
+      "ws80",
+      "ws100",
+      "ws120",
+      "t2m"
+    ],
+    "hub_height_m": 80.0,
+    "max_horizon_hours": 48
+  },
+  "features": [
+    {
+      "name": "ws",
+      "importance": 0.9064,
+      "description": "Ветер на высоте ступицы, м/с"
+    },
+    {
+      "name": "t",
+      "importance": 0.05,
+      "description": "Температура воздуха, °C"
+    },
+    {
+      "name": "hour",
+      "importance": 0.0107,
+      "description": "Час суток, UTC"
+    },
+    {
+      "name": "doy_sin",
+      "importance": 0.0056,
+      "description": "Сезон: синус дня года"
+    },
+    {
+      "name": "doy_cos",
+      "importance": 0.0077,
+      "description": "Сезон: косинус дня года"
+    },
+    {
+      "name": "turbine",
+      "importance": 0.0196,
+      "description": "Турбина: 0 = T1, 1 = T2"
+    }
+  ],
+  "power_curve": [
+    {
+      "wind_ms": 0.0,
+      "power_norm": 0.01
+    },
+    {
+      "wind_ms": 0.5,
+      "power_norm": 0.01
+    },
+    {
+      "wind_ms": 1.0,
+      "power_norm": 0.01
+    },
+    {
+      "wind_ms": 1.5,
+      "power_norm": 0.01
+    },
+    {
+      "wind_ms": 2.0,
+      "power_norm": 0.0102
+    },
+    {
+      "wind_ms": 2.5,
+      "power_norm": 0.0116
+    },
+    {
+      "wind_ms": 3.0,
+      "power_norm": 0.0162
+    },
+    {
+      "wind_ms": 3.5,
+      "power_norm": 0.0298
+    },
+    {
+      "wind_ms": 4.0,
+      "power_norm": 0.0474
+    },
+    {
+      "wind_ms": 4.5,
+      "power_norm": 0.0704
+    },
+    {
+      "wind_ms": 5.0,
+      "power_norm": 0.1043
+    },
+    {
+      "wind_ms": 5.5,
+      "power_norm": 0.1499
+    },
+    {
+      "wind_ms": 6.0,
+      "power_norm": 0.21
+    },
+    {
+      "wind_ms": 6.5,
+      "power_norm": 0.2795
+    },
+    {
+      "wind_ms": 7.0,
+      "power_norm": 0.3757
+    },
+    {
+      "wind_ms": 7.5,
+      "power_norm": 0.4566
+    },
+    {
+      "wind_ms": 8.0,
+      "power_norm": 0.5258
+    },
+    {
+      "wind_ms": 8.5,
+      "power_norm": 0.6092
+    },
+    {
+      "wind_ms": 9.0,
+      "power_norm": 0.6962
+    },
+    {
+      "wind_ms": 9.5,
+      "power_norm": 0.7672
+    },
+    {
+      "wind_ms": 10.0,
+      "power_norm": 0.8411
+    },
+    {
+      "wind_ms": 10.5,
+      "power_norm": 0.9121
+    },
+    {
+      "wind_ms": 11.0,
+      "power_norm": 0.9546
+    },
+    {
+      "wind_ms": 11.5,
+      "power_norm": 0.9848
+    },
+    {
+      "wind_ms": 12.0,
+      "power_norm": 0.9881
+    },
+    {
+      "wind_ms": 12.5,
+      "power_norm": 0.9888
+    },
+    {
+      "wind_ms": 13.0,
+      "power_norm": 0.9891
+    },
+    {
+      "wind_ms": 13.5,
+      "power_norm": 0.989
+    },
+    {
+      "wind_ms": 14.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 14.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 15.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 15.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 16.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 16.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 17.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 17.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 18.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 18.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 19.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 19.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 20.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 20.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 21.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 21.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 22.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 22.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 23.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 23.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 24.0,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 24.5,
+      "power_norm": 0.99
+    },
+    {
+      "wind_ms": 25.0,
+      "power_norm": 0.99
+    }
+  ],
+  "notes": "P50 — среднее 5 бустеров LightGBM (квантиль 0,5), обучены на ветре и температуре SCADA. В бою на вход идет ветер ступицы и температура, усредненные по пришедшим моделям погоды. P10/P90 — P50 плюс поправки из calibration.json по уровню прогноза, разбросу моделей погоды и заблаговременности."
+}

@@ -26,3 +26,4 @@
 ```
 | features-dev1-auth | hackalem-worktrees/features-dev1-auth | dev1 | ноут Meirzhan | 1 | 3001 | 8001 | 5433 |
 ```
+| features-dev2-model | hackalem-worktrees/features-dev2-model | dev2 | ноут Aibek | — | — | — | — |
