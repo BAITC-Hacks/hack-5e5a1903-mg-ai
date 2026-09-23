@@ -13,7 +13,7 @@
 - Предложенные, но не внедренные инструменты: [proposals.md](proposals.md)
 - Backend: разбор FastAPI-шаблона, как добавлять модули: [backend.md](backend.md)
 - Почему приняты основные решения: [adr/](adr/)
-- Исследование альтернативного кейса про прогноз ВЭС, справочно: [research/wind-forecast-case/](research/wind-forecast-case/)
+- Исследование нашего кейса про прогноз выработки ВЭС, бриф и разбор: [research/wind-forecast-case/](research/wind-forecast-case/)
 
 ## Процесс
 
