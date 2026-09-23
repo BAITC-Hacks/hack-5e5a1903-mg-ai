@@ -312,3 +312,13 @@ def test_sums_in_binary_mode_and_non_cache_files_are_verified(data_dir):
     (cache / "gaps.csv").write_bytes(b"changed")
     with pytest.raises(ValueError, match="gaps.csv"):
         build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+
+def test_missing_sources_lists_requested_models_without_a_run(data_dir):
+    # #39: ансамбль строится по оставшимся моделям, а в паспорте видно, каких не было.
+    manifest = build_manifest(ISSUE, _nwp(), requested_sources=["ifs", "ifs025", "gfs", "icon", "gem"], data_dir=data_dir)
+
+    assert manifest["missing_sources"] == ["gem", "icon", "ifs025"]
+    assert sorted(manifest["sources"]) == ["gfs", "ifs"]
+    assert build_manifest(ISSUE, _nwp(), requested_sources=["gfs", "ifs"], data_dir=data_dir)["missing_sources"] == []
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir)["missing_sources"] is None

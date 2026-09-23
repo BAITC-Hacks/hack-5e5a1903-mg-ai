@@ -19,6 +19,8 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
       "max_available_at_utc": "...Z" | null,      # максимум available_at_utc по всем строкам погоды;
                                                   # null, если погоды нет (климатология).
                                                   # Инвариант: max_available_at_utc <= as_of_utc
+      "missing_sources": ["ifs"] | null,          # запрошенные источники, которых нет в выпуске
+                                                  # (нет прогона на as_of); null, если запрос не передан
       "sources": {                                # только источники, реально попавшие в выпуск
         "<source>": {                             # ifs, ifs025, gfs, icon, gem
           "hours": 48,                            # число разных valid_time_utc из этого источника
@@ -67,7 +69,7 @@ import json
 import logging
 import os
 import subprocess
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -104,6 +106,7 @@ def build_manifest(
     *,
     as_of: datetime | pd.Timestamp | str | None = None,
     version: int = 1,
+    requested_sources: Sequence[str] | None = None,
     config: Any = None,
     data_dir: str | Path | None = None,
     sources: Mapping[str, Source] | None = None,
@@ -118,6 +121,9 @@ def build_manifest(
     паспорт не попадают, если в них нет ни прогона, ни значений погоды; иначе
     их время публикации не проверить, и это ``LeakageError``. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
     ``data/`` в корне репозитория.
+
+    ``requested_sources`` — источники, которые выпуск запрашивал у ``get_nwp_multi``.
+    Те из них, что пропущены без прогона, попадают в ``missing_sources``.
 
     ``available_at_utc`` не берется на веру: у источника из реестра ``sources``
     (по умолчанию ``SOURCES``, как у ``AsOfStore``) он не раньше ``run_init_utc``
@@ -150,6 +156,7 @@ def build_manifest(
         "as_of_utc": _iso(moment),
         "version": int(version),
         "max_available_at_utc": _iso(max_available) if max_available is not None else None,
+        "missing_sources": sorted(set(requested_sources) - set(frame["source"])) if requested_sources is not None else None,
         "sources": {source: _describe_source(rows, issue, root, source) for source, rows in frame.groupby("source", sort=True)},
         "scada": {turbine: {"file": name, "sha256": _file_sha256(root / name)} for turbine, name in SCADA_FILES.items()},
         "git_sha": _git_sha(),
