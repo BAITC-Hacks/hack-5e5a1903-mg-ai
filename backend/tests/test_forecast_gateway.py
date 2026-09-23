@@ -550,7 +550,9 @@ async def test_the_http_weather_source_maps_failures_to_codes():
 
 
 async def test_the_http_weather_source_rejects_an_answer_off_contract():
-    source = HttpWeatherSource(base_url="http://weather", transport=httpx.MockTransport(lambda request: httpx.Response(200, json=[{"nonsense": 1}])))
+    source = HttpWeatherSource(
+        base_url="http://weather", transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"rows": [{"nonsense": 1}]}))
+    )
 
     with pytest.raises(UpstreamError) as raised:
         await source.nwp(source="ifs025", as_of=ISSUE_TIME, valid_times=[ISSUE_TIME + timedelta(hours=1)])
@@ -558,9 +560,19 @@ async def test_the_http_weather_source_rejects_an_answer_off_contract():
     assert raised.value.code == "WEATHER_BAD_RESPONSE"
 
 
+async def test_the_http_weather_source_reads_rows_from_the_service_envelope():
+    rows = [row.model_dump(mode="json") for row in nwp_rows(hours=2)]
+    envelope = {"as_of_utc": "2026-01-31T02:00:00Z", "sources": ["ifs025"], "missing": [], "rows": rows}
+    source = HttpWeatherSource(base_url="http://weather", transport=httpx.MockTransport(lambda request: httpx.Response(200, json=envelope)))
+
+    got = await source.nwp(source="ifs025", as_of=ISSUE_TIME, valid_times=[ISSUE_TIME + timedelta(hours=lead) for lead in (1, 2)])
+
+    assert [row.valid_time_utc for row in got] == [ISSUE_TIME + timedelta(hours=lead) for lead in (1, 2)]
+
+
 async def test_the_http_weather_source_reports_a_hole_in_the_horizon():
     rows = [row.model_dump(mode="json") for row in nwp_rows(hours=2)]
-    source = HttpWeatherSource(base_url="http://weather", transport=httpx.MockTransport(lambda request: httpx.Response(200, json=rows)))
+    source = HttpWeatherSource(base_url="http://weather", transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"rows": rows})))
 
     with pytest.raises(UpstreamError) as raised:
         await source.nwp(source="ifs025", as_of=ISSUE_TIME, valid_times=[ISSUE_TIME + timedelta(hours=lead) for lead in (1, 2, 3)])
