@@ -45,7 +45,12 @@ def data_dir(tmp_path):
     for source in ("gfs", "ifs"):
         cache = root / "nwp" / source
         cache.mkdir(parents=True)
-        (cache / "SHA256SUMS").write_bytes(f"{'a' * 64}  {source}_2026013112.json\n{'b' * 64}  {source}_2026013118.json\n".encode())
+        sums = []
+        for year in (2025, 2026):
+            content = f"{source} {year}".encode()
+            (cache / f"{year}.csv.gz").write_bytes(content)
+            sums.append(f"{hashlib.sha256(content).hexdigest()}  {year}.csv.gz\n")
+        (cache / "SHA256SUMS").write_bytes("".join(sums).encode())
     return root
 
 
@@ -279,3 +284,31 @@ def test_unknown_source_needs_available_at_not_before_run_init(data_dir):
     nwp.loc[0, "available_at_utc"] = nwp.loc[0, "run_init_utc"] - pd.Timedelta(minutes=1)
     with pytest.raises(LeakageError, match="ensemble"):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+def test_cache_file_changed_after_sums_is_rejected(data_dir):
+    # Раньше паспорт хэшировал только SHA256SUMS и не замечал подмененный файл кэша.
+    (data_dir / "nwp" / "gfs" / "2026.csv.gz").write_bytes(b"tampered")
+
+    with pytest.raises(ValueError, match=r"кэш gfs не совпадает с SHA256SUMS.*2026\.csv\.gz"):
+        build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+
+def test_cache_file_missing_from_sums_is_rejected(data_dir):
+    # AsOfStore читает все *.csv.gz папки, поэтому лишний файл тоже меняет погоду.
+    (data_dir / "nwp" / "ifs" / "extra.csv.gz").write_bytes(b"extra")
+
+    with pytest.raises(ValueError, match=r"файлы вне SHA256SUMS: \['extra\.csv\.gz'\]"):
+        build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+
+def test_sums_in_binary_mode_and_non_cache_files_are_verified(data_dir):
+    cache = data_dir / "nwp" / "ifs"
+    (cache / "gaps.csv").write_bytes(b"run_init_utc,reason\n")
+    lines = [f"{hashlib.sha256((cache / name).read_bytes()).hexdigest()} *{name}" for name in ("2025.csv.gz", "2026.csv.gz", "gaps.csv")]
+    (cache / "SHA256SUMS").write_bytes(("\n".join(lines) + "\n").encode())
+
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir)["sources"]["ifs"]["cache"]["files"] == 3
+    (cache / "gaps.csv").write_bytes(b"changed")
+    with pytest.raises(ValueError, match="gaps.csv"):
+        build_manifest(ISSUE, _nwp(), data_dir=data_dir)

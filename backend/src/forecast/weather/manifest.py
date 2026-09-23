@@ -37,7 +37,7 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
           "cache": {                              # null, если SHA256SUMS источника не найден
             "sums_file": "nwp/<source>/SHA256SUMS",   # путь относительно DATA_DIR
             "sha256": "<hex>",                    # sha256 самого SHA256SUMS: закрепляет все файлы кэша
-            "files": 120                          # сколько файлов перечислено в SHA256SUMS
+            "files": 25                           # сколько файлов перечислено в SHA256SUMS
           }
         }
       },
@@ -50,8 +50,10 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
       "decisions": []                             # журнал решений агента, заполняет dev1
     }
 
-Хэши файлов кэша берутся из ``SHA256SUMS``, а не пересчитываются: в паспорт
-идет sha256 самого файла сумм, и по нему однозначно проверяется весь кэш источника.
+В паспорт идет sha256 самого ``SHA256SUMS``, а перед этим каждый перечисленный
+в нем файл сверяется со своей суммой. Кэш, который разошелся с ``SHA256SUMS``,
+и ``*.csv.gz``, которого в нем нет (``AsOfStore`` прочитал бы его), дают
+``ValueError``: такой паспорт закрепил бы не те данные, на которых считался выпуск.
 
 Строка погоды с ``available_at_utc`` позже ``as_of_utc`` означает утечку
 будущего, и паспорт такой выпуск не подписывает: ``LeakageError``. Проверка
@@ -249,8 +251,26 @@ def _cache_digest(root: Path, source: str) -> dict[str, Any] | None:
         logger.warning("manifest: нет %s для источника %s, хэш кэша не записан", sums, source)
         return None
     content = sums.read_bytes()
-    files = sum(1 for line in content.decode("utf-8").splitlines() if line.strip())
-    return {"sums_file": f"{NWP_CACHE_DIR}/{source}/{SUMS_FILE}", "sha256": _sha256_bytes(content), "files": files}
+    listed = _parse_sums(content.decode("utf-8"))
+    folder = sums.parent
+    unlisted = sorted(path.name for path in folder.glob("*.csv.gz") if path.name not in listed)
+    if unlisted:
+        raise ValueError(f"в кэше {source} файлы вне {SUMS_FILE}: {unlisted}")
+    broken = sorted(name for name, digest in listed.items() if _file_sha256(folder / name) != digest)
+    if broken:
+        raise ValueError(f"кэш {source} не совпадает с {SUMS_FILE} или файлов нет: {broken}")
+    return {"sums_file": f"{NWP_CACHE_DIR}/{source}/{SUMS_FILE}", "sha256": _sha256_bytes(content), "files": len(listed)}
+
+
+def _parse_sums(text: str) -> dict[str, str]:
+    """Строки ``sha256sum``: ``<hex>  <имя>`` или ``<hex> *<имя>`` в двоичном режиме."""
+    listed = {}
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        digest, name = line.split(maxsplit=1)
+        listed[name.strip().removeprefix("*")] = digest.lower()
+    return listed
 
 
 def _file_sha256(path: Path) -> str | None:
