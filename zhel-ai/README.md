@@ -41,7 +41,7 @@ commands given below.
 | nMAE, lead 1–24 h / 25–48 h | **15.49 % / 17.27 %** of rated power |
 | Best baseline (GW109 power curve on forecast wind) | 17.11 % over lead 1–48 h |
 | P10–P90 coverage | **80.4 %** (target 80 %) |
-| Automated tests | 393 passing (backend 359, ML service 34) |
+| Automated tests | 540 passing (backend 505, ML service 35) |
 
 ## Contents
 
@@ -423,7 +423,7 @@ Who owns which part: [docs/README.md](docs/README.md). Architecture decisions:
 
 ## Installation and launch
 
-**Requirements:** Docker with Compose v2, and free ports 3000, 8000, 8010 and 5432.
+**Requirements:** Docker with Compose v2, and free ports 3000, 8000, 8010, 8020 and 5432.
 Nothing else is needed to run the project. The first build downloads base images and
 Python packages. After that the stack runs without network access and without API keys.
 
@@ -436,7 +436,7 @@ make demo
 
 `make demo` does the following:
 
-1. Builds and starts `db`, `backend`, `ml` and `frontend`.
+1. Builds and starts `db`, `weather`, `backend`, `ml` and `frontend`.
 2. Waits until the database and the backend report healthy.
 3. Applies database migrations.
 4. Creates the demo user **admin / admin**.
@@ -463,7 +463,7 @@ If the `alembic` command fails because the backend is still starting, wait until
 
 **Troubleshooting.**
 
-- **A port is busy.** Change `FRONTEND_PORT`, `BACKEND_PORT`, `ML_PORT` or `DB_PORT` in
+- **A port is busy.** Change `FRONTEND_PORT`, `BACKEND_PORT`, `ML_PORT`, `WEATHER_PORT` or `DB_PORT` in
   `.env` and run `make demo` again. The URL printed at the end of `make demo` does not
   read `.env`, so use the port you set.
 - **A service does not become healthy.** Read `docker compose logs backend` or
@@ -574,8 +574,8 @@ These need [uv](https://docs.astral.sh/uv/). They are the same commands that the
 Actions workflow in [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs.
 
 ```bash
-make install && make test        # backend: 359 tests
-make ml-install && make ml-test  # ML service: 34 tests
+make install && make test        # backend: 505 tests
+make ml-install && make ml-test  # ML service: 35 tests
 make lint && make ml-lint        # Ruff lint and format check
 ```
 
@@ -729,19 +729,19 @@ zhel-ai/
 │   ├── src/forecast/dataset/     SCADA loader, hourly aggregation, cleaning flags
 │   ├── src/analysis/             offline diagnostics: time-zone check, weather vs SCADA
 │   ├── src/modules/auth/         users and JWT auth
-│   └── tests/                    359 tests
+│   └── tests/                    505 tests
 ├── ml/                           model service (own image and lock file)
 │   ├── src/ml_service/           API, features, predictors, ensemble members
 │   ├── training/                 training scripts for LightGBM, ExtraTrees, MLP
 │   ├── artifacts/                trained model, calibration, metrics, passport
 │   ├── openapi.json              contract, checked against the code by a test
-│   └── tests/                    34 tests
+│   └── tests/                    35 tests
 ├── frontend/                     static dashboard (React 18, no build step)
 ├── deploy/nginx/                 nginx config: static files and /api proxy
 ├── data/                         SCADA history and the committed weather cache (read-only)
 ├── reports/                      generated data reports
 ├── docs/                         architecture, API contract, ADRs, team zones, research
-├── docker-compose.yml            the single entry point: frontend, backend, ml, db
+├── docker-compose.yml            the single entry point: frontend, backend, weather, ml, db
 ├── Makefile                      demo, test, lint, ml-train and other commands
 └── AGENTS.md                     conventions for AI coding agents working in this repo
 ```
