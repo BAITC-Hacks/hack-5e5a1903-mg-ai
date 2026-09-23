@@ -424,7 +424,7 @@ input[type=range]{accent-color:oklch(0.6 0.16 135)}
       </div>
     </div>
     <nav style="display:flex;flex-direction:column;gap:2px">
-      <sc-for list="{{ nav }}" as="it" hint-placeholder-count="7">
+      <sc-for list="{{ nav }}" as="it" hint-placeholder-count="8">
         <button sc-camel-on-click="{{ it.onClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 10px;border:none;border-radius:10px;background:{{ it.bg }};color:{{ it.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="color:#141816">
           <span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.7">{{ it.num }}</span>
           <span style="flex:1;display:flex;flex-direction:column;gap:1px"><span>{{ it.label }}</span><span style="font-size:11px;font-weight:400;color:#5F6762">{{ it.desc }}</span></span>
@@ -1055,12 +1055,266 @@ input[type=range]{accent-color:oklch(0.6 0.16 135)}
         </div>
       </sc-if>
 
+      <sc-if value="{{ isUpload }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">СВОИ ДАННЫЕ · POST /forecast/upload</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Прогноз по вашему файлу</h1>
+            <div style="color:#5F6762;font-size:15px;line-height:1.5;text-wrap:pretty">Загрузите выгрузку SCADA по своей турбине. Бэкенд разберет файл, построит по нему эмпирическую кривую мощности и посчитает прогноз на 48 часов для выбранного дня выпуска. Ответ приходит с пометкой data_source=uploaded: числа считаются по вашим данным, а не по демонстрационным.</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px;align-items:start">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ШАГ 1 · ФАЙЛЫ</div>
+                <div style="font-size:13px;color:#4A524D;line-height:1.5">Один или два файла CSV: по одному на турбину.</div>
+                <input type="file" multiple="{{ true }}" accept=".csv,text/csv" sc-camel-on-change="{{ up.onFiles }}" style="font:inherit;font-size:13px;padding:11px;border:1px dashed rgba(20,24,22,0.22);border-radius:12px;background:#FBFBF9;width:100%;box-sizing:border-box">
+                <sc-if value="{{ up.hasFiles }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <sc-for list="{{ up.files }}" as="f" hint-placeholder-count="2">
+                      <div style="display:flex;gap:10px;align-items:center;padding:9px 12px;border-radius:10px;background:#F4F5F2;font-size:13px">
+                        <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.6 0.16 135);flex-shrink:0"></span>
+                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.n }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5F6762;white-space:nowrap">{{ f.s }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ up.noFiles }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:13px;color:#5F6762">Файл еще не выбран.</div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ШАГ 2 · ДЕНЬ ВЫПУСКА</div>
+                <div style="font-size:13px;color:#4A524D;line-height:1.5">Выбран <span style="font-family:'JetBrains Mono',monospace;color:#141816">{{ up.dateLabel }}</span>. Доступны дни ретро-симуляции, с 31.01.2026 по 27.02.2026.</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ up.dates }}" as="d" hint-placeholder-count="28">
+                    <button sc-camel-on-click="{{ d.on }}" style="padding:6px 10px;border-radius:9px;border:1px solid {{ d.border }};background:{{ d.bg }};color:{{ d.color }};font:inherit;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer">{{ d.l }}</button>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ШАГ 3 · ИМЕНА ТУРБИН, НЕОБЯЗАТЕЛЬНО</div>
+                <input type="text" value="{{ up.names }}" sc-camel-on-change="{{ up.onNames }}" placeholder="T1, T2" style="padding:11px 13px;border-radius:11px;border:1px solid rgba(20,24,22,0.14);font:inherit;font-size:14px;background:#FBFBF9;color:#141816;width:100%;box-sizing:border-box">
+                <div style="font-size:12px;color:#5F6762;line-height:1.45">Через запятую, по порядку файлов. Оставьте пустым — имена возьмутся из файлов.</div>
+              </div>
+
+              <button sc-camel-on-click="{{ up.run }}" disabled="{{ up.runDisabled }}" style="padding:13px 18px;border-radius:12px;border:none;background:oklch(0.6 0.16 135);color:#FFFFFF;font:inherit;font-size:15px;font-weight:600;cursor:pointer" style-disabled="opacity:0.45;cursor:not-allowed">{{ up.runLabel }}</button>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">КАКОЙ ФАЙЛ ЖДЕМ</div>
+              <div style="font-size:14px;line-height:1.55;color:#4A524D;text-wrap:pretty">Формат организаторов: выгрузка с шагом <b>10 минут</b>, мощность нормирована на номинал и лежит в диапазоне <b>от 0 до 1</b>. Заголовок в первой строке, разделитель — запятая, кодировка UTF-8.</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ up.columns }}" as="c" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px;padding:8px 12px;border-radius:10px;background:#F4F5F2;font-size:12.5px">
+                    <span style="font-family:'JetBrains Mono',monospace;color:#141816;overflow:hidden;text-overflow:ellipsis">{{ c.n }}</span>
+                    <span style="color:#5F6762">{{ c.d }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:12px;color:#5F6762">Пример первых строк:</div>
+                <div style="padding:12px;border-radius:12px;background:#141816;color:#E8EAE5;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;overflow-x:auto;white-space:pre">{{ up.sample }}</div>
+              </div>
+              <div style="font-size:12px;color:#5F6762;line-height:1.5">Файл за три года весит около 6 МБ и содержит сотни тысяч строк — разбор занимает несколько секунд.</div>
+            </div>
+          </div>
+
+          <sc-if value="{{ up.busy }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:14px">
+              <span style="width:26px;height:26px;border-radius:50%;border:3px solid rgba(20,24,22,0.12);border-top-color:oklch(0.6 0.16 135);animation:zspin 0.9s linear infinite"></span>
+              <div style="font-size:15px;font-weight:500">Разбираем файл и считаем прогноз</div>
+              <div style="font-size:13px;color:#5F6762;text-align:center;line-height:1.5">Это занимает несколько секунд: строки сводятся к часу, по ним строится кривая мощности, потом считается прогноз на 48 часов.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ up.err.show }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FFFFFF;border:1px solid oklch(0.6 0.18 25 / 0.35);border-radius:20px;padding:26px 24px;display:flex;flex-direction:column;gap:12px;max-width:820px">
+              <div style="font-size:19px;font-weight:600">Файл не обработан</div>
+              <div style="font-size:15px;line-height:1.55;color:#4A524D">{{ up.err.message }}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#7A827D;word-break:break-all">{{ up.err.detail }}</div>
+              <sc-if value="{{ up.hasFiles }}" hint-placeholder-val="{{ true }}">
+                <button sc-camel-on-click="{{ up.run }}" style="align-self:flex-start;padding:11px 16px;border-radius:12px;border:none;background:#141816;color:#FFFFFF;font:inherit;font-size:14px;font-weight:500;cursor:pointer">Попробовать снова</button>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ up.hasWarns }}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius:20px;padding:18px 22px;background:oklch(0.6 0.16 75 / 0.1);border:1px solid oklch(0.6 0.16 75 / 0.4);display:flex;flex-direction:column;gap:10px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:oklch(0.45 0.14 75)">ПРЕДУПРЕЖДЕНИЯ РАЗБОРА · ЭТО НЕ ОШИБКИ</div>
+              <sc-for list="{{ up.warns }}" as="w" hint-placeholder-count="2">
+                <div style="display:flex;gap:10px;align-items:baseline;font-size:13.5px;line-height:1.5">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 7px;border-radius:6px;background:rgba(255,255,255,0.7);color:oklch(0.45 0.14 75);white-space:nowrap">{{ w.code }}</span>
+                  <span style="color:#3A413C">{{ w.message }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ up.hasDataset }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ЧТО ПРОЧИТАНО ИЗ ФАЙЛА</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+                <div style="padding:14px;border-radius:14px;background:#F4F5F2;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;color:#5F6762">Период данных</div>
+                  <div style="font-size:17px;font-weight:600">{{ up.ds.period }}</div>
+                </div>
+                <div style="padding:14px;border-radius:14px;background:#F4F5F2;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;color:#5F6762">Часов после сведения</div>
+                  <div style="font-size:17px;font-weight:600">{{ up.ds.hours }}</div>
+                </div>
+                <div style="padding:14px;border-radius:14px;background:#F4F5F2;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;color:#5F6762">Шаг исходных строк</div>
+                  <div style="font-size:17px;font-weight:600">{{ up.ds.step }}</div>
+                </div>
+                <div style="padding:14px;border-radius:14px;background:#F4F5F2;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;color:#5F6762">Отброшено строк</div>
+                  <div style="font-size:17px;font-weight:600">{{ up.ds.dropped }}</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+                <sc-for list="{{ up.ds.files }}" as="f" hint-placeholder-count="2">
+                  <div style="padding:14px;border-radius:12px;background:#F4F5F2;display:flex;flex-direction:column;gap:5px">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:oklch(0.6 0.16 215);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.n }}</div>
+                    <div style="font-size:13px">{{ f.rows }} · турбина {{ f.turbine }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ up.ds.hasDrops }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:13px;color:#4A524D">Почему строки отброшены — коды приходят из ответа бэкенда:</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px">
+                    <sc-for list="{{ up.ds.reasons }}" as="r" hint-placeholder-count="3">
+                      <span style="padding:6px 10px;border-radius:8px;background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#4A524D">{{ r.code }} · {{ r.n }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ up.curve.has }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
+                <span style="font-size:18px;font-weight:600">Кривая мощности из ваших данных</span>
+                <span style="font-size:12px;color:#5F6762">{{ up.curve.bins }} · максимум {{ up.curve.maxSamples }} наблюдений в интервале</span>
+              </div>
+              <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#5F6762">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;border-radius:2px;background:oklch(0.6 0.16 135)"></span>Медианная мощность в интервале ветра</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:10px;border-radius:3px;background:oklch(0.6 0.16 135 / 0.2)"></span>Разброс P10–P90 внутри интервала</div>
+              </div>
+              <div style="position:relative;height:280px;margin:14px 0 0 34px">
+                <sc-for list="{{ up.curve.yTicks }}" as="y" hint-placeholder-count="5">
+                  <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(20,24,22,0.06)"><span style="position:absolute;left:-34px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ y.l }}</span></div>
+                </sc-for>
+                <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                  <path d="{{ up.curve.band }}" style="fill:oklch(0.6 0.16 135 / 0.18)"></path>
+                  <path d="{{ up.curve.line }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 135);stroke-width:2.5;stroke-linejoin:round"></path>
+                </svg>
+              </div>
+              <div style="position:relative;height:16px;margin:8px 0 0 34px">
+                <sc-for list="{{ up.curve.xTicks }}" as="x" hint-placeholder-count="5">
+                  <div style="position:absolute;left:{{ x.left }};transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762;white-space:nowrap">{{ x.l }}</div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:2px;height:26px;align-items:flex-end;margin:4px 0 0 34px">
+                <sc-for list="{{ up.curve.samples }}" as="b" hint-placeholder-count="26">
+                  <div style="flex:1;height:{{ b.h }};background:rgba(20,24,22,0.14);border-radius:2px 2px 0 0"></div>
+                </sc-for>
+              </div>
+              <div style="font-size:12px;color:#5F6762;margin-left:34px">Ось X — скорость ветра, м/с. Серые столбики — сколько наблюдений попало в интервал: там, где их мало, кривой доверять нельзя.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ up.has }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+                <sc-for list="{{ up.kpis }}" as="k" hint-placeholder-count="4">
+                  <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+                    <div style="font-size:13px;color:#5F6762">{{ k.label }}</div>
+                    <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">{{ k.value }}</span><span style="font-size:16px;color:#5F6762">{{ k.unit }}</span></div>
+                    <div style="font-size:12px;color:#5F6762;font-family:'JetBrains Mono',monospace">{{ k.sub }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px 20px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap">
+                  <span style="font-size:18px;font-weight:600">Прогноз по вашим данным</span>
+                  <span style="font-size:12px;color:#5F6762">{{ up.hoursLabel }}</span>
+                </div>
+                <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#5F6762;margin-top:10px">
+                  <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;border-radius:2px;background:oklch(0.6 0.16 135)"></span>Ожидаемая мощность</div>
+                  <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:10px;border-radius:3px;background:oklch(0.6 0.16 135 / 0.2)"></span>Диапазон 80% (P10–P90)</div>
+                  <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:2px;background:oklch(0.6 0.16 215)"></span>Ветер на высоте ступицы, м/с (шкала справа)</div>
+                </div>
+                <div style="position:relative;height:300px;margin:22px 42px 0 38px" sc-camel-on-mouse-leave="{{ clearUpHover }}">
+                  <sc-for list="{{ up.yTicks }}" as="y" hint-placeholder-count="5">
+                    <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(20,24,22,0.06)">
+                      <span style="position:absolute;left:-38px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ y.l }}</span>
+                      <span style="position:absolute;right:-42px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(0.6 0.16 215)">{{ y.w }}</span>
+                    </div>
+                  </sc-for>
+                  <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                    <path d="{{ up.band }}" style="fill:oklch(0.6 0.16 135 / 0.16)"></path>
+                    <path d="{{ up.wind }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 215);stroke-width:1.5"></path>
+                    <path d="{{ up.p50 }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 135);stroke-width:2.5;stroke-linejoin:round"></path>
+                  </svg>
+                  <sc-if value="{{ up.hv.has }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;top:0;bottom:0;left:{{ up.hv.left }};width:1px;background:rgba(20,24,22,0.35);pointer-events:none"></div>
+                    <div style="position:absolute;top:8px;left:{{ up.hv.left }};transform:{{ up.hv.tx }};background:rgba(255,255,255,0.97);border:1px solid rgba(20,24,22,0.12);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:190px;pointer-events:none;z-index:3;box-shadow:0 12px 40px rgba(20,24,22,0.14)">
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5F6762">{{ up.hv.time }} · +{{ up.hv.lead }} ч</div>
+                      <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:26px;font-weight:600;color:oklch(0.6 0.16 135)">{{ up.hv.p50 }}%</span><span style="font-size:12px;color:#5F6762">P50</span></div>
+                      <div style="display:grid;grid-template-columns:auto auto;gap:4px 16px;font-size:12px"><span style="color:#5F6762">P10–P90</span><span>{{ up.hv.band }}</span><span style="color:#5F6762">Ветер</span><span>{{ up.hv.wind }} м/с</span><span style="color:#5F6762">Темп.</span><span>{{ up.hv.temp }} °C</span></div>
+                    </div>
+                  </sc-if>
+                  <div style="position:absolute;inset:0;display:flex">
+                    <sc-for list="{{ up.cols }}" as="c" hint-placeholder-count="48">
+                      <div sc-camel-on-mouse-enter="{{ c.on }}" style="flex:1;height:100%"></div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="position:relative;height:34px;margin:8px 42px 0 38px">
+                  <sc-for list="{{ up.xTicks }}" as="x" hint-placeholder-count="8">
+                    <div style="position:absolute;left:{{ x.left }};transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762;white-space:nowrap"><span>{{ x.t }}</span><span style="color:#141816">{{ x.d }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ПРОГНОЗ ПО ЧАСАМ · % ОТ МОЩНОСТИ СТАНЦИИ</div>
+                  <div style="font-size:12px;color:#5F6762">Крупно — ожидаемое значение, ниже — возможный диапазон</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px">
+                  <sc-for list="{{ up.cells }}" as="c" hint-placeholder-count="48">
+                    <div style="padding:9px 10px;border-radius:10px;background:{{ c.bg }};display:flex;flex-direction:column;gap:3px">
+                      <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:#4A524D"><span>{{ c.t }}</span><span>{{ c.d }}</span></div>
+                      <div style="font-size:18px;font-weight:600">{{ c.v }}</div>
+                      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4A524D">{{ c.band }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ЧТО ГОВОРИТ АГЕНТ ПО ВАШИМ ДАННЫМ</div>
+                <div style="font-size:17px;line-height:1.55;text-wrap:pretty">{{ up.summary }}</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
     </div>
   </main>
 </div>
 </x-dc>
 </div>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;dispatch&quot;,&quot;agent&quot;,&quot;backtest&quot;,&quot;weather&quot;,&quot;model&quot;,&quot;site&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;dispatch&quot;,&quot;agent&quot;,&quot;backtest&quot;,&quot;weather&quot;,&quot;model&quot;,&quot;site&quot;,&quot;upload&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
 // Мост к рантайму: вся логика в app.js, здесь только жизненный цикл.
 class Component extends DCLogic {
   state = ZHEL.initialState();
