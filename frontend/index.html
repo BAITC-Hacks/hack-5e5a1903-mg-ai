@@ -546,7 +546,7 @@ input[type=range]{accent-color:oklch(0.6 0.16 135)}
               <div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:18px;font-weight:600">Сколько энергии будет каждый час</span><span style="font-size:12px;color:#5F6762">наведите на график, чтобы увидеть детали часа</span></div><div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#5F6762">
                 <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;border-radius:2px;background:oklch(0.6 0.16 135)"></span>Ожидаемая мощность</div>
                 <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:10px;border-radius:3px;background:oklch(0.6 0.16 135 / 0.2)"></span>Диапазон 80% (P10–P90)</div>
-                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:0;border-top:2px dashed #141816"></span>Факт SCADA</div>
+                <sc-if value="{{ ov.hasActual }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:0;border-top:2px dashed #141816"></span>Факт SCADA</div></sc-if>
                 <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:2px;background:oklch(0.6 0.16 215)"></span>Ветер на высоте ступицы, м/с (шкала справа)</div>
               </div></div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -555,7 +555,7 @@ input[type=range]{accent-color:oklch(0.6 0.16 135)}
                   <button sc-camel-on-click="{{ setH48 }}" style="padding:6px 12px;border:none;border-radius:7px;background:{{ ov.h48bg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">48 ч</button>
                 </div>
                 <button sc-camel-on-click="{{ toggleWind }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(20,24,22,0.1);background:{{ ov.windBg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">Ветер</button>
-                <button sc-camel-on-click="{{ toggleActual }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(20,24,22,0.1);background:{{ ov.actBg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">Факт</button>
+                <sc-if value="{{ ov.hasActual }}" hint-placeholder-val="{{ false }}"><button sc-camel-on-click="{{ toggleActual }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(20,24,22,0.1);background:{{ ov.actBg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">Факт</button></sc-if>
               </div>
             </div>
             <div style="position:relative;height:320px;margin:22px 42px 0 38px" sc-camel-on-mouse-leave="{{ clearHover }}">
@@ -1055,60 +1055,12 @@ input[type=range]{accent-color:oklch(0.6 0.16 135)}
         </div>
       </sc-if>
 
-      <sc-if value="{{ isArch }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;flex-direction:column;gap:18px">
-          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">АРХИТЕКТУРА · РЕПОЗИТОРИЙ · API</div>
-            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Как устроено решение</h1>
-          </div>
-          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:stretch">
-            <sc-for list="{{ arch.layers }}" as="L" hint-placeholder-count="5">
-              <div style="display:flex;flex-direction:column;align-items:center">
-                <div style="width:100%;display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:center;padding:14px;border-radius:14px;background:{{ L.bg }};border:1px solid {{ L.border }}">
-                  <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ L.num }}</span><span style="font-size:15px;font-weight:600">{{ L.name }}</span></div>
-                  <div style="display:flex;flex-wrap:wrap;gap:6px">
-                    <sc-for list="{{ L.items }}" as="i" hint-placeholder-count="4">
-                      <span style="padding:7px 11px;border-radius:9px;background:rgba(20,24,22,0.05);border:1px solid rgba(20,24,22,0.07);font-size:12.5px">{{ i }}</span>
-                    </sc-for>
-                  </div>
-                </div>
-                <div style="width:1px;height:{{ L.gap }};background:rgba(20,24,22,0.18)"></div>
-              </div>
-            </sc-for>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px">
-            <div style="background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">СТРУКТУРА РЕПОЗИТОРИЯ</div>
-              <sc-for list="{{ arch.tree }}" as="t" hint-placeholder-count="9">
-                <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px"><span style="color:oklch(0.6 0.16 215)">{{ t.p }}</span><span style="color:#5F6762">{{ t.d }}</span></div>
-              </sc-for>
-            </div>
-            <div style="background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ЗАПУСК · README</div>
-              <sc-for list="{{ arch.cmds }}" as="c" hint-placeholder-count="5">
-                <div style="display:flex;flex-direction:column;gap:2px;font-family:'JetBrains Mono',monospace;font-size:12.5px"><span><span style="color:oklch(0.6 0.16 135)">$ </span>{{ c.c }}</span><span style="color:#7A827D;font-size:11.5px"># {{ c.d }}</span></div>
-              </sc-for>
-            </div>
-          </div>
-          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762;margin-bottom:6px">ОТКУДА ДАННЫЕ НА КАЖДОЙ СТРАНИЦЕ</div>
-            <sc-for list="{{ arch.endpoints }}" as="c" hint-placeholder-count="9">
-              <div style="display:grid;grid-template-columns:64px minmax(0,1.6fr) minmax(0,1fr);gap:18px;padding:12px 0;border-top:1px solid rgba(20,24,22,0.06);align-items:center">
-                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:oklch(0.6 0.16 135)">{{ c.p }}</span>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;word-break:break-all">{{ c.n }}</span>
-                <span style="font-size:13.5px;color:#4A524D">{{ c.d }}</span>
-              </div>
-            </sc-for>
-          </div>
-        </div>
-      </sc-if>
-
     </div>
   </main>
 </div>
 </x-dc>
 </div>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;dispatch&quot;,&quot;agent&quot;,&quot;backtest&quot;,&quot;weather&quot;,&quot;model&quot;,&quot;site&quot;,&quot;arch&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;dispatch&quot;,&quot;agent&quot;,&quot;backtest&quot;,&quot;weather&quot;,&quot;model&quot;,&quot;site&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
 // Мост к рантайму: вся логика в app.js, здесь только жизненный цикл.
 class Component extends DCLogic {
   state = ZHEL.initialState();
@@ -1117,6 +1069,5 @@ class Component extends DCLogic {
   renderVals() { return ZHEL.view(this); }
 }
 </script>
-
 
 </body></html>
