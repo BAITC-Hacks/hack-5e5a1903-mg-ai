@@ -15,6 +15,8 @@
 - Отдает историю турбин по часам в UTC с флагами очистки (#9), пояс SCADA проверен (#10).
 - Отдает всё это backend по HTTP: сервис погоды (#46), контракт в [weather-service.md](weather-service.md)
   и [weather-openapi.json](weather-openapi.json).
+- Проверяет утечки будущего одной командой (#20): погода выпусков, запрещенные API,
+  правило Previous Runs, признаки модели.
 
 ## Файлы и модули
 
@@ -29,6 +31,9 @@
   строка погоды не вышла позже `as_of` и `available_at_utc` не раньше задержки из
   `sources.py`; сверяет кэш с `SHA256SUMS`, пишет `missing_sources` для ансамбля (#39).
   Тесты: `backend/tests/forecast/test_manifest.py`.
+- `backend/src/forecast/leakcheck.py` — проверка утечек (#20), что именно проверяется,
+  описано в docstring модуля. Генерирует `reports/leakcheck.md` и паспорта выпусков
+  февраля `reports/manifests/<дата>.json`. Тесты: `backend/tests/forecast/test_leakcheck.py`.
 - `backend/src/forecast/dataset/scada.py` — `load_scada()`: ScadaHistory из #2, обе турбины
   в длинном формате, часовой шаг, `time_utc`, флаги очистки (#9).
 - `backend/src/forecast/dataset/config.py` — пути (`DATA_DIR`, `REPORTS_DIR`), правило пояса
@@ -62,6 +67,29 @@ uv run python -m src.analysis.tz_check
   с мгновенными значениями погоды (`tz_check`) часы центрируются на hh:00.
 - Флаги: `frozen_sensor`, `cut_out`, `icing`, `downtime`, `curtailment`, пустая строка для чистого часа.
   Один флаг на час, по приоритету из `FLAG_PRIORITY`.
+
+## Проверка утечек (#20)
+
+Из папки `backend`, сеть не нужна, около 25 секунд:
+
+```bash
+uv run python -m src.forecast.leakcheck
+```
+
+Код выхода 0 — утечек нет, 1 — найдены. Готовых выпусков в `outputs/` после Плана 2 (#37)
+нет, поэтому проверка сама получает погоду каждого выпуска через `AsOfStore` и сверяет
+ее независимо: время доступности пересчитывается из `run_init_utc` и задержки из
+`sources.py`, а не берется из колонки. Проверяются 28 выпусков февраля и выпуск 02:00 UTC
+каждого дня периода SCADA, то есть вся выборка калибровки `ml/training/train.py`,
+метки прогонов в кэше Previous Runs против `prev_runs_rule`, код на обращения к ERA5,
+`archive-api` и Historical Forecast API и признаки модели на значения SCADA и лаги.
+
+Обучение моделей на измеренных ветре и температуре SCADA отчет показывает замечанием,
+а не утечкой. На инференсе эти признаки строятся из прогноза погоды, и в февраль факт
+не попадает, но это train/serve skew против GOAL.md §1 и §6, зона dev2.
+
+Паспорта в `reports/manifests/` пишутся с пустыми `git_sha` и `git_dirty`: файл
+коммитится вместе с кодом, и свой коммит в нем не записать.
 
 ## Погода IFS из Single Runs (#6)
 
