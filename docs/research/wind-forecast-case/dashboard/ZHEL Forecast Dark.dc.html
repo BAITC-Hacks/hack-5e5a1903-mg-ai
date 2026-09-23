@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090B0A;color:#ECEFED;font-family:Onest,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:oklch(0.85 0.16 135);text-decoration:none}
+a:hover{text-decoration:underline}
+input[type=range]{accent-color:oklch(0.85 0.16 135)}
+@keyframes zpulse{0%,100%{opacity:1}50%{opacity:.3}}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:8px}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh">
+  <aside style="width:224px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.07);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:30px;background:#0B0D0C">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
+      <div style="width:30px;height:30px;border-radius:50%;border:2px solid oklch(0.85 0.16 135);display:flex;align-items:center;justify-content:center"><div style="width:10px;height:10px;border-radius:50%;background:oklch(0.85 0.16 135)"></div></div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-weight:700;font-size:17px;letter-spacing:-0.02em">ZHEL<span style="color:oklch(0.85 0.16 135)">.ai</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F;letter-spacing:0.06em">AGENTIC FORECAST</div>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ nav }}" as="it" hint-placeholder-count="7">
+        <button onClick="{{ it.onClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 10px;border:none;border-radius:10px;background:{{ it.bg }};color:{{ it.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="color:#ECEFED">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.7">{{ it.num }}</span>
+          <span style="flex:1">{{ it.label }}</span>
+          <span style="width:6px;height:6px;border-radius:50%;background:{{ it.dot }}"></span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;background:#101312;border:1px solid rgba(255,255,255,0.07)">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;color:#8C948F">HACKALEM AI · КЕЙС</div>
+      <div style="font-size:13px;line-height:1.45">Почасовой прогноз выработки ВЭС на 24–48 ч</div>
+      <div style="font-size:12px;color:#8C948F;line-height:1.5">История: 03.2023 – 31.01.2026<br>Тест: 01.02 – 28.02.2026</div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0">
+    <header style="position:sticky;top:0;z-index:20;background:rgba(9,11,10,0.84);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,0.07);padding:12px 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;color:#8C948F">ТОЧКА ПРОГНОЗА T · REPLAY</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500">{{ top.issueLabel }} <span style="color:#8C948F">UTC+5</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:240px;max-width:460px">
+        <button onClick="{{ prevIssue }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#ECEFED;cursor:pointer;font-size:15px" style-hover="background:rgba(255,255,255,0.06)">‹</button>
+        <input type="range" min="0" max="27" value="{{ issue }}" onChange="{{ onSlide }}" style="flex:1">
+        <button onClick="{{ nextIssue }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#ECEFED;cursor:pointer;font-size:15px" style-hover="background:rgba(255,255,255,0.06)">›</button>
+      </div>
+      <div style="font-size:13px;color:#8C948F">Горизонт: <span style="color:#ECEFED;font-family:'JetBrains Mono',monospace">{{ top.horizonLabel }}</span></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;border:1px solid rgba(255,255,255,0.1);font-size:13px">
+          <sc-if value="{{ running }}" hint-placeholder-val="{{ false }}">
+            <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.85 0.16 75);animation:zpulse 1s infinite"></span>
+          </sc-if>
+          <sc-if value="{{ notRunning }}" hint-placeholder-val="{{ true }}">
+            <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.85 0.16 135)"></span>
+          </sc-if>
+          <span>{{ top.status }}</span>
+        </div>
+        <button onClick="{{ rerun }}" style="padding:8px 14px;border-radius:10px;border:none;background:oklch(0.85 0.16 135);color:#0A0C0B;font:inherit;font-size:13px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.08)">Пересчитать</button>
+      </div>
+    </header>
+
+    <div style="padding:30px 32px 72px;max-width:1380px">
+
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ПРОГНОЗ ВЫРАБОТКИ · ШАГ 1 Ч · P10 / P50 / P90</div>
+              <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">{{ ov.title }}</h1>
+              <div style="color:#8C948F;font-size:15px">{{ ov.subtitle }}</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onClick="{{ downloadCsv }}" style="padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#ECEFED;font:inherit;font-size:13px;cursor:pointer" style-hover="background:rgba(255,255,255,0.06)">Скачать CSV</button>
+              <button onClick="{{ goAgent }}" style="padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#ECEFED;font:inherit;font-size:13px;cursor:pointer" style-hover="background:rgba(255,255,255,0.06)">Журнал агента →</button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <sc-for list="{{ ov.kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:13px;color:#8C948F">{{ k.label }}</div>
+                <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">{{ k.value }}</span><span style="font-size:16px;color:#8C948F">{{ k.unit }}</span></div>
+                <div style="font-size:12px;color:#8C948F;font-family:'JetBrains Mono',monospace">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px 20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#8C948F">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;border-radius:2px;background:oklch(0.85 0.16 135)"></span>P50 мощность</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:10px;border-radius:3px;background:oklch(0.85 0.16 135 / 0.2)"></span>P10–P90</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:0;border-top:2px dashed #ECEFED"></span>Факт SCADA</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:2px;background:oklch(0.85 0.16 215)"></span>Ветер 100 м, м/с</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="display:flex;padding:3px;border-radius:10px;background:#0A0C0B;border:1px solid rgba(255,255,255,0.07)">
+                  <button onClick="{{ setH24 }}" style="padding:6px 12px;border:none;border-radius:7px;background:{{ ov.h24bg }};color:#ECEFED;font:inherit;font-size:12px;cursor:pointer">24 ч</button>
+                  <button onClick="{{ setH48 }}" style="padding:6px 12px;border:none;border-radius:7px;background:{{ ov.h48bg }};color:#ECEFED;font:inherit;font-size:12px;cursor:pointer">48 ч</button>
+                </div>
+                <button onClick="{{ toggleWind }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:{{ ov.windBg }};color:#ECEFED;font:inherit;font-size:12px;cursor:pointer">Ветер</button>
+                <button onClick="{{ toggleActual }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:{{ ov.actBg }};color:#ECEFED;font:inherit;font-size:12px;cursor:pointer">Факт</button>
+              </div>
+            </div>
+            <div style="position:relative;height:320px;margin:22px 42px 0 38px" onMouseLeave="{{ clearHover }}">
+              <sc-for list="{{ ov.yTicks }}" as="y" hint-placeholder-count="5">
+                <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(255,255,255,0.06)">
+                  <span style="position:absolute;left:-38px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">{{ y.l }}</span>
+                  <span style="position:absolute;right:-42px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(0.85 0.16 215);opacity:{{ ov.windOp }}">{{ y.w }}</span>
+                </div>
+              </sc-for>
+              <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <path d="{{ ov.band }}" style="fill:oklch(0.85 0.16 135 / 0.16)"></path>
+                <path d="{{ ov.wind }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.85 0.16 215);stroke-width:1.5;opacity:{{ ov.windOp }}"></path>
+                <path d="{{ ov.act }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:#ECEFED;stroke-width:1.5;stroke-dasharray:4 4;opacity:{{ ov.actOp }}"></path>
+                <path d="{{ ov.p50 }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.85 0.16 135);stroke-width:2.5;stroke-linejoin:round"></path>
+              </svg>
+              <sc-if value="{{ ov.hv.has }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;top:0;bottom:0;left:{{ ov.hv.left }};width:1px;background:rgba(255,255,255,0.35);pointer-events:none"></div>
+                <div style="position:absolute;top:8px;left:{{ ov.hv.left }};transform:{{ ov.hv.tx }};background:rgba(16,19,18,0.96);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:190px;pointer-events:none;z-index:3;box-shadow:0 12px 40px rgba(0,0,0,0.5)">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8C948F">{{ ov.hv.time }} · +{{ ov.hv.lead }} ч</div>
+                  <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:26px;font-weight:600;color:oklch(0.85 0.16 135)">{{ ov.hv.p50 }}%</span><span style="font-size:12px;color:#8C948F">P50</span></div>
+                  <div style="display:grid;grid-template-columns:auto auto;gap:4px 16px;font-size:12px"><span style="color:#8C948F">P10–P90</span><span>{{ ov.hv.band }}</span><span style="color:#8C948F">Факт</span><span>{{ ov.hv.act }}</span><span style="color:#8C948F">Ветер</span><span>{{ ov.hv.wind }} м/с</span><span style="color:#8C948F">Темп.</span><span>{{ ov.hv.temp }} °C</span></div>
+                </div>
+              </sc-if>
+              <div style="position:absolute;inset:0;display:flex">
+                <sc-for list="{{ ov.cols }}" as="c" hint-placeholder-count="48">
+                  <div onMouseEnter="{{ c.on }}" style="flex:1;height:100%"></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:relative;height:34px;margin:8px 42px 0 38px">
+              <sc-for list="{{ ov.xTicks }}" as="x" hint-placeholder-count="8">
+                <div style="position:absolute;left:{{ x.left }};transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F;white-space:nowrap"><span>{{ x.t }}</span><span style="color:#ECEFED">{{ x.d }}</span></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:2px;margin:10px 42px 0 38px;height:10px">
+              <sc-for list="{{ ov.cells }}" as="c" hint-placeholder-count="48">
+                <div style="flex:1;border-radius:2px;background:{{ c.bgStrong }}"></div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px">
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ВЫВОД АГЕНТА</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 8px;border-radius:6px;background:oklch(0.85 0.16 300 / 0.12);color:oklch(0.85 0.16 300);white-space:nowrap">LLM · отчёт v{{ ov.version }}</div>
+              </div>
+              <div style="font-size:17px;line-height:1.55;text-wrap:pretty">{{ ov.summary }}</div>
+              <div style="display:flex;flex-direction:column;gap:1px;border-radius:12px;overflow:hidden">
+                <sc-for list="{{ ov.checks }}" as="c" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#0C0F0E;font-size:13px">
+                    <span style="width:7px;height:7px;border-radius:50%;background:{{ c.color }}"></span>
+                    <span style="flex:1">{{ c.name }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;color:#8C948F;font-size:12px">{{ c.val }}</span>
+                    <span style="font-size:11px;padding:3px 7px;border-radius:5px;background:rgba(255,255,255,0.05);color:{{ c.color }}">{{ c.st }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ПОГОДА НА ТОЧКЕ ВЭС · ПРОГНОЗ</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <sc-for list="{{ ov.wx }}" as="w" hint-placeholder-count="4">
+                  <div style="padding:14px;border-radius:14px;background:#0C0F0E;display:flex;flex-direction:column;gap:6px">
+                    <div style="font-size:12px;color:#8C948F">{{ w.l }}</div>
+                    <div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">{{ w.v }}</div>
+                    <div style="font-size:11px;color:#8C948F;font-family:'JetBrains Mono',monospace">{{ w.s }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <button onClick="{{ goWeather }}" style="align-self:flex-start;padding:0;border:none;background:none;color:oklch(0.85 0.16 135);font:inherit;font-size:13px;cursor:pointer">Источники и прогоны NWP →</button>
+            </div>
+          </div>
+
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ПОЧАСОВАЯ ДЕТАЛИЗАЦИЯ · P50 И ИНТЕРВАЛ P10–P90, % ОТ МОЩНОСТИ</div>
+              <div style="font-size:12px;color:#8C948F">Яркость ячейки = ожидаемая загрузка</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px">
+              <sc-for list="{{ ov.cells }}" as="c" hint-placeholder-count="48">
+                <div style="padding:9px 10px;border-radius:10px;background:{{ c.bg }};display:flex;flex-direction:column;gap:3px">
+                  <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:#AEB5B1"><span>{{ c.t }}</span><span>{{ c.d }}</span></div>
+                  <div style="font-size:18px;font-weight:600">{{ c.v }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#AEB5B1">{{ c.band }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isAgent }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">AGENTIC AI · ПОЛНЫЙ ЦИКЛ</div>
+              <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Агент сам проходит цикл и решает, нужен ли перерасчёт</h1>
+              <div style="color:#8C948F;font-size:15px;line-height:1.5;text-wrap:pretty">LLM планирует шаги и интерпретирует результаты. Все расчёты выполняют детерминированные инструменты, поэтому прогноз воспроизводим.</div>
+            </div>
+            <button onClick="{{ rerun }}" style="padding:12px 18px;border-radius:12px;border:none;background:oklch(0.85 0.16 135);color:#0A0C0B;font:inherit;font-size:14px;font-weight:600;cursor:pointer">▶ Запустить цикл для T</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+            <sc-for list="{{ ag.stages }}" as="s" hint-placeholder-count="6">
+              <div style="background:#101312;border:1px solid {{ s.border }};border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:150px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8C948F">{{ s.num }}</span>
+                  <span style="font-size:11px;padding:3px 8px;border-radius:99px;background:{{ s.chipBg }};color:{{ s.color }}">{{ s.st }}</span>
+                </div>
+                <div style="font-size:16px;font-weight:600">{{ s.name }}</div>
+                <div style="font-size:12px;color:#8C948F;line-height:1.45">{{ s.desc }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8C948F;padding:0 4px">
+            <span style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></span>
+            <span>↺ Перерасчёт запускается при выходе нового прогона NWP или если анализ нашёл проблему</span>
+            <span style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:18px">
+            <div style="background:#0C0F0E;border:1px solid rgba(255,255,255,0.07);border-radius:20px;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07)">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8C948F">agent.log · as_of={{ ag.asOf }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#8C948F">{{ ag.progress }}</div>
+              </div>
+              <div ref="{{ logRef }}" style="height:520px;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:9px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.5">
+                <sc-for list="{{ ag.logs }}" as="l" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:62px 52px minmax(0,1fr);gap:10px;align-items:start">
+                    <span style="color:#6E7672">{{ l.time }}</span>
+                    <span style="font-size:10px;padding:2px 0;text-align:center;border-radius:4px;background:{{ l.tagBg }};color:{{ l.tagColor }}">{{ l.tag }}</span>
+                    <span style="color:{{ l.color }};word-break:break-word">{{ l.text }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ТРИГГЕРЫ ПЕРЕРАСЧЁТА</div>
+                <sc-for list="{{ ag.triggers }}" as="t" hint-placeholder-count="4">
+                  <div style="display:flex;gap:10px;font-size:13px;line-height:1.45"><span style="color:oklch(0.85 0.16 135)">→</span><span>{{ t }}</span></div>
+                </sc-for>
+              </div>
+              <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ИНСТРУМЕНТЫ АГЕНТА</div>
+                <sc-for list="{{ ag.tools }}" as="t" hint-placeholder-count="7">
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px"><span style="font-family:'JetBrains Mono',monospace;color:oklch(0.85 0.16 215)">{{ t.n }}</span><span style="color:#8C948F;text-align:right">{{ t.d }}</span></div>
+                </sc-for>
+              </div>
+              <div style="background:oklch(0.85 0.16 75 / 0.07);border:1px solid oklch(0.85 0.16 75 / 0.25);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:oklch(0.85 0.16 75)">ЗАЩИТА ОТ ЗАГЛЯДЫВАНИЯ В БУДУЩЕЕ</div>
+                <div style="font-size:13px;line-height:1.5">Каждый инструмент получает <span style="font-family:'JetBrains Mono',monospace">as_of = T</span>. Прогоны NWP с временем публикации позже T отклоняются, данные SCADA обрезаются по T.</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 12px;border-radius:10px;background:#0A0C0B;color:#AEB5B1">assert run.available_at &lt;= as_of</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isBacktest }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:800px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">РЕТРО-ПРОГНОЗ · 31.01 → 27.02.2026 · 28 ЗАПУСКОВ</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Бэктест за февраль 2026</h1>
+            <div style="color:#8C948F;font-size:15px;line-height:1.5">Каждый день агент выпускает прогноз на 48 ч, используя только данные, доступные на момент T. Нажмите на день, чтобы открыть его прогноз.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <sc-for list="{{ bt.kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:13px;color:#8C948F">{{ k.label }}</div>
+                <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">{{ k.value }}</span><span style="font-size:16px;color:#8C948F">{{ k.unit }}</span></div>
+                <div style="font-size:12px;color:#8C948F">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ФЕВРАЛЬ · ПРОГНОЗ D+1 ПРОТИВ ФАКТА</div>
+              <div style="display:flex;gap:18px;font-size:13px;color:#8C948F">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;background:oklch(0.85 0.16 135)"></span>Прогноз P50</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:2px;background:rgba(236,239,237,0.55)"></span>Факт</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(255,255,255,0.08)"></span>Выбранный T</div>
+              </div>
+            </div>
+            <div style="position:relative;height:240px;margin-top:20px">
+              <div style="position:absolute;top:0;bottom:0;left:{{ bt.selLeft }};width:{{ bt.selWidth }};background:rgba(255,255,255,0.06);border-radius:6px"></div>
+              <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <path d="{{ bt.actPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:rgba(236,239,237,0.55);stroke-width:1"></path>
+                <path d="{{ bt.fcPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.85 0.16 135);stroke-width:1.6"></path>
+              </svg>
+            </div>
+            <div style="position:relative;height:18px;margin-top:8px">
+              <sc-for list="{{ bt.xTicks }}" as="x" hint-placeholder-count="4">
+                <span style="position:absolute;left:{{ x.left }};font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">{{ x.t }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px">
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">КАЛЕНДАРЬ ЗАПУСКОВ · nMAE D+1</div>
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+                <sc-for list="{{ bt.cal }}" as="c" hint-placeholder-count="28">
+                  <button onClick="{{ c.on }}" style="aspect-ratio:1/0.9;border-radius:10px;border:1.5px solid {{ c.border }};background:{{ c.bg }};color:#ECEFED;font:inherit;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;padding:7px;text-align:left">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#AEB5B1">{{ c.d }}</span>
+                    <span style="font-size:15px;font-weight:600">{{ c.v }}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8C948F"><span>точнее</span><span style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,oklch(0.85 0.16 135 / 0.5),oklch(0.85 0.16 75 / 0.5),oklch(0.75 0.16 25 / 0.55))"></span><span>хуже</span></div>
+            </div>
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">СРАВНЕНИЕ С БАЗОВЫМИ МЕТОДАМИ · nMAE 48 Ч</div>
+              <sc-for list="{{ bt.compare }}" as="c" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:{{ c.tc }}">{{ c.n }}</span><span style="font-family:'JetBrains Mono',monospace">{{ c.v }}%</span></div>
+                  <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.05)"><div style="height:100%;width:{{ c.w }};border-radius:4px;background:{{ c.c }}"></div></div>
+                </div>
+              </sc-for>
+              <div style="font-size:12px;color:#8C948F;line-height:1.5">nMAE — средняя абсолютная ошибка в % от установленной мощности.</div>
+            </div>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ОШИБКА ПО ГОРИЗОНТУ · СРЕДНЕЕ ЗА 28 ЗАПУСКОВ</div>
+            <div style="display:flex;align-items:flex-end;gap:3px;height:170px;margin-top:20px">
+              <sc-for list="{{ bt.lead }}" as="b" hint-placeholder-count="48">
+                <div style="flex:1;height:{{ b.h }};border-radius:3px 3px 0 0;background:{{ b.c }}"></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F"><span>+1 ч</span><span>+12</span><span>+24 · D+1 | D+2</span><span>+36</span><span>+48 ч</span></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isWeather }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ОТКРЫТЫЕ ИСТОЧНИКИ · 4 МОДЕЛИ NWP</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Погода, которая была известна в момент T</h1>
+            <div style="color:#8C948F;font-size:15px;line-height:1.5;text-wrap:pretty">Агент запрашивает прогнозы по координатам ВЭС и берёт только прогоны, опубликованные до T. Фактическая погода, ставшая известной позже, в прогноз не попадает.</div>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ПРОГОНЫ NWP · ДОСТУПНОСТЬ НА T = {{ wx.tUtc }}</div>
+              <div style="font-size:12px;color:#8C948F">Задержка публикации прогона ≈ 6 ч</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px">
+              <sc-for list="{{ wx.runs }}" as="r" hint-placeholder-count="8">
+                <div style="padding:12px;border-radius:12px;border:1px solid {{ r.border }};background:{{ r.bg }};display:flex;flex-direction:column;gap:6px;opacity:{{ r.op }}">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500">{{ r.l }}</div>
+                  <div style="font-size:11px;color:{{ r.c }}">{{ r.st }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">СКОРОСТЬ ВЕТРА 100 М · {{ wx.range }}</div>
+              <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#8C948F">
+                <sc-for list="{{ wx.srcs }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:2px;background:{{ s.color }}"></span>{{ s.name }}</div>
+                </sc-for>
+                <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;background:#ECEFED"></span>Ансамбль</div>
+                <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:2px dashed #8C948F"></span>Факт</div>
+              </div>
+            </div>
+            <div style="position:relative;height:280px;margin:20px 0 0 34px">
+              <sc-for list="{{ wx.yTicks }}" as="y" hint-placeholder-count="5">
+                <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(255,255,255,0.06)"><span style="position:absolute;left:-34px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">{{ y.l }}</span></div>
+              </sc-for>
+              <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <sc-for list="{{ wx.srcs }}" as="s" hint-placeholder-count="4">
+                  <path d="{{ s.path }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:{{ s.color }};stroke-width:1.3;opacity:0.85"></path>
+                </sc-for>
+                <path d="{{ wx.actPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:#8C948F;stroke-width:1.5;stroke-dasharray:4 4"></path>
+                <path d="{{ wx.blendPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:#ECEFED;stroke-width:2.6"></path>
+              </svg>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:18px">
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:6px;overflow-x:auto">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F;margin-bottom:8px">ИСТОЧНИКИ · ВЕС В АНСАМБЛЕ</div>
+              <div style="display:grid;grid-template-columns:minmax(0,1.4fr) 0.8fr 0.8fr 0.8fr 0.7fr;gap:10px;font-size:11px;color:#8C948F;padding:0 0 8px;border-bottom:1px solid rgba(255,255,255,0.07)"><span>Модель</span><span>Сетка</span><span>Прогон</span><span>MAE ветра</span><span>Вес</span></div>
+              <sc-for list="{{ wx.srcs }}" as="s" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:minmax(0,1.4fr) 0.8fr 0.8fr 0.8fr 0.7fr;gap:10px;font-size:13px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);align-items:center">
+                  <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ s.color }}"></span><span style="display:flex;flex-direction:column;gap:1px;min-width:0"><span>{{ s.name }}</span><span style="color:#8C948F;font-size:11px">{{ s.org }}</span></span></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ s.res }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ wx.run }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ s.mae }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ s.w }}</span>
+                </div>
+              </sc-for>
+              <div style="font-size:12px;color:#8C948F;margin-top:8px;line-height:1.5">Веса пересчитываются по ошибке каждого источника за последние 14 дней до T. Все модели доступны бесплатно через Open-Meteo.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="background:oklch(0.85 0.16 75 / 0.07);border:1px solid oklch(0.85 0.16 75 / 0.25);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:oklch(0.85 0.16 75)">ЛОВУШКА С ДАННЫМИ</div>
+                <div style="font-size:13px;line-height:1.55">Historical Forecast API склеивает первые часы каждого прогона. Для горизонта 24–48 ч это утечка: точность будет завышена.</div>
+                <div style="font-size:13px;line-height:1.55">Решение: <span style="font-family:'JetBrains Mono',monospace;font-size:12px">Previous Runs API</span> (переменные <span style="font-family:'JetBrains Mono',monospace;font-size:12px">*_previous_day1/2</span>) или сырые прогоны GFS и ECMWF Open Data с явным временем выпуска.</div>
+              </div>
+              <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ЗАПРОС АГЕНТА</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;color:#AEB5B1;word-break:break-all">GET previous-runs-api.open-meteo.com/v1/forecast<br>?latitude=43.6442&amp;longitude=78.5372<br>&amp;hourly=wind_speed_100m,wind_direction_100m,<br>temperature_2m,wind_gusts_10m<br>&amp;models=ecmwf_ifs025,gfs_seamless,…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isModel }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ML-МОДЕЛЬ · ФИЗИКА + ГРАДИЕНТНЫЙ БУСТИНГ</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">От прогноза ветра к мощности</h1>
+            <div style="color:#8C948F;font-size:15px;line-height:1.5">Модель обучена на истории SCADA с марта 2023 по январь 2026. Выдаёт три квантиля, чтобы у диспетчера был не только прогноз, но и его диапазон.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+            <sc-for list="{{ md.steps }}" as="s" hint-placeholder-count="4">
+              <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:oklch(0.85 0.16 135)">{{ s.n }}</div>
+                <div style="font-size:16px;font-weight:600">{{ s.t }}</div>
+                <div style="font-size:13px;color:#8C948F;line-height:1.5">{{ s.d }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px">
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">КРИВАЯ МОЩНОСТИ ПО ИСТОРИИ</div>
+                <div style="font-size:12px;color:#8C948F">точки: часы SCADA · линия: подобранная кривая</div>
+              </div>
+              <div style="position:relative;height:300px;margin:20px 0 0 34px">
+                <sc-for list="{{ md.yTicks }}" as="y" hint-placeholder-count="5">
+                  <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(255,255,255,0.06)"><span style="position:absolute;left:-34px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">{{ y.l }}</span></div>
+                </sc-for>
+                <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                  <path d="{{ md.scatter }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.85 0.16 215 / 0.45);stroke-width:4;stroke-linecap:round"></path>
+                  <path d="{{ md.curve }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.85 0.16 135);stroke-width:2.5"></path>
+                </svg>
+                <div style="position:absolute;left:13.6%;top:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">cut-in 3</div>
+                <div style="position:absolute;left:61%;top:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">номинал ≈13.5</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin:8px 0 0 34px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F"><span>0</span><span>5</span><span>10</span><span>15</span><span>20 м/с</span></div>
+            </div>
+            <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ВАЖНОСТЬ ПРИЗНАКОВ · SHAP</div>
+              <sc-for list="{{ md.imp }}" as="f" hint-placeholder-count="9">
+                <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) 40px;gap:12px;align-items:center;font-size:12px">
+                  <span style="font-family:'JetBrains Mono',monospace;color:#AEB5B1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.n }}</span>
+                  <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.05)"><div style="height:100%;width:{{ f.w }};border-radius:4px;background:{{ f.c }}"></div></div>
+                  <span style="font-family:'JetBrains Mono',monospace;text-align:right">{{ f.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">СХЕМА ОБУЧЕНИЯ · WALK-FORWARD</div>
+            <div style="display:flex;height:44px;border-radius:12px;overflow:hidden;gap:2px">
+              <div style="flex:32;background:oklch(0.85 0.16 215 / 0.22);display:flex;align-items:center;padding:0 14px;font-size:13px">Обучение · 03.2023 – 10.2025</div>
+              <div style="flex:3;background:oklch(0.85 0.16 300 / 0.25);display:flex;align-items:center;justify-content:center;font-size:12px">Валид.</div>
+              <div style="flex:1.6;background:oklch(0.85 0.16 135 / 0.35);display:flex;align-items:center;justify-content:center;font-size:12px;color:#ECEFED">Тест</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F"><span>01.03.2023</span><span>01.11.2025</span><span>31.01 · 28.02.2026</span></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ md.feats }}" as="f" hint-placeholder-count="10">
+                <span style="padding:6px 10px;border-radius:8px;background:#0C0F0E;border:1px solid rgba(255,255,255,0.07);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#AEB5B1">{{ f }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSite }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ОБЪЕКТ · АЛМАТИНСКАЯ ОБЛАСТЬ, КАЗАХСТАН</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Две турбины, одна точка прогноза</h1>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px">
+            <div style="position:relative;height:560px;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);background:#141816">
+              <sc-for list="{{ site.tiles }}" as="t" hint-placeholder-count="35">
+                <img src="{{ t.src }}" alt="" style="position:absolute;left:{{ t.left }};top:{{ t.top }};width:256px;height:256px;display:block">
+              </sc-for>
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(9,11,10,0.55) 100%);pointer-events:none"></div>
+              <sc-for list="{{ site.markers }}" as="m" hint-placeholder-count="2">
+                <div style="position:absolute;left:{{ m.left }};top:{{ m.top }};transform:translate(-50%,-50%)">
+                  <div style="width:22px;height:22px;border-radius:50%;border:2px solid oklch(0.85 0.16 135);background:oklch(0.85 0.16 135 / 0.25);box-shadow:0 0 0 6px oklch(0.85 0.16 135 / 0.15)"></div>
+                  <div style="position:absolute;left:30px;top:-6px;white-space:nowrap;padding:6px 10px;border-radius:9px;background:rgba(9,11,10,0.85);border:1px solid rgba(255,255,255,0.12);font-size:12px;display:flex;gap:8px"><span style="font-weight:600">{{ m.name }}</span><span style="font-family:'JetBrains Mono',monospace;color:#AEB5B1">{{ m.coord }}</span></div>
+                </div>
+              </sc-for>
+              <div style="position:absolute;left:14px;bottom:12px;padding:6px 10px;border-radius:8px;background:rgba(9,11,10,0.8);font-family:'JetBrains Mono',monospace;font-size:11px">Точка NWP: {{ site.center }}</div>
+              <div style="position:absolute;right:12px;bottom:10px;font-size:10px;color:rgba(255,255,255,0.7)">Imagery © Esri</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ site.facts }}" as="f" hint-placeholder-count="5">
+                <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;color:#8C948F">{{ f.l }}</div>
+                  <div style="font-size:18px;font-weight:600">{{ f.v }}</div>
+                  <div style="font-size:12px;color:#8C948F;line-height:1.45">{{ f.s }}</div>
+                </div>
+              </sc-for>
+              <div style="display:flex;gap:8px">
+                <a href="https://www.google.com/maps/search/43.645150,+78.535604" target="_blank" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);text-align:center;font-size:13px;color:#ECEFED">T1 в Google Maps ↗</a>
+                <a href="https://www.google.com/maps/search/43.643198,+78.538828" target="_blank" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);text-align:center;font-size:13px;color:#ECEFED">T2 в Google Maps ↗</a>
+              </div>
+            </div>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ИСХОДНЫЕ ДАННЫЕ SCADA</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+              <sc-for list="{{ site.fields }}" as="f" hint-placeholder-count="4">
+                <div style="padding:14px;border-radius:12px;background:#0C0F0E;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:oklch(0.85 0.16 215)">{{ f.k }}</div>
+                  <div style="font-size:13px">{{ f.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isArch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">АРХИТЕКТУРА · РЕПОЗИТОРИЙ · КРИТЕРИИ</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Как устроено решение</h1>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:stretch">
+            <sc-for list="{{ arch.layers }}" as="L" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;align-items:center">
+                <div style="width:100%;display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:center;padding:14px;border-radius:14px;background:{{ L.bg }};border:1px solid {{ L.border }}">
+                  <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C948F">{{ L.num }}</span><span style="font-size:15px;font-weight:600">{{ L.name }}</span></div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ L.items }}" as="i" hint-placeholder-count="4">
+                      <span style="padding:7px 11px;border-radius:9px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.07);font-size:12.5px">{{ i }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="width:1px;height:{{ L.gap }};background:rgba(255,255,255,0.18)"></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px">
+            <div style="background:#0C0F0E;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">СТРУКТУРА РЕПОЗИТОРИЯ</div>
+              <sc-for list="{{ arch.tree }}" as="t" hint-placeholder-count="9">
+                <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px"><span style="color:oklch(0.85 0.16 215)">{{ t.p }}</span><span style="color:#8C948F">{{ t.d }}</span></div>
+              </sc-for>
+            </div>
+            <div style="background:#0C0F0E;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F">ЗАПУСК · README</div>
+              <sc-for list="{{ arch.cmds }}" as="c" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;gap:2px;font-family:'JetBrains Mono',monospace;font-size:12.5px"><span><span style="color:oklch(0.85 0.16 135)">$ </span>{{ c.c }}</span><span style="color:#6E7672;font-size:11.5px"># {{ c.d }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#101312;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#8C948F;margin-bottom:6px">КАК РЕШЕНИЕ ЗАКРЫВАЕТ КРИТЕРИИ · 100 БАЛЛОВ</div>
+            <sc-for list="{{ arch.criteria }}" as="c" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:56px minmax(0,0.9fr) minmax(0,2fr);gap:18px;padding:14px 0;border-top:1px solid rgba(255,255,255,0.06);align-items:start">
+                <span style="font-size:26px;font-weight:600;color:oklch(0.85 0.16 135);letter-spacing:-0.02em">{{ c.p }}</span>
+                <span style="font-size:15px;font-weight:600;line-height:1.35">{{ c.n }}</span>
+                <span style="font-size:13.5px;color:#AEB5B1;line-height:1.55">{{ c.d }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;agentSpeed&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:240,&quot;min&quot;:60,&quot;max&quot;:1000,&quot;step&quot;:20,&quot;unit&quot;:&quot;ms&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Демо&quot;},&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;agent&quot;,&quot;backtest&quot;,&quot;weather&quot;,&quot;model&quot;,&quot;site&quot;,&quot;arch&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
+const LIME='oklch(0.85 0.16 135)',CYAN='oklch(0.85 0.16 215)',AMBER='oklch(0.85 0.16 75)',VIOLET='oklch(0.85 0.16 300)',RED='oklch(0.75 0.16 25)';
+const T1={lat:43.645150,lon:78.535604},T2={lat:43.643198,lon:78.538828};
+const SRC=[
+ {name:'ECMWF IFS',org:'ECMWF',api:'ecmwf_ifs025',res:'0.25°',w:0.38,bias:0.25,sig:1.0,color:LIME},
+ {name:'GFS',org:'NOAA',api:'gfs_seamless',res:'0.25°',w:0.24,bias:-0.45,sig:1.3,color:CYAN},
+ {name:'ICON',org:'DWD',api:'icon_global',res:'0.125°',w:0.22,bias:0.35,sig:1.1,color:AMBER},
+ {name:'GEM',org:'ECCC',api:'gem_global',res:'0.15°',w:0.16,bias:-0.25,sig:1.4,color:VIOLET}];
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const gauss=r=>()=>{const u=r()||1e-9,v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const pct=v=>Math.round(v*100);
+const pad=n=>String(n).padStart(2,'0');
+const D0=Date.UTC(2026,0,31);
+const dt=h=>new Date(D0+h*3600000);
+const fHM=h=>pad(dt(h).getUTCHours())+':00';
+const fDM=h=>pad(dt(h).getUTCDate())+'.'+pad(dt(h).getUTCMonth()+1);
+const fFull=h=>fDM(h)+' '+fHM(h);
+const lf=(x)=>1/(1+Math.exp(-(x-8.2)/1.3));
+function pc(v){if(v<3||v>25)return 0;return clamp((lf(v)-lf(3))/(lf(13.5)-lf(3)),0,1);}
+function linePath(arr,max){const n=arr.length;return arr.map((v,i)=>(i?'L':'M')+(i/(n-1)*1000).toFixed(1)+','+(300-clamp(v/max,0,1)*300).toFixed(1)).join('');}
+function bandPath(lo,hi,max){const n=hi.length,x=i=>(i/(n-1)*1000).toFixed(1),y=v=>(300-clamp(v/max,0,1)*300).toFixed(1);let d='M'+x(0)+','+y(hi[0]);for(let i=1;i<n;i++)d+='L'+x(i)+','+y(hi[i]);for(let i=n-1;i>=0;i--)d+='L'+x(i)+','+y(lo[i]);return d+'Z';}
+const STAGES=[['Погода','Прогнозы 4 моделей NWP по координатам, только прогоны ≤ T'],['Подготовка','MOS-коррекция ветра, признаки, SCADA до T'],['Модель','LightGBM-квантили P10 / P50 / P90'],['Прогноз','48 значений с шагом 1 ч, публикация v1'],['Анализ','Разброс источников, рампы, отсечка, границы'],['Перерасчёт','По триггеру: новые веса, интервал, v2']];
+
+class Component extends DCLogic {
+  state={page:null,issue:0,horizon:48,hover:null,showWind:true,showActual:true,shown:0,running:false};
+  logRef=React.createRef();
+  componentDidMount(){this.startRun();}
+  componentWillUnmount(){clearInterval(this.timer);}
+  componentDidUpdate(){const el=this.logRef.current;if(el)el.scrollTop=el.scrollHeight;}
+  setIssue(i){i=clamp(i,0,27);this.setState({issue:i,hover:null},()=>this.startRun());}
+  startRun(){
+    clearInterval(this.timer);
+    const L=this.script(this.state.issue).length;
+    this.setState({shown:0,running:true});
+    this.timer=setInterval(()=>{const n=this.state.shown+1;if(n>=L){clearInterval(this.timer);this.setState({shown:L,running:false});}else this.setState({shown:n});},this.props.agentSpeed??240);
+  }
+  build(){
+    const g=gauss(mulberry32(20260131));
+    const N=32*24+48,wind=[],temp=[],act=[];let ar=0,tr=0;
+    for(let h=0;h<N;h++){ar=0.9*ar+0.7*g();const b=7.4+3.4*Math.sin(2*Math.PI*h/110+0.8)+2.2*Math.sin(2*Math.PI*h/46+2.1)+1.1*Math.sin(2*Math.PI*(h%24)/24-1.2);const w=clamp(b+ar,0.3,22);wind.push(w);tr=0.95*tr+0.3*g();temp.push(-6+3.5*Math.sin(2*Math.PI*((h%24)-9)/24)+4*Math.sin(2*Math.PI*h/216)+tr);act.push(clamp(pc(w)*(0.96+0.04*g())+0.02*g(),0,1));}
+    const climV=mean(act);
+    const issues=[];
+    for(let i=0;i<28;i++){
+      const T=i*24+18,s=(i+1)*24;
+      const src=SRC.map((S,j)=>{const gg=gauss(mulberry32(1000+i*131+j*7919));let e=S.bias;const w=[];for(let k=0;k<48;k++){e=0.88*e+0.12*S.bias+gg()*0.8*S.sig*(1+(6+k)/22);w.push(clamp(wind[s+k]+e,0,24));}return w;});
+      const gt=gauss(mulberry32(5000+i));
+      const o={i,T,s,src,blend:[],spread:[],fw:[],p10:[],p50:[],p90:[],tf:[],ac:[],pe:[],pb:[],wa:wind.slice(s,s+48)};
+      for(let k=0;k<48;k++){const vals=src.map(a=>a[k]);const b=SRC.reduce((acc,S,j)=>acc+S.w*vals[j],0);const m=mean(vals);const sd=Math.sqrt(mean(vals.map(v=>(v-m)**2)));const f=Math.max(0,b-0.8*SRC.reduce((acc,S)=>acc+S.w*S.bias,0));const sg=0.55+0.028*(6+k)+0.55*sd;
+        o.blend.push(b);o.spread.push(sd);o.fw.push(f);o.p50.push(pc(f));o.p10.push(pc(Math.max(0,f-1.28*sg)));o.p90.push(pc(Math.min(24.5,f+1.28*sg)));o.tf.push(temp[s+k]+gt()*0.7);o.ac.push(act[s+k]);o.pe.push(pc(src[0][k]));o.pb.push(pc(b));}
+      const err=(p,a,b)=>mean(p.slice(a,b).map((v,k)=>Math.abs(v-o.ac[a+k])));
+      Object.assign(o,{mae24:err(o.p50,0,24),mae48:err(o.p50,24,48),maeAll:err(o.p50,0,48),rmse:Math.sqrt(mean(o.p50.map((v,k)=>(v-o.ac[k])**2))),bias:mean(o.p50.map((v,k)=>v-o.ac[k])),pers:mean(o.ac.map(a=>Math.abs(a-act[T]))),clim:mean(o.ac.map(a=>Math.abs(a-climV))),phys:err(o.pe,0,48),blendE:err(o.pb,0,48),spreadLate:mean(o.spread.slice(24)),last:act[T],srcMae:src.map(a=>mean(a.map((v,k)=>Math.abs(v-o.wa[k]))))});
+      issues.push(o);
+    }
+    const sl=issues.map(x=>x.spreadLate).sort((a,b)=>a-b);const thr=Math.round(sl[16]*10)/10;
+    issues.forEach(x=>x.recalc=x.spreadLate>thr);
+    const leadErr=[];for(let k=0;k<48;k++)leadErr.push(mean(issues.map(x=>Math.abs(x.p50[k]-x.ac[k]))));
+    const mf=[],ma=[];issues.forEach(x=>{for(let k=0;k<24;k++){mf.push(x.p50[k]);ma.push(x.ac[k]);}});
+    const g2=gauss(mulberry32(77)),r2=mulberry32(78);let sc='';
+    for(let n=0;n<520;n++){const v=clamp(Math.abs(7.5+3.9*g2()),0,21.5);let p=clamp(pc(v)+0.035*g2(),0,1);if(r2()<0.03)p=Math.min(p,0.5+0.04*g2());sc+='M'+(v/22*1000).toFixed(1)+','+(300-p*300).toFixed(1)+'h0';}
+    let cv='';for(let v=0;v<=22;v+=0.25)cv+=(v?'L':'M')+(v/22*1000).toFixed(1)+','+(300-pc(v)*300).toFixed(1);
+    const agg=k=>mean(issues.map(x=>x[k]));
+    return {issues,thr,leadErr,mf,ma,sc,cv,agg};
+  }
+  script(i){
+    this.scr=this.scr||{};if(this.scr[i])return this.scr[i];
+    const D=this.D||(this.D=this.build());const I=D.issues[i];
+    const run=`${fDM(I.T).split('.').reverse().join('-')}T06Z`;
+    const pk=I.p50.indexOf(Math.max(...I.p50));
+    let ramp=0,rk=0;for(let k=1;k<48;k++){const d=Math.abs(I.p50[k]-I.p50[k-1]);if(d>ramp){ramp=d;rk=k;}}
+    const e=[];const P=(stage,kind,text)=>e.push({stage,kind,text});
+    P(0,'think',`Точка прогноза T = ${fFull(I.T)}. Беру только прогнозы погоды, опубликованные до T.`);
+    SRC.forEach(S=>P(0,'tool',`get_weather_forecast(model="${S.api}", run="2026-${run}", lat=43.6442, lon=78.5372, as_of=T)`));
+    P(0,'ok','4/4 источника · 48 ч · wind_speed_100m, wind_direction_100m, temperature_2m · все прогоны ≤ T');
+    P(1,'tool','get_scada_history(until=T, window="30d")');
+    P(1,'ok',`720 строк · последний факт ${pct(I.last)}% мощности`);
+    P(1,'tool','build_features(hub_height=100, mos=True, air_density=True)');
+    P(1,'ok','матрица 48 × 23 · пропусков 0');
+    P(2,'tool','predict(model="lgbm_quantile_v3", q=[0.1, 0.5, 0.9])');
+    P(2,'ok','144 значения · 0.6 с');
+    P(3,'ok',`Средняя загрузка ${pct(mean(I.p50))}% · пик ${pct(I.p50[pk])}% в ${fFull(I.s+pk)}`);
+    P(3,'tool','publish_forecast(version=1)');
+    P(4,'tool','analyze_forecast(checks=["spread", "ramps", "cut_out", "bounds"])');
+    P(4,I.recalc?'warn':'ok',`Разброс источников после +30 ч: ${I.spreadLate.toFixed(1)} м/с (порог ${D.thr.toFixed(1)})`);
+    P(4,'ok',`Макс. рампа ${pct(ramp)}%/ч в ${fFull(I.s+rk)} · отсечка 25 м/с не ожидается`);
+    if(I.recalc){
+      P(4,'think','Неопределённость выше нормы. Пересчитываю: веса источников по ошибке за 14 дней, интервал P10–P90 шире.');
+      P(5,'tool','predict(model="lgbm_quantile_v3", weights="skill_14d", widen=1.2)');
+      P(5,'ok','Прогноз v2 опубликован, v1 помечен как устаревший');
+    } else P(5,'ok','Порог не превышен, перерасчёт не нужен.');
+    P(5,'think',`Подписан на прогон ${fDM(I.T)} 12Z (≈ 23:00 UTC+5). При его выходе цикл запустится заново.`);
+    P(5,'tool','write_report(lang="ru")');
+    return this.scr[i]=e;
+  }
+  downloadCsv=()=>{
+    const I=this.D.issues[this.state.issue];
+    let csv='datetime_utc5,p10,p50,p90,wind_100m_ms,temp_c\n';
+    for(let k=0;k<48;k++){const d=dt(I.s+k);csv+=`${d.toISOString().slice(0,13).replace('T',' ')}:00,${I.p10[k].toFixed(3)},${I.p50[k].toFixed(3)},${I.p90[k].toFixed(3)},${I.fw[k].toFixed(2)},${I.tf[k].toFixed(1)}\n`;}
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`forecast_${fDM(I.T)}.csv`;a.click();
+  };
+  renderVals(){
+    const D=this.D||(this.D=this.build());
+    const st=this.state,page=st.page??this.props.startPage??'overview';
+    const I=D.issues[st.issue],hz=st.horizon;
+    const pages=[['overview','Обзор'],['agent','Агент'],['backtest','Бэктест'],['weather','Погода'],['model','Модель'],['site','Объект'],['arch','Архитектура']];
+    const nav=pages.map(([k,l],n)=>({label:l,num:pad(n+1),onClick:()=>this.setState({page:k}),bg:page===k?'rgba(255,255,255,0.06)':'transparent',color:page===k?'#ECEFED':'#8C948F',dot:page===k?LIME:'transparent'}));
+    const script=this.script(st.issue),shown=Math.min(st.shown,script.length);
+    const complete=shown>=script.length,cur=shown>0?script[shown-1].stage:-1;
+    const version=I.recalc&&complete?2:1;
+
+    // overview
+    const S=a=>a.slice(0,hz);
+    const p50=S(I.p50),p10=S(I.p10),p90=S(I.p90),ac=S(I.ac),wf=S(I.fw),tf=S(I.tf);
+    const pk=p50.indexOf(Math.max(...p50));
+    const low=p50.filter(v=>v<0.1).length;
+    const expErr=mean(D.leadErr.slice(0,hz))*100;
+    const hv=st.hover!=null&&st.hover<hz?st.hover:null;
+    const hvL=hv==null?0:hv/(hz-1)*100;
+    const lowIdx=p50.map((v,k)=>v<0.1?k:-1).filter(k=>k>=0);
+    const lowTxt=low?`${low} ч с выработкой ниже 10%, первый такой период начинается ${fFull(I.s+lowIdx[0])}.`:'Длительных периодов штиля не ожидается.';
+    const summary=`Средняя загрузка на ${hz} ч: ${pct(mean(p50))}% от установленной мощности. Максимум ${pct(p50[pk])}% ожидается ${fFull(I.s+pk)} при ветре около ${wf[pk].toFixed(1)} м/с. ${lowTxt} `+(I.recalc?`После +30 ч модели расходятся на ${I.spreadLate.toFixed(1)} м/с, поэтому интервал P10–P90 расширен и прогноз пересчитан.`:'Погодные модели согласованы, неопределённость в пределах нормы.');
+    let ramp=0;for(let k=1;k<hz;k++)ramp=Math.max(ramp,Math.abs(p50[k]-p50[k-1]));
+    const chk=(name,val,ok,stt)=>({name,val,st:stt,color:ok?LIME:AMBER});
+    const cells=p50.map((v,k)=>({t:fHM(I.s+k),d:(I.s+k)%24===0?fDM(I.s+k):'',v:pct(v),band:`${pct(p10[k])}–${pct(p90[k])}`,bg:`oklch(0.85 0.16 135 / ${(0.04+v*0.34).toFixed(3)})`,bgStrong:`oklch(0.85 0.16 135 / ${(0.08+v*0.85).toFixed(3)})`}));
+    const xTicks=[];for(let k=0;k<hz;k+=(hz===48?6:3)){xTicks.push({left:(k/(hz-1)*100)+'%',t:fHM(I.s+k),d:(I.s+k)%24===0?fDM(I.s+k):''});}
+    const ov={
+      title:hz===48?`Прогноз на ${fDM(I.s)} – ${fDM(I.s+47)}`:`Прогноз на ${fDM(I.s)}`,
+      subtitle:`Выпущен ${fFull(I.T)} (UTC+5) · прогоны NWP до ${fDM(I.T)} 06Z · ${hz} значений`,
+      version,summary,cells,xTicks,
+      kpis:[{label:'Средняя загрузка',value:pct(mean(p50)),unit:'%',sub:'от установленной мощности'},{label:'Пиковый час',value:pct(p50[pk]),unit:'%',sub:fFull(I.s+pk)},{label:'Часы ниже 10%',value:low,unit:'ч',sub:`из ${hz}`},{label:'Ожидаемая ошибка',value:expErr.toFixed(1),unit:'%',sub:'nMAE по бэктесту'}],
+      band:bandPath(p10,p90,1),p50:linePath(p50,1),act:linePath(ac,1),wind:linePath(wf,20),
+      windOp:st.showWind?1:0,actOp:st.showActual?0.85:0,
+      h24bg:hz===24?'rgba(255,255,255,0.1)':'transparent',h48bg:hz===48?'rgba(255,255,255,0.1)':'transparent',
+      windBg:st.showWind?'oklch(0.85 0.16 215 / 0.14)':'transparent',actBg:st.showActual?'rgba(255,255,255,0.08)':'transparent',
+      yTicks:[0,25,50,75,100].map(v=>({pos:v+'%',l:v+'%',w:(v/5)+''})),
+      cols:p50.map((_,k)=>({on:()=>this.setState({hover:k})})),
+      hv:hv==null?{has:false}:{has:true,left:hvL+'%',tx:hvL>65?'translateX(calc(-100% - 12px))':'translateX(12px)',time:fFull(I.s+hv),lead:6+hv,p50:pct(p50[hv]),band:`${pct(p10[hv])}–${pct(p90[hv])}%`,act:pct(ac[hv])+'%',wind:wf[hv].toFixed(1),temp:tf[hv].toFixed(1)},
+      checks:[chk('Согласованность источников',`${I.spreadLate.toFixed(1)} м/с`,!I.recalc,I.recalc?'пересчёт':'норма'),chk('Рампы мощности',`${pct(ramp)}%/ч`,ramp<0.3,ramp<0.3?'норма':'внимание'),chk('Отсечка > 25 м/с',`макс ${Math.max(...wf).toFixed(1)} м/с`,true,'нет'),chk('Границы 0–100%','соблюдены',true,'ок')],
+      wx:[{l:'Ветер 100 м, средний',v:`${mean(wf).toFixed(1)} м/с`,s:`макс ${Math.max(...wf).toFixed(1)} м/с`},{l:'Температура',v:`${Math.min(...tf).toFixed(0)}…${Math.max(...tf).toFixed(0)} °C`,s:'мин … макс'},{l:'Разброс моделей',v:`${mean(S(I.spread)).toFixed(1)} м/с`,s:'σ по 4 источникам'},{l:'Прогон NWP',v:`${fDM(I.T)} 06Z`,s:'последний до T'}]
+    };
+
+    // agent
+    const TAG={tool:['TOOL',CYAN],think:['THINK',VIOLET],ok:['OK',LIME],warn:['WARN',AMBER]};
+    const t0=I.T*3600;
+    const logs=script.slice(0,shown).map((l,n)=>{const sec=n*2+1;const [tag,c]=TAG[l.kind];return {time:`${fHM(I.T).slice(0,2)}:${pad(Math.floor(sec/60))}:${pad(sec%60)}`,tag,tagColor:c,tagBg:c.replace(')',' / 0.12)'),text:l.text,color:l.kind==='think'?'#C9CFCB':'#ECEFED'};});
+    const stages=STAGES.map(([name,desc],s)=>{
+      const done=complete||s<cur,active=!complete&&s===cur;
+      const skipped=complete&&s===5&&!I.recalc;
+      const stt=active?'в работе':skipped?'не нужен':done?'готово':'ожидание';
+      const color=active?AMBER:done?LIME:'#8C948F';
+      return {num:pad(s+1),name,desc,st:stt,color,chipBg:active?'oklch(0.85 0.16 75 / 0.12)':done?'oklch(0.85 0.16 135 / 0.1)':'rgba(255,255,255,0.05)',border:active?'oklch(0.85 0.16 75 / 0.5)':'rgba(255,255,255,0.07)'};
+    });
+    const ag={stages,logs,asOf:`2026-${fDM(I.T).split('.').reverse().join('-')}T${fHM(I.T)}+05`,progress:`${shown}/${script.length} шагов`,
+      triggers:['Опубликован новый прогон NWP (00, 06, 12, 18 UTC)','Разброс моделей после +30 ч выше порога','Пришли новые данные SCADA или найдены пропуски','Ошибка вчерашнего прогноза выше нормы в 1,5 раза'],
+      tools:[{n:'get_weather_forecast',d:'Open-Meteo, as_of'},{n:'get_scada_history',d:'история до T'},{n:'build_features',d:'MOS, признаки'},{n:'predict',d:'квантили P10–P90'},{n:'analyze_forecast',d:'проверки качества'},{n:'publish_forecast',d:'версия прогноза'},{n:'write_report',d:'вывод на русском'}]};
+
+    // backtest
+    const d1=D.agg('mae24')*100,d2=D.agg('mae48')*100,rm=D.agg('rmse')*100,fin=D.agg('maeAll')*100,pers=D.agg('pers')*100;
+    const calC=v=>v<0.09?'oklch(0.85 0.16 135 / 0.32)':v<0.13?'oklch(0.85 0.16 135 / 0.16)':v<0.17?'oklch(0.85 0.16 75 / 0.22)':'oklch(0.75 0.16 25 / 0.28)';
+    const cmp=[['Персистентность (последний факт)',D.agg('pers')],['Климатология',D.agg('clim')],['Кривая мощности на ECMWF',D.agg('phys')],['Ансамбль NWP + кривая',D.agg('blendE')],['ZHEL: MOS + LightGBM + агент',D.agg('maeAll')]];
+    const cmx=Math.max(...cmp.map(c=>c[1]));
+    const lmx=Math.max(...D.leadErr);
+    const bt={
+      kpis:[{label:'nMAE, D+1',value:d1.toFixed(1),unit:'%',sub:'часы +6…+30 от T'},{label:'nMAE, D+2',value:d2.toFixed(1),unit:'%',sub:'часы +30…+54 от T'},{label:'nRMSE, 48 ч',value:rm.toFixed(1),unit:'%',sub:'штраф за крупные промахи'},{label:'Skill vs персистентность',value:Math.round((1-fin/pers)*100),unit:'%',sub:'снижение ошибки'}],
+      fcPath:linePath(D.mf,1),actPath:linePath(D.ma,1),
+      selLeft:(st.issue*24/671*100)+'%',selWidth:(Math.min(48,672-st.issue*24)/671*100)+'%',
+      xTicks:[0,7,14,21,27].map(d=>({left:(d*24/671*100)+'%',t:`${pad(d+1)}.02`})),
+      cal:D.issues.map(x=>({d:fDM(x.T),v:(x.mae24*100).toFixed(1),bg:calC(x.mae24),border:x.i===st.issue?'#ECEFED':'transparent',on:()=>this.setIssue(x.i)})),
+      compare:cmp.map((c,n)=>({n:c[0],v:(c[1]*100).toFixed(1),w:(c[1]/cmx*100)+'%',c:n===4?LIME:'rgba(255,255,255,0.22)',tc:n===4?'#ECEFED':'#AEB5B1'})),
+      lead:D.leadErr.map((v,k)=>({h:(v/lmx*100)+'%',c:k<24?'oklch(0.85 0.16 135 / 0.55)':'oklch(0.85 0.16 215 / 0.45)'}))
+    };
+
+    // weather
+    const Tu=I.T-5;const runs=[];
+    for(let r=0;r<8;r++){const R=(st.issue-1)*24+r*6;const avail=R+6<=Tu;const latest=avail&&R+12>Tu;runs.push({l:`${fDM(R)} ${pad(((R%24)+24)%24)}Z`,st:latest?'используется':avail?'доступен, старее':'опубликован после T',c:latest?LIME:avail?'#AEB5B1':RED,border:latest?'oklch(0.85 0.16 135 / 0.6)':'rgba(255,255,255,0.07)',bg:latest?'oklch(0.85 0.16 135 / 0.08)':'#0C0F0E',op:avail?1:0.55});}
+    const wx={tUtc:`${fFull(Tu)} UTC`,runs,run:`${fDM(I.T)} 06Z`,range:`${fFull(I.s)} → ${fFull(I.s+47)}`,
+      srcs:SRC.map((s,j)=>({name:s.name,org:s.org,res:s.res,color:s.color,path:linePath(I.src[j],24),mae:I.srcMae[j].toFixed(2)+' м/с',w:s.w.toFixed(2)})),
+      blendPath:linePath(I.blend,24),actPath:linePath(I.wa,24),
+      yTicks:[0,6,12,18,24].map(v=>({pos:(v/24*100)+'%',l:v+''}))};
+
+    // model
+    const imp=[['wind_100m_ens',0.34],['wind_100m_ens³',0.18],['power_last_T',0.11],['nwp_spread',0.08],['wind_dir_sin/cos',0.08],['air_density',0.06],['hour_sin/cos',0.05],['lead_time',0.05],['temp_2m',0.03]];
+    const md={scatter:D.sc,curve:D.cv,yTicks:[0,25,50,75,100].map(v=>({pos:v+'%',l:v+'%'})),
+      imp:imp.map(([n,v],k)=>({n,v:v.toFixed(2),w:(v/0.34*100)+'%',c:k<2?LIME:'oklch(0.85 0.16 135 / 0.45)'})),
+      steps:[{n:'01 · MOS',t:'Коррекция ветра',d:'Сдвиг и масштаб прогноза NWP подгоняются под измеренный ветер турбин.'},{n:'02 · Ансамбль',t:'Взвешивание моделей',d:'4 источника смешиваются с весами по недавней точности.'},{n:'03 · LightGBM',t:'Квантильная регрессия',d:'Отдельные модели для P10, P50 и P90 на 23 признаках.'},{n:'04 · Физика',t:'Ограничения',d:'Мощность в пределах 0–100%, отсечка выше 25 м/с, монотонность квантилей.'}],
+      feats:['wind_speed_100m','wind_direction_100m','temperature_2m','air_density','nwp_spread','lead_time','hour_sin/cos','doy_sin/cos','power_last_T','power_mean_24h']};
+
+    // site
+    const z=16,tl=(lat,lon)=>{const n=2**z;const r=lat*Math.PI/180;return [(lon+180)/360*n*256,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n*256];};
+    const cLat=(T1.lat+T2.lat)/2,cLon=(T1.lon+T2.lon)/2,c=tl(cLat,cLon);
+    const tx0=Math.floor(c[0]/256),ty0=Math.floor(c[1]/256),tiles=[];
+    for(let dy=-2;dy<=2;dy++)for(let dx=-3;dx<=3;dx++){const tx=tx0+dx,ty=ty0+dy;tiles.push({src:`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`,left:`calc(50% + ${Math.round(tx*256-c[0])}px)`,top:`calc(50% + ${Math.round(ty*256-c[1])}px)`});}
+    const mk=(t,name)=>{const p=tl(t.lat,t.lon);return {name,coord:`${t.lat.toFixed(5)}, ${t.lon.toFixed(5)}`,left:`calc(50% + ${(p[0]-c[0]).toFixed(1)}px)`,top:`calc(50% + ${(p[1]-c[1]).toFixed(1)}px)`};};
+    const R=6371000,dLat=(T2.lat-T1.lat)*Math.PI/180,dLon=(T2.lon-T1.lon)*Math.PI/180,a=Math.sin(dLat/2)**2+Math.cos(T1.lat*Math.PI/180)*Math.cos(T2.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+    const dist=Math.round(2*R*Math.asin(Math.sqrt(a)));
+    const site={tiles,markers:[mk(T1,'T1'),mk(T2,'T2')],center:`${cLat.toFixed(4)}, ${cLon.toFixed(4)}`,
+      facts:[{l:'Расстояние T1 – T2',v:`${dist} м`,s:'Обе турбины попадают в одну ячейку сетки NWP'},{l:'Точка запроса погоды',v:`${cLat.toFixed(4)}° N, ${cLon.toFixed(4)}° E`,s:'Центр между турбинами'},{l:'История',v:'01.03.2023 – 31.01.2026',s:'≈ 25 500 часов на турбину'},{l:'Часовой пояс',v:'UTC+5',s:'Прогоны NWP в UTC, прогноз в местном времени'}],
+      fields:[{k:'timestamp',d:'Статистическое время, 1 ч'},{k:'wind_speed',d:'Средняя скорость ветра, м/с'},{k:'active_power_norm',d:'Нормализованная активная мощность на стороне линии'},{k:'ambient_temp',d:'Средняя температура окружающей среды, °C'}]};
+
+    // arch
+    const arch={
+      layers:[
+        {num:'01',name:'Триггеры',items:['Планировщик прогонов NWP','Replay 31.01 → 27.02','Ручной запуск'],bg:'#0C0F0E',border:'rgba(255,255,255,0.07)',gap:'18px'},
+        {num:'02',name:'Агент',items:['LLM-планировщик','Граф состояний LangGraph','6 узлов цикла','Условное ребро анализ → перерасчёт','Память запусков'],bg:'oklch(0.85 0.16 300 / 0.08)',border:'oklch(0.85 0.16 300 / 0.3)',gap:'18px'},
+        {num:'03',name:'Инструменты',items:['get_weather_forecast','get_scada_history','build_features','predict','analyze_forecast','publish_forecast','write_report'],bg:'oklch(0.85 0.16 215 / 0.07)',border:'oklch(0.85 0.16 215 / 0.25)',gap:'18px'},
+        {num:'04',name:'Данные',items:['SCADA · Parquet','Архив NWP с issued_at','Версии прогнозов','Метрики · MLflow','DuckDB'],bg:'#0C0F0E',border:'rgba(255,255,255,0.07)',gap:'18px'},
+        {num:'05',name:'Выход',items:['REST API /forecast','Этот дашборд','CSV-выгрузка','Отчёт агента'],bg:'oklch(0.85 0.16 135 / 0.07)',border:'oklch(0.85 0.16 135 / 0.3)',gap:'0px'}],
+      tree:[{p:'agent/',d:'граф, промпты, инструменты'},{p:'weather/',d:'адаптеры Open-Meteo, кэш по as_of'},{p:'features/',d:'MOS, плотность воздуха, лаги'},{p:'models/',d:'LightGBM-квантили, кривая мощности'},{p:'backtest/',d:'replay и метрики'},{p:'api/',d:'FastAPI'},{p:'ui/',d:'дашборд'},{p:'data/',d:'SCADA и архив NWP'},{p:'README.md',d:'запуск и сценарий'}],
+      cmds:[{c:'make setup',d:'зависимости и .env'},{c:'make fetch-weather',d:'архив прогнозов на каждую T'},{c:'make train',d:'обучение до 31.01.2026'},{c:'make replay START=2026-01-31 END=2026-02-27',d:'28 запусков агента, метрики'},{c:'docker compose up',d:'API + дашборд на :8000'}],
+      criteria:[
+        {p:'25',n:'Соответствие задаче и работоспособность',d:'Полный цикл из 6 этапов, 28 ретро-прогнозов по 48 ч с шагом 1 ч, только архивные прогнозы погоды на момент T.'},
+        {p:'25',n:'Техническая реализация',d:'Граф агента с условным перерасчётом, детерминированные инструменты, квантильная модель, защита as_of от утечки будущего.'},
+        {p:'25',n:'README и воспроизводимость',d:'Один make replay воспроизводит бэктест. Фиксированные сиды, кэш погоды, Docker, отчёт метрик в репозитории.'},
+        {p:'15',n:'Ценность и применимость',d:'Диспетчер получает диапазон P10–P90, объяснение на русском и CSV/API для заявки на рынок.'},
+        {p:'10',n:'Потенциал и оригинальность',d:'Новые ВЭС подключаются по координатам. Тот же агент подходит для СЭС и онлайн-режима с прогонами каждые 6 ч.'}]
+    };
+
+    return {
+      nav,issue:st.issue,running:st.running,notRunning:!st.running,
+      isOverview:page==='overview',isAgent:page==='agent',isBacktest:page==='backtest',isWeather:page==='weather',isModel:page==='model',isSite:page==='site',isArch:page==='arch',
+      top:{issueLabel:`${fDM(I.T)}.2026 ${fHM(I.T)}`,horizonLabel:`${fFull(I.s)} → ${fFull(I.s+47)}`,status:st.running?`Агент · ${STAGES[Math.max(cur,0)][0]}`:`Прогноз готов · v${version}`},
+      prevIssue:()=>this.setIssue(st.issue-1),nextIssue:()=>this.setIssue(st.issue+1),onSlide:e=>this.setIssue(+e.target.value),
+      rerun:()=>this.startRun(),goAgent:()=>this.setState({page:'agent'}),goWeather:()=>this.setState({page:'weather'}),
+      setH24:()=>this.setState({horizon:24,hover:null}),setH48:()=>this.setState({horizon:48,hover:null}),
+      toggleWind:()=>this.setState(s=>({showWind:!s.showWind})),toggleActual:()=>this.setState(s=>({showActual:!s.showActual})),
+      clearHover:()=>this.setState({hover:null}),downloadCsv:this.downloadCsv,logRef:this.logRef,
+      ov,ag,bt,wx,md,site,arch
+    };
+  }
+}
+</script>
+</body>
+</html>

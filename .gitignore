@@ -33,3 +33,7 @@ Thumbs.db
 # claude локальные настройки
 .claude/settings.local.json
 CLAUDE.local.md
+
+# прототипы для проверки теорий, в репозиторий не идут
+check-*/
+test-secondtheory/
