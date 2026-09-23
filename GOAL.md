@@ -99,8 +99,10 @@
 Критерий оценки на 25 баллов: подход, архитектура, взаимодействие компонентов,
 использование agentic AI, соответствие реализации заявленной логике.
 
-- [ ] Код в `backend/src/forecast/{weather,ml,agent}/`, тесты в `backend/tests/forecast/`,
-      модули общаются только через контракт из issue #2
+- [ ] Код данных и агента в `backend/src/forecast/{weather,dataset,agent}/`, тесты
+      в `backend/tests/forecast/`. Модель в сервисе `ml/`, тесты в `ml/tests/`. Части
+      общаются только через контракт из issue #2 и `docs/api-contract.md`, модель через
+      `ml/openapi.json`
 - [ ] Обучение на архивных прогнозах той же заблаговременности, что и на инференсе,
       без train/serve skew
 - [ ] Валидация только rolling-origin в режиме as-of, без random K-fold
