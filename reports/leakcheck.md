@@ -7,7 +7,7 @@
 
 | Проверка | Что проверено | Результат |
 |---|---|---|
-| 1. Запрещенные API | файлов Python: 62, конфигов: 3; места: `backend/src`, `ml/src`, `ml/training`, `ml/scripts`, `.env.example`, `docker-compose.yml`, `docker-compose.dev.yml` | чисто |
+| 1. Запрещенные API | файлов Python: 70, конфигов: 3; места: `backend/src`, `ml/src`, `ml/training`, `ml/scripts`, `.env.example`, `docker-compose.yml`, `docker-compose.dev.yml` | чисто |
 | 2. Выпуски февраля 2026 | выпусков: 28, из них с погодой 28; 2026-01-31 02:00…2026-02-27 02:00 UTC, часы T+1…T+48 | чисто |
 | 3. Выпуски обучения | выпусков: 1058, из них с погодой 715; 2023-03-11 02:00…2026-01-31 02:00 UTC, каждый день периода SCADA | чисто |
 | 4. Previous Runs | строк кэша: 212754, источников: 4, пар (выпуск, час) для choose_n: 18072 | чисто |
@@ -15,7 +15,7 @@
 
 ## 1. Запрещенные API
 
-Файлов Python: 62, конфигов: 3; места: `backend/src`, `ml/src`, `ml/training`, `ml/scripts`, `.env.example`, `docker-compose.yml`, `docker-compose.dev.yml`.
+Файлов Python: 70, конфигов: 3; места: `backend/src`, `ml/src`, `ml/training`, `ml/scripts`, `.env.example`, `docker-compose.yml`, `docker-compose.dev.yml`.
 
 Шаблоны: Historical Weather API `archive-api|/v1/archive\b`; Historical Forecast API `historical[-_]forecast`; реанализ ERA5 `(?<![a-z0-9])era5`; реанализ CERRA `(?<![a-z0-9])cerra(?![a-z0-9])`.
 
