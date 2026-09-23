@@ -5,7 +5,7 @@
 
 Правила: создал worktree — сразу добавил строку. **Смерджил PR — сразу удалил строку
 и освободил порты** (`docker compose down -v`, `git worktree remove`). Слоты и порядок
-работы: [../docs/worktrees.md](../docs/worktrees.md).
+работы: [../docs/worktrees.md](../zhel-ai/docs/worktrees.md).
 
 Колонки портов соответствуют переменным `FRONTEND_PORT`, `BACKEND_PORT` и `DB_PORT`
 из `.env` того worktree.
@@ -27,3 +27,4 @@
 | features-dev1-auth | hackalem-worktrees/features-dev1-auth | dev1 | ноут Meirzhan | 1 | 3001 | 8001 | 5433 |
 ```
 | features-dev2-ensemble-calibration | hackalem-worktrees/features-dev2-ensemble-calibration | dev2 | ноут Aibek | — | — | — | — |
+| features-dev2-dispatch-kpi | hackalem-worktrees/features-dev2-dispatch-kpi | dev2 | ноут Aibek | — | — | — | — |
