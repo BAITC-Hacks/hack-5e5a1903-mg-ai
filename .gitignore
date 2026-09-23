@@ -34,6 +34,7 @@ Thumbs.db
 .claude/settings.local.json
 CLAUDE.local.md
 
-# прототипы для проверки теорий, в репозиторий не идут
+# прототипы для проверки теорий, в репозиторий не идут; решение кейса оргструктуры идет
 check-*/
+!check-theory-kazakhtelecom/
 test-secondtheory/

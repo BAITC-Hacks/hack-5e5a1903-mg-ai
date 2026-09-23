@@ -1,0 +1,40 @@
+[project]
+name = "orgdiff"
+version = "0.1.0"
+description = "AI agent that compares organisational documents before and after a reorganisation: structure changes, lost and duplicated functions, conflicts of interest, with clause-level sources"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "numpy>=2.0",
+    "openai>=1.50",
+    "openpyxl>=3.1.5",
+    "pypdf>=6.19.0",
+    "python-docx>=1.2.0",
+    "python-multipart>=0.0.32",
+    "scikit-learn>=1.5",
+    "uvicorn[standard]>=0.53.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "ruff>=0.15.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "llm: needs OPENAI_API_KEY and spends money",
+    "slow: takes more than a minute",
+]
+
+[tool.ruff]
+line-length = 150
+target-version = "py312"
+exclude = [".cache", "testdata", "reports"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
