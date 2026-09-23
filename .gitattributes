@@ -13,3 +13,4 @@ Makefile text eol=lf
 *.png binary
 *.jpg binary
 *.ico binary
+*.woff2 binary

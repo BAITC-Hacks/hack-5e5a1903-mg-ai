@@ -14,6 +14,10 @@
 |-------|----------------|-----|--------|------|---------------|--------------|---------|
 | main  | HACKALEM AI    | dev1 | ноут Meirzhan | сдвинут | 3100 | 8100 | 5533 |
 | features-dev2-mlp | hackalem-worktrees/features-dev2-mlp | dev2 | ноут Aibek | — (стек не поднимается) | — | — | — |
+| features-dev1-gateway | hackalem-worktrees/features-dev1-gateway | dev1 | ноут Meirzhan | 1 | 3001 | 8001 | 5433 |
+| features-dev1-frontend | hackalem-worktrees/features-dev1-frontend | dev1 | ноут Meirzhan | 2 | 3002 | 8002 | 5434 |
+| features-dev1-auth | hackalem-worktrees/features-dev1-auth | dev1 | ноут Meirzhan | 3 | 3003 | 8003 | 5435 |
+| features-dev1-compose | hackalem-worktrees/features-dev1-compose | dev1 | ноут Meirzhan | 4 | 3004 | 8004 | 5436 |
 
 Основной чекаут на машине dev1 использует сдвинутые порты, потому что 3000 и 8000
 там заняты другими проектами.
@@ -23,3 +27,4 @@
 ```
 | features-dev1-auth | hackalem-worktrees/features-dev1-auth | dev1 | ноут Meirzhan | 1 | 3001 | 8001 | 5433 |
 ```
+| features-dev2-model | hackalem-worktrees/features-dev2-model | dev2 | ноут Aibek | — | — | — | — |
