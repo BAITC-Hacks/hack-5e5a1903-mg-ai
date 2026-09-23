@@ -170,7 +170,6 @@ window.ZHEL = (function () {
     weather: ["issues", "weather"],
     model: ["issues", "model"],
     site: ["issues", "site", "forecast"],
-    arch: ["issues"],
   };
 
   var LOADING_TEXT = {
@@ -194,7 +193,6 @@ window.ZHEL = (function () {
     ["weather", "Погода", "источники погоды"],
     ["model", "Модель", "чем считаем"],
     ["site", "Объект", "турбины на карте"],
-    ["arch", "Архитектура", "устройство и запуск"],
   ];
 
   var PAGE_KEYS = PAGES.map(function (item) { return item[0]; });
@@ -569,6 +567,7 @@ window.ZHEL = (function () {
       act: hasActual && s.showActual ? linePath(view.map(function (r) { return r.actual === null ? 0 : r.actual; }), 1) : "",
       wind: linePath(winds, windMax),
       windOp: s.showWind ? 1 : 0,
+      hasActual: hasActual,
       actOp: s.showActual && hasActual ? 0.85 : 0,
       h24bg: s.horizon === 24 ? "rgba(20,24,22,0.1)" : "transparent",
       h48bg: s.horizon === 48 ? "rgba(20,24,22,0.1)" : "transparent",
@@ -990,45 +989,6 @@ window.ZHEL = (function () {
     };
   }
 
-  function buildArch() {
-    return {
-      layers: [
-        { num: "01", name: "Интерфейс", items: ["Статическая страница frontend/", "Восемь разделов", "Вход по JWT"], bg: "#F4F5F2", border: "rgba(20,24,22,0.07)", gap: "18px" },
-        { num: "02", name: "Backend", items: ["FastAPI", "Модуль forecast", "Модуль auth", "Единый конверт ошибок"], bg: "oklch(0.6 0.16 300 / 0.08)", border: "oklch(0.6 0.16 300 / 0.3)", gap: "18px" },
-        { num: "03", name: "Сервисы команды", items: ["Сервис погоды", "Сервис модели", "Таймаут на каждый вызов"], bg: "oklch(0.6 0.16 215 / 0.07)", border: "oklch(0.6 0.16 215 / 0.25)", gap: "18px" },
-        { num: "04", name: "Данные", items: ["PostgreSQL", "Миграции Alembic", "SCADA в data/"], bg: "#F4F5F2", border: "rgba(20,24,22,0.07)", gap: "18px" },
-        { num: "05", name: "Запуск", items: ["Docker Compose", "nginx отдает статику и проксирует /api"], bg: "oklch(0.6 0.16 135 / 0.07)", border: "oklch(0.6 0.16 135 / 0.3)", gap: "0px" },
-      ],
-      tree: [
-        { p: "frontend/", d: "эта страница, статика без сборки" },
-        { p: "backend/src/", d: "FastAPI: core, modules" },
-        { p: "modules/forecast/", d: "схемы, сервис и роутер прогноза" },
-        { p: "modules/auth/", d: "вход и проверка токена" },
-        { p: "backend/tests/", d: "тесты API" },
-        { p: "data/", d: "история SCADA" },
-        { p: "docs/", d: "архитектура и контракт API" },
-        { p: "docker-compose.yml", d: "весь стек одной командой" },
-      ],
-      cmds: [
-        { c: "cp .env.example .env", d: "переменные окружения" },
-        { c: "make run", d: "docker compose up -d --build" },
-        { c: "make migrate", d: "применить миграции" },
-        { c: "make seed", d: "создать пользователя для входа" },
-        { c: "make test", d: "тесты backend" },
-      ],
-      endpoints: [
-        { p: "GET", n: "/api/forecast/issues", d: "шапка, выбор дня" },
-        { p: "GET", n: "/api/forecast/{дата}", d: "Обзор" },
-        { p: "GET", n: "/api/forecast/{дата}/agent-log", d: "Агент" },
-        { p: "GET", n: "/api/forecast/{дата}/weather", d: "Погода" },
-        { p: "GET", n: "/api/forecast/{дата}/dispatch?risk=", d: "Диспетчер" },
-        { p: "POST", n: "/api/forecast/{дата}/recompute", d: "кнопка «Пересчитать»" },
-        { p: "GET", n: "/api/forecast/backtest", d: "Бэктест" },
-        { p: "GET", n: "/api/forecast/model", d: "Модель" },
-        { p: "GET", n: "/api/forecast/site", d: "Объект" },
-      ],
-    };
-  }
 
   // --- действия ------------------------------------------------------------
 
@@ -1271,7 +1231,6 @@ window.ZHEL = (function () {
       isWeather: ready && page === "weather",
       isModel: ready && page === "model",
       isSite: ready && page === "site",
-      isArch: ready && page === "arch",
 
       // картинки
       heroTurbines: [
@@ -1303,7 +1262,6 @@ window.ZHEL = (function () {
       md: buildModel(s),
       site: buildSite(s),
       tb: buildTurbines(s),
-      arch: buildArch(),
 
       // элементы управления страниц
       setH24: function () {
