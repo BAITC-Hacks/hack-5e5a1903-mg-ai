@@ -64,13 +64,14 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import logging
 import os
 import subprocess
 from collections.abc import Mapping, Sequence
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -327,6 +328,10 @@ def _json_default(value: Any) -> Any:
         return _iso(_utc(value))
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, timedelta):
+        return pd.Timedelta(value).isoformat()
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return dataclasses.asdict(value)
     if isinstance(value, Path):
         return value.as_posix()
     if isinstance(value, np.generic):

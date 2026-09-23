@@ -1,9 +1,10 @@
 """Паспорт выпуска: сборка, запрет утечки, детерминированность, работа без git."""
 
+import dataclasses
 import hashlib
 import json
 import subprocess
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ import pytest
 
 from src.forecast.weather import manifest as manifest_module
 from src.forecast.weather.manifest import SCADA_FILES, LeakageError, build_manifest, manifest_json, write_manifest
+from src.forecast.weather.sources import SOURCES
 
 ISSUE = datetime(2026, 2, 1, 2, tzinfo=UTC)
 
@@ -322,3 +324,12 @@ def test_missing_sources_lists_requested_models_without_a_run(data_dir):
     assert sorted(manifest["sources"]) == ["gfs", "ifs"]
     assert build_manifest(ISSUE, _nwp(), requested_sources=["gfs", "ifs"], data_dir=data_dir)["missing_sources"] == []
     assert build_manifest(ISSUE, _nwp(), data_dir=data_dir)["missing_sources"] is None
+
+
+def test_config_with_source_registry_is_hashed(data_dir):
+    # После #5 реестр с задержками (timedelta в dataclass) переезжает в конфиг.
+    registry = build_manifest(ISSUE, _nwp(), data_dir=data_dir, config={"sources": SOURCES})["config_sha256"]
+    shorter = {**SOURCES, "gfs": dataclasses.replace(SOURCES["gfs"], delay=timedelta(hours=6))}
+
+    assert len(registry) == 64
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir, config={"sources": shorter})["config_sha256"] != registry
