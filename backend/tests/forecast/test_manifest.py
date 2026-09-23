@@ -107,7 +107,7 @@ def test_recompute_keeps_issue_time_and_checks_as_of(data_dir):
     with pytest.raises(LeakageError, match="на момент 2026-02-01T02:00:00Z"):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
     with pytest.raises(LeakageError):
-        build_manifest(ISSUE, nwp, as_of=as_of - pd.Timedelta(minutes=1), data_dir=data_dir)
+        build_manifest(ISSUE, nwp, as_of=as_of - pd.Timedelta(minutes=1), version=2, data_dir=data_dir)
 
 
 def test_as_of_defaults_to_issue_time_and_cannot_precede_it(data_dir):
@@ -219,3 +219,22 @@ def test_naive_weather_column_is_rejected(data_dir):
 
     with pytest.raises(ValueError, match="available_at_utc без часового пояса"):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+@pytest.mark.parametrize(
+    ("version", "as_of_shift_h", "message"),
+    [
+        (1, 30, "версия 1 берет погоду на момент выпуска"),
+        (2, 0, "as_of должен быть позже"),
+        (0, 0, "нумерация начинается с 1"),
+    ],
+    ids=["v1-late-as-of", "v2-at-issue-time", "v0"],
+)
+def test_version_is_bound_to_as_of(data_dir, version, as_of_shift_h, message):
+    # Без этой связки версия 1 с as_of = T+30 ч подписывала погоду, вышедшую через 20 ч после выпуска.
+    nwp = _nwp()
+    nwp["available_at_utc"] = pd.Timestamp(ISSUE) + pd.Timedelta(hours=min(as_of_shift_h, 20))
+    as_of = pd.Timestamp(ISSUE) + pd.Timedelta(hours=as_of_shift_h)
+
+    with pytest.raises(ValueError, match=message):
+        build_manifest(ISSUE, nwp, as_of=as_of, version=version, data_dir=data_dir)

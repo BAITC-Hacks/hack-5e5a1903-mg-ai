@@ -105,17 +105,17 @@ def build_manifest(
 ) -> dict[str, Any]:
     """Паспорт выпуска ``issue_time`` по таблице погоды ``nwp`` из ``get_nwp``.
 
-    ``as_of`` задается при пересчете: момент, на который взята погода. По умолчанию
-    совпадает с ``issue_time`` и не может быть раньше него. Время без часового пояса
-    отклоняется, как и в ``AsOfStore``: иначе местное время молча станет UTC.
-    Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в паспорт
-    не попадают. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
+    ``as_of`` задается при пересчете: момент, на который взята погода. Версия 1
+    всегда берет погоду ровно на момент выпуска, поэтому ``as_of`` у нее равен
+    ``issue_time``; пересчет (версия 2 и выше) идет строго позже выпуска. Время без
+    часового пояса отклоняется, как и в ``AsOfStore``: иначе местное время молча
+    станет UTC. Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в
+    паспорт не попадают. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
     ``data/`` в корне репозитория.
     """
     issue = to_utc(issue_time)
     moment = to_utc(as_of) if as_of is not None else issue
-    if moment < issue:
-        raise ValueError(f"as_of {_iso(moment)} раньше момента выпуска {_iso(issue)}")
+    _check_version(int(version), issue, moment)
     root = _data_dir(data_dir)
     frame = _prepare(nwp)
 
@@ -158,6 +158,18 @@ def write_manifest(manifest: dict[str, Any], path: str | Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(manifest_json(manifest).encode("utf-8"))
     return target
+
+
+def _check_version(version: int, issue: pd.Timestamp, moment: pd.Timestamp) -> None:
+    """Версия 1 видит погоду ровно на момент выпуска, пересчет — строго позже него."""
+    if version < 1:
+        raise ValueError(f"версия выпуска {version}, нумерация начинается с 1")
+    if moment < issue:
+        raise ValueError(f"as_of {_iso(moment)} раньше момента выпуска {_iso(issue)}")
+    if version == 1 and moment != issue:
+        raise ValueError(f"версия 1 берет погоду на момент выпуска {_iso(issue)}, а не на {_iso(moment)}")
+    if version > 1 and moment == issue:
+        raise ValueError(f"пересчет (версия {version}) идет по прогону, вышедшему после выпуска {_iso(issue)}, as_of должен быть позже")
 
 
 def _prepare(nwp: pd.DataFrame) -> pd.DataFrame:
