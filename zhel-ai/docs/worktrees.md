@@ -25,8 +25,8 @@ C:\meirzhan\dev\
 # из основного репозитория
 git fetch origin
 git worktree add ../hackalem-worktrees/features-dev1-auth -b features-dev1-auth origin/dev
-cd ../hackalem-worktrees/features-dev1-auth
-cp ../../HACKALEM\ AI/.env .env
+cd ../hackalem-worktrees/features-dev1-auth/zhel-ai    # проект ZHEL.ai лежит в zhel-ai/
+cp ../../../HACKALEM\ AI/zhel-ai/.env .env
 ```
 
 Дальше в `.env` этого worktree выставляем **свой свободный слот портов** и свое имя
@@ -48,7 +48,7 @@ worktree столкнутся именами, и один compose будет г�
 и `WEATHER_PORT` — это порты, публикуемые на хост. Переменные `POSTGRES_HOST=db` и `POSTGRES_PORT=5432` трогать не надо,
 это адрес БД внутри сети compose, и он одинаковый во всех worktree.
 
-Запуск как обычно, из папки worktree:
+Запуск как обычно, из папки `zhel-ai/` этого worktree:
 
 ```bash
 docker compose up -d --build
@@ -69,7 +69,7 @@ docker compose exec backend alembic upgrade head
 опубликованы только ради Swagger, backend ходит к ним по сети compose.
 
 Слот 0 всегда у основного репозитория, его не занимаем под фичи. Кто какой слот взял
-прямо сейчас — в реестре [../.dev-notes/worktrees.md](../.dev-notes/worktrees.md).
+прямо сейчас — в реестре [../.dev-notes/worktrees.md](../../.dev-notes/worktrees.md).
 Берем слот только после того, как посмотрели реестр, и сразу вписываем себя туда.
 
 Оговорка про машину dev1: на ней порты 3000 и 8000 уже заняты другими проектами,
@@ -79,7 +79,7 @@ docker compose exec backend alembic upgrade head
 
 ## Реестр
 
-Как только worktree создан, в [../.dev-notes/worktrees.md](../.dev-notes/worktrees.md)
+Как только worktree создан, в [../.dev-notes/worktrees.md](../../.dev-notes/worktrees.md)
 добавляется строка: ветка, папка, dev, машина, слот и порты. Реестр коммитится,
 поэтому все трое видят, какие порты уже заняты.
 
@@ -89,7 +89,7 @@ docker compose exec backend alembic upgrade head
 иначе слоты кончатся и порты будут висеть занятыми.
 
 ```bash
-# в папке worktree: погасить контейнеры и удалить его volume
+# в папке zhel-ai/ этого worktree: погасить контейнеры и удалить его volume
 docker compose down -v
 
 # из основного репозитория

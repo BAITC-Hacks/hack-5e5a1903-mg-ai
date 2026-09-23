@@ -22,4 +22,4 @@ jobs:
           enable-cache: true
 
       - name: Audit dependencies
-        run: bash scripts/audit-deps.sh
+        run: bash zhel-ai/scripts/audit-deps.sh

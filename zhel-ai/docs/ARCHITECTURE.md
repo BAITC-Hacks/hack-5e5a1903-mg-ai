@@ -88,56 +88,59 @@ flowchart TD
 ## Структура репозитория
 
 ```
-HACKALEM AI/
-├── AGENTS.md                # инструкции для ИИ-агентов
+hack-5e5a1903-mg-ai/
+├── README.md                # указатель для судей: два решения и ссылки на их README
 ├── CLAUDE.md                # ссылки на документацию для Claude Code
-├── README.md                # описание проекта для судей, на английском
-├── SECURITY.md              # принятые меры безопасности
-├── Makefile                 # install / hooks / run / test / lint / audit / migrate
-├── docker-compose.yml       # единственная точка запуска
-├── docker-compose.dev.yml   # оверлей с автоперезагрузкой
-├── .env.example             # все переменные окружения без значений
 ├── .pre-commit-config.yaml  # хуки, включая запрет коммита в main
 ├── .github/
-│   ├── workflows/ci.yml     # линтер, формат, тесты, сборка образа
-│   ├── workflows/audit.yml  # уязвимости в зависимостях, на каждый PR
+│   ├── workflows/ci.yml     # ZHEL.ai: линтер, формат, тесты, сборка образа
+│   ├── workflows/audit.yml  # ZHEL.ai: уязвимости в зависимостях, на каждый PR
+│   ├── workflows/orgdiff.yml  # CI решения OrgDiff
 │   └── pull_request_template.md
-├── scripts/
-│   ├── no-push-to-main.sh   # хук pre-push, запрещает push в main
-│   ├── protect-main.sh      # включает защиту ветки main на GitHub
-│   └── audit-deps.sh        # pip-audit и npm audit
 ├── rules/                   # PDF организаторов и выжимка из них
-├── data/                    # исходные данные SCADA, монтируются только на чтение
-├── frontend/                # интерфейс: статика дашборда
-├── deploy/nginx/            # конфиг nginx: раздача статики и прокси /api
-├── ml/                      # ML-сервис dev2: контракт, модель, артефакты
-├── outputs/                 # пустой каталог под выгрузки, пока ничем не заполняется
-├── reports/                 # материалы анализа данных, например сравнение моделей погоды
-├── docs/
-│   ├── ARCHITECTURE.md      # этот файл
-│   ├── architecture-guidelines.md  # best practices
-│   ├── proposals.md         # инструменты на будущее, не внедрены
-│   ├── backend.md           # разбор backend и его шаблона
-│   ├── git-workflow.md      # ветки, коммиты, PR, запрет прямого push в main
-│   ├── dependency-audit.md  # проверка зависимостей перед мерджем
-│   ├── worktrees.md         # worktree на фичу и слоты портов
-│   ├── ai-workflow.md       # как команда работала с ИИ
-│   ├── pre-submit-checklist.md
-│   ├── adr/                 # записи об архитектурных решениях
-│   └── dev1/ dev2/ dev3/    # зоны ответственности разработчиков
 ├── .dev-notes/              # заметки команды, me.md определяет кто ты
-├── backend/
-│   ├── src/core/            # config, database, security, exceptions, logger
-│   ├── src/modules/auth/    # образцовый модуль
-│   ├── src/forecast/        # погода на момент T (weather/) и история турбин (dataset/)
-│   ├── src/weather_service/ # HTTP-сервис погоды поверх src/forecast, без БД
-│   ├── migrations/          # Alembic
-│   └── tests/               # pytest
-└── ml/                      # ML-сервис: FastAPI + LightGBM, свой uv.lock
-    ├── src/ml_service/      # схемы контракта, подготовка входа, модели
-    ├── artifacts/           # обученная модель, паспорт, бэктест
-    ├── openapi.json         # контракт, генерируется из схем
-    └── tests/               # pytest
+├── check-theory-kazakhtelecom/  # OrgDiff, решение другого кейса со своим README
+└── zhel-ai/                 # этот проект
+    ├── AGENTS.md                # инструкции для ИИ-агентов
+    ├── README.md                # описание ZHEL.ai для судей, на английском
+    ├── SECURITY.md              # принятые меры безопасности
+    ├── Makefile                 # install / hooks / run / test / lint / audit / migrate
+    ├── docker-compose.yml       # единственная точка запуска
+    ├── docker-compose.dev.yml   # оверлей с автоперезагрузкой
+    ├── .env.example             # все переменные окружения без значений
+    ├── scripts/
+    │   ├── no-push-to-main.sh   # хук pre-push, запрещает push в main
+    │   ├── protect-main.sh      # включает защиту ветки main на GitHub
+    │   └── audit-deps.sh        # pip-audit и npm audit
+    ├── data/                    # исходные данные SCADA, монтируются только на чтение
+    ├── frontend/                # интерфейс: статика дашборда
+    ├── deploy/nginx/            # конфиг nginx: раздача статики и прокси /api
+    ├── outputs/                 # пустой каталог под выгрузки, пока ничем не заполняется
+    ├── reports/                 # материалы анализа данных, например сравнение моделей погоды
+    ├── docs/
+    │   ├── ARCHITECTURE.md      # этот файл
+    │   ├── architecture-guidelines.md  # best practices
+    │   ├── proposals.md         # инструменты на будущее, не внедрены
+    │   ├── backend.md           # разбор backend и его шаблона
+    │   ├── git-workflow.md      # ветки, коммиты, PR, запрет прямого push в main
+    │   ├── dependency-audit.md  # проверка зависимостей перед мерджем
+    │   ├── worktrees.md         # worktree на фичу и слоты портов
+    │   ├── ai-workflow.md       # как команда работала с ИИ
+    │   ├── pre-submit-checklist.md
+    │   ├── adr/                 # записи об архитектурных решениях
+    │   └── dev1/ dev2/ dev3/    # зоны ответственности разработчиков
+    ├── backend/
+    │   ├── src/core/            # config, database, security, exceptions, logger
+    │   ├── src/modules/auth/    # образцовый модуль
+    │   ├── src/forecast/        # погода на момент T (weather/) и история турбин (dataset/)
+    │   ├── src/weather_service/ # HTTP-сервис погоды поверх src/forecast, без БД
+    │   ├── migrations/          # Alembic
+    │   └── tests/               # pytest
+    └── ml/                      # ML-сервис: FastAPI + LightGBM, свой uv.lock
+        ├── src/ml_service/      # схемы контракта, подготовка входа, модели
+        ├── artifacts/           # обученная модель, паспорт, бэктест
+        ├── openapi.json         # контракт, генерируется из схем
+        └── tests/               # pytest
 ```
 
 ## Правила и то, чего здесь пока нет

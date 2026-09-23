@@ -13,10 +13,11 @@ install:
 	$(BACKEND) sync --dev
 
 ## hooks — поставить git-хуки: проверки перед коммитом и запрет push в main
+# .git лежит в корне репозитория, а не в zhel-ai/, поэтому путь к хукам спрашиваем у git
 hooks:
 	uvx pre-commit install
-	cp scripts/no-push-to-main.sh .git/hooks/pre-push
-	chmod +x .git/hooks/pre-push
+	cp scripts/no-push-to-main.sh "$$(git rev-parse --git-path hooks)/pre-push"
+	chmod +x "$$(git rev-parse --git-path hooks)/pre-push"
 
 ## run — поднять весь стек (БД + backend) в фоне
 run:

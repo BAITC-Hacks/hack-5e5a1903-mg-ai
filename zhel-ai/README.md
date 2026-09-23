@@ -10,10 +10,15 @@ whether a newer weather run justifies a new version. The whole of February 2026 
 as if each forecast were made on its own day. The stack starts with one command, needs
 no API keys, and serves forecasts from weather data committed to the repository.
 
+This project lives in the `zhel-ai/` folder of the team repository. The repository also
+holds OrgDiff, our solution of another case, in `check-theory-kazakhtelecom/`; the
+[root README](../README.md) points to both. **Every command in this README runs from
+`zhel-ai/`.**
+
 > [!NOTE]
 > **For reviewers: the 3-minute path**
 >
-> 1. `cp .env.example .env && make demo`, then open http://localhost:3000 and log in as **admin / admin**.
+> 1. `cd zhel-ai && cp .env.example .env && make demo`, then open http://localhost:3000 and log in as **admin / admin**.
 > 2. The **Обзор** (Overview) page shows the 48-hour forecast for the selected issue day,
 >    **Агент** (Agent) shows every decision the agent made, and **Бэктест** (Backtest) shows
 >    model quality against the baselines. The interface is in Russian because its users are
@@ -440,7 +445,7 @@ Python packages. After that the stack runs without network access and without AP
 
 ```bash
 git clone https://github.com/BAITC-Hacks/hack-5e5a1903-mg-ai.git
-cd hack-5e5a1903-mg-ai
+cd hack-5e5a1903-mg-ai/zhel-ai
 cp .env.example .env
 make demo
 ```
@@ -582,7 +587,7 @@ Two more negative cases:
 ### 4. Automated tests and linters
 
 These need [uv](https://docs.astral.sh/uv/). They are the same commands that the GitHub
-Actions workflow in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs.
+Actions workflow in [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs.
 
 ```bash
 make install && make test        # backend: 359 tests
@@ -733,7 +738,7 @@ in [Installation and launch](#installation-and-launch).
 ## Repository map
 
 ```text
-.
+zhel-ai/
 ├── backend/                      FastAPI backend (Python 3.12, uv)
 │   ├── src/modules/forecast/     the agent: orchestrator, clients, analyze, decisions, API router
 │   ├── src/forecast/weather/     as-of weather store, source registry, Open-Meteo loaders, manifest

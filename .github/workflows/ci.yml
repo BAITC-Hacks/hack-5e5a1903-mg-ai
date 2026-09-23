@@ -1,3 +1,6 @@
+# CI проекта ZHEL.ai из zhel-ai/. Решение OrgDiff проверяет свой workflow orgdiff.yml.
+# Фильтра paths нет намеренно: "Lint and tests" и "Docker build" — обязательные проверки
+# main в zhel-ai/scripts/protect-main.sh, и PR без них не смерджится.
 name: CI
 
 on:
@@ -11,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: zhel-ai/backend
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ml
+        working-directory: zhel-ai/ml
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +64,9 @@ jobs:
   docker:
     name: Docker build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zhel-ai
     steps:
       - uses: actions/checkout@v4
 

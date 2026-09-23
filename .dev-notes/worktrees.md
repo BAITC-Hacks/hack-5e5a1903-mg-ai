@@ -5,7 +5,7 @@
 
 Правила: создал worktree — сразу добавил строку. **Смерджил PR — сразу удалил строку
 и освободил порты** (`docker compose down -v`, `git worktree remove`). Слоты и порядок
-работы: [../docs/worktrees.md](../docs/worktrees.md).
+работы: [../docs/worktrees.md](../zhel-ai/docs/worktrees.md).
 
 Колонки портов соответствуют переменным `FRONTEND_PORT`, `BACKEND_PORT` и `DB_PORT`
 из `.env` того worktree.

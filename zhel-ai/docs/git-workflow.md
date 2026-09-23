@@ -134,8 +134,8 @@ PR может закрывать одну задачу и продвигать �
 ```bash
 git fetch origin
 git worktree add ../hackalem-worktrees/features-dev1-auth -b features-dev1-auth origin/dev
-cd ../hackalem-worktrees/features-dev1-auth
-cp ../../HACKALEM\ AI/.env .env      # и поменять слот портов на свободный
+cd ../hackalem-worktrees/features-dev1-auth/zhel-ai    # проект ZHEL.ai лежит в zhel-ai/
+cp ../../../HACKALEM\ AI/zhel-ai/.env .env  # и поменять слот портов на свободный
 docker compose up -d --build
 # пилим фичу, коммитим
 make lint && make test               # обязательно перед пушем
@@ -154,7 +154,7 @@ gh pr merge --squash --delete-branch
   CI нельзя: на сдаче красный прогон выглядит хуже, чем его отсутствие.
 - После мерджа **сразу** сносим worktree и освобождаем порты, [worktrees.md](worktrees.md).
 - Перед пушем проверить, что не уезжают секреты: `.env`, ключи, токены
-  (см. [../rules/README.md](../rules/README.md)).
+  (см. [../rules/README.md](../../rules/README.md)).
 - Если фича задевает чужую зону, пишем об этом в свой файл `.dev-notes/dev{N}.md`.
 - Перед PR подтянуть `dev`, чтобы поймать конфликты у себя, а не в PR:
 

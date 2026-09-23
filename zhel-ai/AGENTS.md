@@ -1,7 +1,9 @@
 # AGENTS.md
 
-Инструкции для ИИ-агентов, работающих в этом репозитории. Файл читают Claude Code,
-Codex, Cursor, Copilot, Gemini CLI и другие агенты, поддерживающие стандарт AGENTS.md.
+Инструкции для ИИ-агентов, работающих над проектом ZHEL.ai в папке `zhel-ai/`. Файл читают
+Claude Code, Codex, Cursor, Copilot, Gemini CLI и другие агенты, поддерживающие стандарт
+AGENTS.md. Соседняя папка `check-theory-kazakhtelecom/` — отдельное решение другого кейса
+со своим README, эти правила к ней не относятся.
 
 ## Обзор проекта
 
@@ -11,13 +13,13 @@ HackAlem AI — проект команды из трех разработчик
 
 ## Команды
 
-Канонический интерфейс — `Makefile` в корне. На Windows без `make` используйте команду
-из правой колонки напрямую.
+Канонический интерфейс — `Makefile` в `zhel-ai/`, все команды ниже выполняются из этой папки.
+На Windows без `make` используйте команду из правой колонки напрямую.
 
 | Задача | Команда | Без make |
 |--------|---------|----------|
 | Поставить зависимости | `make install` | `cd backend && uv sync --dev` |
-| Поставить git-хуки | `make hooks` | `uvx pre-commit install && cp scripts/no-push-to-main.sh .git/hooks/pre-push` |
+| Поставить git-хуки | `make hooks` | `uvx pre-commit install && cp scripts/no-push-to-main.sh "$(git rev-parse --git-path hooks)/pre-push"` |
 | Аудит зависимостей | `make audit` | `bash scripts/audit-deps.sh` |
 | Поднять стек | `make run` | `docker compose up -d --build` |
 | Разработка с автоперезагрузкой | `make dev` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` |
