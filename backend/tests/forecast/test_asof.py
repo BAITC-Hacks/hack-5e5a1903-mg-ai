@@ -49,6 +49,18 @@ def asof_logs(caplog):
     asof_module.logger.removeHandler(caplog.handler)
 
 
+PINNED_DELAYS = {"ifs": (6, "7:30"), "ifs025": (6, "10:00"), "gfs": (6, "7:00"), "icon": (6, "8:00"), "gem": (12, "8:00")}
+# Задержка по метаданным Open-Meteo, замер 23.09.2026. У GEM метаданные устарели.
+OBSERVED_DELAYS = {"ifs": "7:00", "ifs025": "7:46", "gfs": "6:28", "icon": "3:47"}
+
+
+def test_source_delays_are_pinned():
+    """Остальные тесты берут задержку из того же реестра и ее ошибку не заметят. Меняешь задержку — меняй и эту таблицу."""
+    assert {name: (s.run_step_h, f"{s.delay.seconds // 3600}:{s.delay.seconds % 3600 // 60:02d}") for name, s in SOURCES.items()} == PINNED_DELAYS
+    for name, observed in OBSERVED_DELAYS.items():
+        assert SOURCES[name].delay > pd.Timedelta(f"{observed}:00"), name
+
+
 def reference_choice(cache: pd.DataFrame, source: str, as_of: pd.Timestamp, valid_times: pd.DatetimeIndex) -> pd.Series:
     """Прямой перебор: для каждого часа самый поздний прогон, доступный к as_of."""
     delay = SOURCES[source].delay
