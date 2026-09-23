@@ -1,0 +1,1394 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HackAlem Weather Service",
+    "description": "\nАрхивные прогнозы погоды по точке ВЭС «Шелек» в том виде, в каком они были доступны на момент\nпрогноза, и почасовая история турбин (SCADA).\n\n**Кто вызывает.** Backend dev1 по `WEATHER_SERVICE_URL`. Строки `GET /nwp` уходят в `POST /predict`\nML-сервиса как есть. Frontend к сервису напрямую не ходит. Общая схема: `docs/api-contract.md`.\n\n**Главное правило.** Ни одна строка погоды не опубликована позже `as_of`: прогон считается доступным\nв момент `run_init_utc + задержка публикации источника`. Перед отдачей ответа это проверяется еще раз.\n\n**Время.** ISO 8601 в UTC с `Z`: `2026-01-31T02:00:00Z`. Время без пояса дает 422, время с другим\nсмещением переводится в UTC. Пустое значение — `null`.\n\n**Источники.** `ifs`, `ifs025`, `gfs`, `icon`, `gem` и `ensemble` — среднее `ifs025`, `gfs`, `icon`, `gem`.\nПодробности в `GET /sources`.\n\n**Ошибки.** Всегда конверт `{\"error\": {\"code\", \"message\", \"details\"}}`, как в backend.\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Жив ли сервис и что загружено",
+        "description": "Всегда 200, пока процесс жив: по нему работает healthcheck. `degraded` значит, что кэш какого-то источника или SCADA пуст.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources": {
+      "get": {
+        "tags": [
+          "Weather"
+        ],
+        "summary": "Реестр источников погоды",
+        "description": "Тип API, шаг прогонов, задержка публикации и ее основание, высоты ветра, пустые колонки, период архива, состав ансамбля и точность ветра. Высоты, пустые колонки и период считаются по кэшу.",
+        "operationId": "sources_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceInfo"
+                  },
+                  "type": "array",
+                  "title": "Response Sources Sources Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nwp": {
+      "get": {
+        "tags": [
+          "Weather"
+        ],
+        "summary": "Погода, опубликованная к моменту as_of",
+        "description": "Для каждого часа окна — самый свежий прогон с `available_at_utc <= as_of`, в котором есть ветер хотя бы на одной высоте и `t2m`. Строка прогона без них пропускается, и на этот час берется прогон старше. По умолчанию окно — горизонт выпуска `as_of + 1 ч … as_of + 48 ч`, ровно то, что ждет `POST /predict`. `from` и `to` включительно, начало часа, не больше 168 ч.\n\nОдин источник без прогона дает 404 `NO_RUN_AVAILABLE`, частичной таблицы не бывает. Из нескольких источников пропускаются те, у которых прогона нет, они перечислены в `missing`.\n\n`ensemble` — среднее `ifs025`, `gfs`, `icon`, `gem`: `ws80` — ветер на высоте ступицы (80 м, без него 100 или 120 м с показателем сдвига 0,14), `ws_spread` — разброс между моделями. **Строки `ensemble` не отправляйте в `/predict` вместе со строками участников:** ML-сервис сам усредняет источники, и ансамбль учтется дважды.\n\n`lead_h` в строке — часы от запуска прогона, а не от выпуска.",
+        "operationId": "nwp_nwp_get",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Один или несколько источников через запятую: ifs, ifs025, gfs, icon, gem, ensemble",
+              "examples": [
+                "gfs,ensemble"
+              ],
+              "title": "Source"
+            },
+            "description": "Один или несколько источников через запятую: ifs, ifs025, gfs, icon, gem, ensemble"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Момент прогноза: только прогоны, опубликованные не позже него",
+              "examples": [
+                "2026-01-31T02:00:00Z"
+              ],
+              "title": "As Of"
+            },
+            "description": "Момент прогноза: только прогоны, опубликованные не позже него"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Первый час окна. По умолчанию as_of + 1 ч",
+              "title": "From"
+            },
+            "description": "Первый час окна. По умолчанию as_of + 1 ч"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Последний час окна. По умолчанию from + 47 ч",
+              "title": "To"
+            },
+            "description": "Последний час окна. По умолчанию from + 47 ч"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NwpResponse"
+                },
+                "example": {
+                  "as_of_utc": "2026-01-31T02:00:00Z",
+                  "from_utc": "2026-01-31T03:00:00Z",
+                  "to_utc": "2026-02-02T02:00:00Z",
+                  "sources": [
+                    "gfs",
+                    "ensemble"
+                  ],
+                  "missing": [],
+                  "rows": [
+                    {
+                      "valid_time_utc": "2026-01-31T03:00:00Z",
+                      "source": "gfs",
+                      "run_init_utc": "2026-01-30T00:00:00Z",
+                      "available_at_utc": "2026-01-30T07:00:00Z",
+                      "lead_h": 27,
+                      "ws80": 13.87,
+                      "ws100": 14.63,
+                      "ws120": 14.93,
+                      "wd100": 65.0,
+                      "gust10": 17.2,
+                      "t2m": -2.3,
+                      "rh2m": 49.0,
+                      "psfc": 956.1
+                    },
+                    {
+                      "valid_time_utc": "2026-01-31T03:00:00Z",
+                      "source": "ensemble",
+                      "run_init_utc": "2026-01-30T00:00:00Z",
+                      "available_at_utc": "2026-01-30T10:00:00Z",
+                      "lead_h": 27,
+                      "ws80": 10.75,
+                      "wd100": 68.0,
+                      "gust10": 10.17,
+                      "t2m": -3.8,
+                      "rh2m": 62.25,
+                      "psfc": 954.62,
+                      "ws_spread": 2.83,
+                      "members": [
+                        "gem",
+                        "gfs",
+                        "icon",
+                        "ifs025"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Нет прогона, опубликованного к as_of",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "no_run": {
+                    "summary": "Нет прогона",
+                    "value": {
+                      "error": {
+                        "code": "NO_RUN_AVAILABLE",
+                        "message": "На момент as_of нет опубликованного прогона хотя бы для одного из запрошенных часов",
+                        "details": {
+                          "source": "ifs",
+                          "as_of_utc": "2024-03-15T02:00:00Z",
+                          "missing_hours": 48,
+                          "examples": [
+                            "2024-03-15T03:00:00Z"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неизвестный источник или ошибка в параметрах",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "unknown": {
+                    "summary": "Неизвестный источник",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_SOURCE",
+                        "message": "Неизвестный источник погоды: ecmwf_ifs",
+                        "details": {
+                          "unknown": [
+                            "ecmwf_ifs"
+                          ],
+                          "known": [
+                            "ifs",
+                            "ifs025",
+                            "gfs",
+                            "icon",
+                            "gem",
+                            "ensemble"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "validation": {
+                    "summary": "Ошибка в параметрах",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Окно больше 168 ч",
+                        "details": {
+                          "from": "2026-01-31T03:00:00Z",
+                          "to": "2026-02-10T03:00:00Z"
+                        }
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сработала проверка утечки будущего или внутренняя ошибка",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "leakage": {
+                    "summary": "Проверка утечки",
+                    "value": {
+                      "error": {
+                        "code": "LEAKAGE_GUARD",
+                        "message": "Ответ остановлен последней проверкой на утечку будущего: …",
+                        "details": {}
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runs": {
+      "get": {
+        "tags": [
+          "Weather"
+        ],
+        "summary": "Прогоны: статус на момент выпуска или события для пересчета",
+        "description": "**С `as_of`** — прогоны, которые покрывают хотя бы один час горизонта `issue_time + 1 ч … + 48 ч`, со статусом относительно `as_of`: `used` — дал часы горизонта, `stale` — опубликован, но на все его часы есть прогон свежее, `after_as_of` — опубликован позже (в `WeatherRun` backend это `after_issue`). `issue_time` по умолчанию равен `as_of`, при пересчете `as_of` позже. Для страницы «Погода».\n\n**Без `as_of`, с `from` и `to`** — события «прогон стал доступен» в интервале `(from, to]` по времени доступности, по ним агент пересчитывает выпуск. `status` в этом режиме null. Окно не больше 31 суток.\n\n`source` по умолчанию — все источники, `ensemble` раскрывается в четыре модели. Порядок — по `available_at_utc`.",
+        "operationId": "runs_runs_get",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Источники через запятую. По умолчанию все",
+              "examples": [
+                "gfs,icon"
+              ],
+              "title": "Source"
+            },
+            "description": "Источники через запятую. По умолчанию все"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент, относительно которого считается статус",
+              "examples": [
+                "2026-01-31T02:00:00Z"
+              ],
+              "title": "As Of"
+            },
+            "description": "Момент, относительно которого считается статус"
+          },
+          {
+            "name": "issue_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Момент выпуска, от него считается горизонт. По умолчанию as_of",
+              "title": "Issue Time"
+            },
+            "description": "Момент выпуска, от него считается горизонт. По умолчанию as_of"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Оставить только эти статусы, через запятую",
+              "examples": [
+                "used,after_as_of"
+              ],
+              "title": "Status"
+            },
+            "description": "Оставить только эти статусы, через запятую"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Режим событий: начало интервала, не включительно",
+              "title": "From"
+            },
+            "description": "Режим событий: начало интервала, не включительно"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Режим событий: конец интервала, включительно",
+              "title": "To"
+            },
+            "description": "Режим событий: конец интервала, включительно"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunInfo"
+                  },
+                  "title": "Response Runs Runs Get"
+                },
+                "example": [
+                  {
+                    "source": "gfs",
+                    "run_init_utc": "2026-01-30T00:00:00Z",
+                    "available_at_utc": "2026-01-30T07:00:00Z",
+                    "status": "used",
+                    "lead_from_h": 27,
+                    "lead_to_h": 74,
+                    "hours_used": 12
+                  },
+                  {
+                    "source": "gfs",
+                    "run_init_utc": "2026-01-30T18:00:00Z",
+                    "available_at_utc": "2026-01-31T01:00:00Z",
+                    "status": "used",
+                    "lead_from_h": 24,
+                    "lead_to_h": 53,
+                    "hours_used": 12
+                  },
+                  {
+                    "source": "gfs",
+                    "run_init_utc": "2026-01-31T00:00:00Z",
+                    "available_at_utc": "2026-01-31T07:00:00Z",
+                    "status": "after_as_of",
+                    "lead_from_h": 24,
+                    "lead_to_h": 50,
+                    "hours_used": 0
+                  }
+                ]
+              }
+            }
+          },
+          "422": {
+            "description": "Неизвестный источник или ошибка в параметрах",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "unknown": {
+                    "summary": "Неизвестный источник",
+                    "value": {
+                      "error": {
+                        "code": "UNKNOWN_SOURCE",
+                        "message": "Неизвестный источник погоды: ecmwf_ifs",
+                        "details": {
+                          "unknown": [
+                            "ecmwf_ifs"
+                          ],
+                          "known": [
+                            "ifs",
+                            "ifs025",
+                            "gfs",
+                            "icon",
+                            "gem",
+                            "ensemble"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "validation": {
+                    "summary": "Ошибка в параметрах",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Окно больше 168 ч",
+                        "details": {
+                          "from": "2026-01-31T03:00:00Z",
+                          "to": "2026-02-10T03:00:00Z"
+                        }
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сработала проверка утечки будущего или внутренняя ошибка",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "leakage": {
+                    "summary": "Проверка утечки",
+                    "value": {
+                      "error": {
+                        "code": "LEAKAGE_GUARD",
+                        "message": "Ответ остановлен последней проверкой на утечку будущего: …",
+                        "details": {}
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/scada": {
+      "get": {
+        "tags": [
+          "SCADA"
+        ],
+        "summary": "Почасовая история турбин",
+        "description": "Интервал `[from, until)`, не больше 31 суток. Время уже переведено в UTC из UTC+6 файлов SCADA. Данные заканчиваются 31.01.2026 17:00 UTC, для более поздних часов придет пустой список.",
+        "operationId": "scada_scada_get",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Начало интервала, включительно",
+              "examples": [
+                "2026-01-01T00:00:00Z"
+              ],
+              "title": "From"
+            },
+            "description": "Начало интервала, включительно"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Конец интервала, не включительно",
+              "examples": [
+                "2026-02-01T00:00:00Z"
+              ],
+              "title": "Until"
+            },
+            "description": "Конец интервала, не включительно"
+          },
+          {
+            "name": "turbine",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "T1",
+                    "T2"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "T1 или T2. По умолчанию обе",
+              "title": "Turbine"
+            },
+            "description": "T1 или T2. По умолчанию обе"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScadaRow"
+                  },
+                  "title": "Response Scada Scada Get"
+                },
+                "example": [
+                  {
+                    "time_utc": "2026-01-30T20:00:00Z",
+                    "turbine": "T1",
+                    "power_norm": 0.1867,
+                    "wind_ms": 5.73,
+                    "temp_c": -1.54,
+                    "flag": ""
+                  },
+                  {
+                    "time_utc": "2026-01-28T09:00:00Z",
+                    "turbine": "T1",
+                    "power_norm": 0.01,
+                    "wind_ms": 4.43,
+                    "temp_c": 0.05,
+                    "flag": "icing"
+                  }
+                ]
+              }
+            }
+          },
+          "422": {
+            "description": "Неизвестный источник или ошибка в параметрах",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "validation": {
+                    "summary": "Ошибка в параметрах",
+                    "value": {
+                      "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Окно больше 168 ч",
+                        "details": {
+                          "from": "2026-01-31T03:00:00Z",
+                          "to": "2026-02-10T03:00:00Z"
+                        }
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Данные не загружены",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "no_scada": {
+                    "summary": "SCADA не загружена",
+                    "value": {
+                      "error": {
+                        "code": "DATA_UNAVAILABLE",
+                        "message": "SCADA не загружена: нет файлов турбин в DATA_DIR",
+                        "details": {}
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EnsembleMember": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight",
+            "description": "Вес в среднем. Если модели нет, веса остальных пересчитываются поровну"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "weight"
+        ],
+        "title": "EnsembleMember"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "NO_RUN_AVAILABLE, UNKNOWN_SOURCE, VALIDATION_ERROR, LEAKAGE_GUARD, DATA_UNAVAILABLE, INTERNAL_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "description": "degraded — кэш какого-то источника или SCADA пуст"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceHealth"
+            },
+            "type": "object",
+            "title": "Sources"
+          },
+          "scada_rows": {
+            "type": "integer",
+            "title": "Scada Rows",
+            "description": "Часов SCADA по обеим турбинам, 0 — SCADA не загружена"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "sources",
+          "scada_rows"
+        ],
+        "title": "HealthResponse"
+      },
+      "MissingSource": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "missing_hours": {
+            "type": "integer",
+            "title": "Missing Hours",
+            "description": "Сколько часов окна у источника нет"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "missing_hours"
+        ],
+        "title": "MissingSource"
+      },
+      "NwpResponse": {
+        "properties": {
+          "as_of_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of Utc"
+          },
+          "from_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "From Utc"
+          },
+          "to_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "To Utc"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources",
+            "description": "Источники, которые попали в ответ"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/MissingSource"
+            },
+            "type": "array",
+            "title": "Missing",
+            "description": "Запрошенные источники, пропущенные из-за отсутствия прогона"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/NwpRow"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "По строке на час и источник, по возрастанию valid_time_utc"
+          }
+        },
+        "type": "object",
+        "required": [
+          "as_of_utc",
+          "from_utc",
+          "to_utc",
+          "sources",
+          "missing",
+          "rows"
+        ],
+        "title": "NwpResponse"
+      },
+      "NwpRow": {
+        "properties": {
+          "valid_time_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Time Utc",
+            "description": "Час, к которому относятся значения, начало часа"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "run_init_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Run Init Utc",
+            "description": "Запуск прогона. У ensemble — самый поздний из прогонов участников"
+          },
+          "available_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Available At Utc",
+            "description": "Когда прогон стал доступен, всегда не позже as_of. У ensemble — самый поздний из участников"
+          },
+          "lead_h": {
+            "type": "integer",
+            "title": "Lead H",
+            "description": "Часы от запуска прогона до valid_time_utc, а не от выпуска"
+          },
+          "ws10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ws10",
+            "description": "Ветер на 10 м, не загружается ни у одного источника, м/с"
+          },
+          "ws80": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ws80",
+            "description": "Ветер на 80 м, высота ступицы. У ensemble — среднее ветра на высоте ступицы по моделям, м/с"
+          },
+          "ws100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ws100",
+            "description": "Ветер на 100 м, м/с"
+          },
+          "ws120": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ws120",
+            "description": "Ветер на 120 м, м/с"
+          },
+          "wd100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wd100",
+            "description": "Направление ветра на 100 м, градусы, откуда дует. У ensemble — векторное среднее"
+          },
+          "gust10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gust10",
+            "description": "Порывы на 10 м, м/с"
+          },
+          "t2m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "T2M",
+            "description": "Температура на 2 м, °C"
+          },
+          "rh2m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rh2M",
+            "description": "Относительная влажность на 2 м, %"
+          },
+          "psfc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Psfc",
+            "description": "Давление у поверхности, гПа"
+          },
+          "ws_spread": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ws Spread",
+            "description": "Только у ensemble: стандартное отклонение ветра на высоте ступицы между моделями (ddof=0). null, если модель одна, м/с"
+          },
+          "members": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members",
+            "description": "Только у ensemble: модели, давшие значение на этот час"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid_time_utc",
+          "source",
+          "run_init_utc",
+          "available_at_utc",
+          "lead_h"
+        ],
+        "title": "NwpRow",
+        "description": "Прогноз одного источника на один час."
+      },
+      "RunInfo": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "run_init_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Run Init Utc"
+          },
+          "available_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Available At Utc"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "used",
+                  "stale",
+                  "after_as_of"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "used — прогон дал часы горизонта; stale — опубликован к as_of, но на все его часы есть прогон свежее; after_as_of — опубликован позже as_of. null в режиме событий (from, to)"
+          },
+          "lead_from_h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead From H",
+            "description": "Минимальная заблаговременность от запуска прогона по часам горизонта, которые он покрывает"
+          },
+          "lead_to_h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead To H",
+            "description": "Максимальная заблаговременность"
+          },
+          "hours_used": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours Used",
+            "description": "Сколько часов горизонта взято из этого прогона"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "run_init_utc",
+          "available_at_utc",
+          "status",
+          "lead_from_h",
+          "lead_to_h",
+          "hours_used"
+        ],
+        "title": "RunInfo"
+      },
+      "ScadaRow": {
+        "properties": {
+          "time_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Utc",
+            "description": "Начало часа, UTC. Время SCADA уже переведено из UTC+6"
+          },
+          "turbine": {
+            "type": "string",
+            "enum": [
+              "T1",
+              "T2"
+            ],
+            "title": "Turbine"
+          },
+          "power_norm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Norm",
+            "description": "Средняя мощность за час, доля номинала 0…1"
+          },
+          "wind_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wind Ms",
+            "description": "Средний ветер анемометра турбины, м/с"
+          },
+          "temp_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temp C",
+            "description": "Средняя температура датчика турбины, °C"
+          },
+          "flag": {
+            "type": "string",
+            "title": "Flag",
+            "description": "\"\" — чистый час; downtime, curtailment, icing, frozen_sensor, cut_out"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time_utc",
+          "turbine",
+          "power_norm",
+          "wind_ms",
+          "temp_c",
+          "flag"
+        ],
+        "title": "ScadaRow"
+      },
+      "SourceHealth": {
+        "properties": {
+          "runs": {
+            "type": "integer",
+            "title": "Runs",
+            "description": "Прогонов в кэше"
+          },
+          "valid_from_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From Utc",
+            "description": "Первый час в кэше, null — кэш пуст"
+          },
+          "valid_to_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To Utc",
+            "description": "Последний час в кэше"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runs",
+          "valid_from_utc",
+          "valid_to_utc"
+        ],
+        "title": "SourceHealth"
+      },
+      "SourceInfo": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Имя для параметра source"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "single_runs",
+              "previous_runs",
+              "ensemble"
+            ],
+            "title": "Kind",
+            "description": "single_runs — точные прогоны, previous_runs — прогон по правилу previous_dayN, ensemble — среднее моделей"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "run_step_h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Step H",
+            "description": "Шаг прогонов, ч. У ensemble null"
+          },
+          "publication_delay_h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Delay H",
+            "description": "Прогон считается доступным через столько часов после запуска. У ensemble null: у каждой модели своя"
+          },
+          "delay_confirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delay Confirmed",
+            "description": "false — задержка принята с запасом без документированного времени публикации, это допущение"
+          },
+          "delay_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delay Basis",
+            "description": "На чем основана задержка"
+          },
+          "wind_heights_m": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Wind Heights M",
+            "description": "Высоты, на которых в кэше есть скорость ветра"
+          },
+          "empty_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Empty Columns",
+            "description": "Колонки строки /nwp, которые у источника всегда null"
+          },
+          "archive_from_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive From Utc",
+            "description": "Первый час в кэше"
+          },
+          "archive_to_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive To Utc",
+            "description": "Последний час в кэше"
+          },
+          "members": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EnsembleMember"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members",
+            "description": "Состав ансамбля, у остальных источников null"
+          },
+          "wind_mae_ms": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WindMae"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Точность ветра из reports/weather_vs_scada.md, отложенный период после 01.08.2025. null — не оценивалась"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "kind",
+          "title",
+          "run_step_h",
+          "publication_delay_h",
+          "delay_confirmed",
+          "delay_basis",
+          "wind_heights_m",
+          "empty_columns",
+          "archive_from_utc",
+          "archive_to_utc",
+          "members",
+          "wind_mae_ms"
+        ],
+        "title": "SourceInfo"
+      },
+      "WindMae": {
+        "properties": {
+          "d1": {
+            "type": "number",
+            "title": "D1",
+            "description": "MAE ветра против SCADA на +24…29 ч, м/с"
+          },
+          "d2": {
+            "type": "number",
+            "title": "D2",
+            "description": "MAE ветра против SCADA на +48…53 ч, м/с"
+          }
+        },
+        "type": "object",
+        "required": [
+          "d1",
+          "d2"
+        ],
+        "title": "WindMae"
+      }
+    }
+  }
+}

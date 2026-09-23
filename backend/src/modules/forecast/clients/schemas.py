@@ -6,7 +6,7 @@
 на заглушку, а не подставляет выдуманные числа в ответ фронтенду.
 
 Схемы погоды повторяют таблицу ``AsOfStore.get_nwp`` из ``src/forecast/weather``
-и ответ ``GET /nwp``, если dev3 однажды поднимет сервис. Схемы модели повторяют
+и ответ ``GET /nwp`` сервиса погоды (``docs/dev3/weather-openapi.json``). Схемы модели повторяют
 контракт ML-сервиса (``ml/openapi.json``): бэкенд читает только те поля,
 на которые опирается, остальные игнорирует, поэтому новое поле у соседа
 ничего не ломает.
@@ -76,6 +76,12 @@ class NwpRow(UpstreamSchema):
         if self.ws80 is None and self.ws100 is None and self.ws120 is None:
             raise ValueError("в строке нет скорости ветра ни на одной высоте")
         return self
+
+
+class NwpResponse(UpstreamSchema):
+    """Ответ ``GET /nwp``: строки лежат в ``rows``, остальные поля конверта агенту не нужны."""
+
+    rows: list[NwpRow]
 
 
 class RunRow(UpstreamSchema):

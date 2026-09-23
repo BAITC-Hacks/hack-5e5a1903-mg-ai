@@ -32,7 +32,7 @@ import httpx
 from src.core.config import settings
 from src.core.exceptions import BusinessError
 from src.modules.forecast.clients.base import UpstreamClient, UpstreamError, iso_utc
-from src.modules.forecast.clients.schemas import NwpRow, RunRow
+from src.modules.forecast.clients.schemas import NwpResponse, NwpRow, RunRow
 
 logger = logging.getLogger(__name__)
 
@@ -203,8 +203,8 @@ class HttpWeatherSource(UpstreamClient):
     async def nwp(self, *, source: str, as_of: datetime, valid_times: Sequence[datetime]) -> list[NwpRow]:
         moments = sorted(valid_times)
         try:
-            rows = await self.fetch_rows(
-                NwpRow,
+            response = await self.fetch_one(
+                NwpResponse,
                 "GET",
                 "/nwp",
                 params={
@@ -220,7 +220,7 @@ class HttpWeatherSource(UpstreamClient):
             raise
 
         wanted = set(moments)
-        chosen = {row.valid_time_utc: row for row in rows if row.valid_time_utc in wanted and row.available_at_utc <= as_of}
+        chosen = {row.valid_time_utc: row for row in response.rows if row.valid_time_utc in wanted and row.available_at_utc <= as_of}
         missing = wanted - set(chosen)
         if missing:
             raise no_run_error(source, as_of, f"сервис не отдал {len(missing)} часов горизонта")

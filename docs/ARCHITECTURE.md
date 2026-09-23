@@ -9,14 +9,15 @@ flowchart LR
     BE["backend<br/>FastAPI, root_path=/api"]
     DB[("PostgreSQL 16")]
     ML["ml<br/>FastAPI + LightGBM<br/>P10/P50/P90"]
-    WX["weather<br/>погода на момент T<br/>сервис dev3, подключается"]
-    DATA[("data/ ro<br/>reports/ rw")]
+    WX["weather<br/>FastAPI, погода на момент T<br/>и история турбин"]
+    DATA[("data/ ro")]
 
     Client --> FE
     FE --> BE
     BE --> DB
     BE -- "POST /predict" --> ML
-    BE -. "GET /nwp" .-> WX
+    BE -- "GET /nwp /runs" --> WX
+    BE --> DATA
     WX --> DATA
 
     subgraph compose["docker compose"]
@@ -24,6 +25,7 @@ flowchart LR
         BE
         DB
         ML
+        WX
     end
 ```
 
@@ -32,15 +34,19 @@ flowchart LR
 CORS не нужен, порт backend в ссылки не попадает. Почему статика, а не сборка фронтенда:
 [adr/0007-frontend-as-static-behind-nginx.md](adr/0007-frontend-as-static-behind-nginx.md).
 
+`weather` — погода строго на момент прогноза и история турбин за HTTP-контрактом
+`docs/dev3/weather-openapi.json`. Код лежит в `backend/src/weather_service/`, это тонкий слой над
+`src.forecast.weather` и `src.forecast.dataset`, запускается из образа backend другой командой.
+Кэш прогнозов и SCADA читает из `data/` один раз на старте, в сеть не ходит. Backend стартует
+после того, как `weather` здоров, и ходит в него по `WEATHER_SERVICE_URL`; не ответил сервис —
+агент читает тот же кэш через `AsOfStore` в процессе и пишет переключение в журнал. Наружу
+опубликован только порт `WEATHER_PORT` для Swagger. Эндпоинты:
+[dev3/weather-service.md](dev3/weather-service.md).
+
 `ml` — модель прогноза за HTTP-контрактом `ml/openapi.json`: принимает прогнозы погоды,
 доступные на момент T, и отдает P10/P50/P90. Вызывает ее backend, наружу опубликован
 только порт `ML_PORT` для Swagger. Почему отдельный сервис:
 [adr/0006-ml-service.md](adr/0006-ml-service.md), эндпоинты: [../ml/README.md](../ml/README.md).
-
-`weather` — сервис dev3 поверх пакета `src/forecast/weather/`. `AsOfStore` внутри него
-отдает только те прогоны, которые были опубликованы к моменту прогноза, и бросает
-`LeakageError` на попытку взять данные из будущего. Пунктиром он нарисован потому,
-что его код еще не влит: в `docker-compose.yml` сервис появится вместе с ним.
 
 ## Внутреннее устройство backend
 
@@ -71,6 +77,7 @@ flowchart TD
 | Frontend | React как статика, без сборки; раздает nginx | `frontend/` |
 | Backend | FastAPI, SQLAlchemy 2.0 async, Alembic | `backend/` |
 | ML-сервис | FastAPI, LightGBM, pandas; контракт `ml/openapi.json` | `ml/`, сервис `ml` в compose |
+| Сервис погоды | FastAPI, pandas; контракт `docs/dev3/weather-openapi.json` | `backend/src/weather_service/`, образ backend |
 | БД | PostgreSQL 16 | сервис `db` в compose |
 | Пакеты Python | uv | `backend/pyproject.toml`, `backend/uv.lock`; `ml/pyproject.toml`, `ml/uv.lock` |
 | Линтер и формат | Ruff | конфиг в `backend/pyproject.toml` и `ml/pyproject.toml` |
@@ -122,6 +129,8 @@ HACKALEM AI/
 ├── backend/
 │   ├── src/core/            # config, database, security, exceptions, logger
 │   ├── src/modules/auth/    # образцовый модуль
+│   ├── src/forecast/        # погода на момент T (weather/) и история турбин (dataset/)
+│   ├── src/weather_service/ # HTTP-сервис погоды поверх src/forecast, без БД
 │   ├── migrations/          # Alembic
 │   └── tests/               # pytest
 └── ml/                      # ML-сервис: FastAPI + LightGBM, свой uv.lock
