@@ -170,6 +170,9 @@ window.ZHEL = (function () {
     weather: ["issues", "weather"],
     model: ["issues", "model"],
     site: ["issues", "site", "forecast"],
+    // Свой датасет отправляется действием пользователя, странице нужен только список
+    // выпусков: из него выбирается день, на который считается прогноз по файлу.
+    upload: ["issues"],
   };
 
   var LOADING_TEXT = {
@@ -193,6 +196,7 @@ window.ZHEL = (function () {
     ["weather", "Погода", "источники погоды"],
     ["model", "Модель", "чем считаем"],
     ["site", "Объект", "турбины на карте"],
+    ["upload", "Свои данные", "прогноз по вашему файлу"],
   ];
 
   var PAGE_KEYS = PAGES.map(function (item) { return item[0]; });
@@ -219,6 +223,14 @@ window.ZHEL = (function () {
       err: {},
       pending: {},
       stamp: {},
+      // раздел «Свои данные»: выбранные файлы, день выпуска, ответ и отказ
+      upFiles: [],
+      upDate: null,
+      upNames: "",
+      upBusy: false,
+      upRes: null,
+      upErr: null,
+      upHover: null,
     };
   }
 
@@ -494,19 +506,57 @@ window.ZHEL = (function () {
     source_spread: "Расхождение источников погоды",
   };
 
+  /**
+   * Почасовой график прогноза: полоса P10–P90, линия P50, линия ветра, сетка и плитки часов.
+   *
+   * Одна и та же функция рисует «Обзор» и прогноз по загруженному датасету,
+   * чтобы два экрана не разъехались формулами и оформлением.
+   */
+  function hourlyChart(view) {
+    var hz = view.length;
+    var p10 = view.map(function (r) { return r.p10; });
+    var p50 = view.map(function (r) { return r.p50; });
+    var p90 = view.map(function (r) { return r.p90; });
+    var winds = view.map(function (r) { return r.wind; });
+    var windMax = Math.max(5, Math.ceil(Math.max.apply(null, winds.concat([0])) / 5) * 5);
+
+    var xTicks = [];
+    for (var k = 0; k < hz; k += hz > 24 ? 6 : 3) {
+      xTicks.push({ left: (k / Math.max(1, hz - 1)) * 100 + "%", t: hhmm(view[k].local), d: isMidnight(view[k].local) ? ddmm(view[k].local) : "" });
+    }
+
+    return {
+      windMax: windMax,
+      band: bandPath(p10, p90, 1),
+      p50: linePath(p50, 1),
+      wind: linePath(winds, windMax),
+      xTicks: xTicks,
+      yTicks: [0, 25, 50, 75, 100].map(function (v) {
+        return { pos: v + "%", l: v + "%", w: Math.round((v / 100) * windMax) + "" };
+      }),
+      cells: view.map(function (r) {
+        return {
+          t: hhmm(r.local),
+          d: isMidnight(r.local) ? ddmm(r.local) : "",
+          v: pct(r.p50),
+          band: pct(r.p10) + "–" + pct(r.p90),
+          bg: "oklch(0.6 0.16 135 / " + (0.04 + r.p50 * 0.34).toFixed(3) + ")",
+          bgStrong: "oklch(0.6 0.16 135 / " + (0.08 + r.p50 * 0.85).toFixed(3) + ")",
+        };
+      }),
+    };
+  }
+
   function buildOverview(s, cmp) {
     var forecast = s.data.forecast;
     if (!forecast) return { kpis: [], cells: [], xTicks: [], yTicks: [], checks: [], wx: [], cols: [], hv: { has: false }, tb: {} };
     var rows = stationHours(forecast);
     var hz = Math.min(s.horizon, rows.length);
     var view = rows.slice(0, hz);
-    var p50 = view.map(function (r) { return r.p50; });
-    var p10 = view.map(function (r) { return r.p10; });
-    var p90 = view.map(function (r) { return r.p90; });
+    var ch = hourlyChart(view);
     var winds = view.map(function (r) { return r.wind; });
     var temps = view.map(function (r) { return r.temp; });
     var hasActual = view.some(function (r) { return r.actual !== null; });
-    var windMax = Math.max(5, Math.ceil(Math.max.apply(null, winds.concat([0])) / 5) * 5);
     var kpi = forecast.kpi;
     var issue = forecast.issue;
     var hover = s.hover !== null && s.hover < hz ? s.hover : null;
@@ -519,22 +569,6 @@ window.ZHEL = (function () {
     var check = function (name, value, ok, status) {
       return { name: name, val: value, st: status, color: ok ? LIME : AMBER };
     };
-
-    var cells = view.map(function (r) {
-      return {
-        t: hhmm(r.local),
-        d: isMidnight(r.local) ? ddmm(r.local) : "",
-        v: pct(r.p50),
-        band: pct(r.p10) + "–" + pct(r.p90),
-        bg: "oklch(0.6 0.16 135 / " + (0.04 + r.p50 * 0.34).toFixed(3) + ")",
-        bgStrong: "oklch(0.6 0.16 135 / " + (0.08 + r.p50 * 0.85).toFixed(3) + ")",
-      };
-    });
-
-    var xTicks = [];
-    for (var k = 0; k < hz; k += hz > 24 ? 6 : 3) {
-      xTicks.push({ left: (k / Math.max(1, hz - 1)) * 100 + "%", t: hhmm(view[k].local), d: isMidnight(view[k].local) ? ddmm(view[k].local) : "" });
-    }
 
     // Текст собирается из KPI ответа, чтобы не расходиться с плитками выше.
     var plain =
@@ -557,15 +591,13 @@ window.ZHEL = (function () {
         { label: "Часы ниже 10%", value: kpi.hours_below_10_pct, unit: "ч", sub: "из 48 по данным выпуска" },
         { label: "Ожидаемая ошибка", value: num(kpi.expected_error_pct), unit: "%", sub: "nMAE по бэктесту" },
       ],
-      cells: cells,
-      xTicks: xTicks,
-      yTicks: [0, 25, 50, 75, 100].map(function (v) {
-        return { pos: v + "%", l: v + "%", w: Math.round((v / 100) * windMax) + "" };
-      }),
-      band: bandPath(p10, p90, 1),
-      p50: linePath(p50, 1),
+      cells: ch.cells,
+      xTicks: ch.xTicks,
+      yTicks: ch.yTicks,
+      band: ch.band,
+      p50: ch.p50,
       act: hasActual && s.showActual ? linePath(view.map(function (r) { return r.actual === null ? 0 : r.actual; }), 1) : "",
-      wind: linePath(winds, windMax),
+      wind: ch.wind,
       windOp: s.showWind ? 1 : 0,
       hasActual: hasActual,
       actOp: s.showActual && hasActual ? 0.85 : 0,
@@ -989,6 +1021,214 @@ window.ZHEL = (function () {
     };
   }
 
+  // --- свой датасет --------------------------------------------------------
+
+  var UPLOAD_MAX_FILES = 2;
+
+  // Колонки формата организаторов: так выглядит выгрузка SCADA, которую ждет эндпоинт.
+  var UPLOAD_COLUMNS = [
+    { n: "ID", d: "порядковый номер строки" },
+    { n: "Статистическое время", d: "метка времени, шаг 10 минут" },
+    { n: "Средняя скорость ветра(m/s)", d: "скорость ветра, м/с" },
+    { n: "Нормализованная активная мощность", d: "мощность, доля номинала от 0 до 1" },
+    { n: "Средняя температура окружающей среды(°C)", d: "температура воздуха, °C" },
+  ];
+
+  var UPLOAD_SAMPLE =
+    "ID,Статистическое время,Средняя скорость ветра(m/s),Нормализованная активная мощность,Средняя температура окружающей среды(°C)\n" +
+    "1,2023-03-11 0:00:00,6.73,0.39,15.38\n" +
+    "2,2023-03-11 0:10:00,6.75,0.39,15.26";
+
+  /** День выпуска для загрузки: выбранный пользователем, иначе первый из списка. */
+  function uploadDate(s) {
+    if (s.upDate) return s.upDate;
+    var issues = s.data.issues || [];
+    return issues.length ? issues[0].issue_date : "";
+  }
+
+  function fileSize(bytes) {
+    if (bytes < 1024) return bytes + " Б";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " КБ";
+    return (bytes / (1024 * 1024)).toFixed(1) + " МБ";
+  }
+
+  /** Эмпирическая кривая мощности из загруженного датасета: линия P50 и полоса P10–P90. */
+  function powerCurve(points) {
+    if (!points || !points.length) return { has: false, bins: [], xTicks: [], yTicks: [], band: "", line: "", samples: [], maxSamples: "—" };
+    var norm = points.map(function (p) { return p.power_norm; });
+    var lo = points.map(function (p) { return p.p10; });
+    var hi = points.map(function (p) { return p.p90; });
+    var hasBand = points.every(function (p) {
+      return typeof p.p10 === "number" && typeof p.p90 === "number";
+    });
+    var counts = points.map(function (p) { return p.samples || 0; });
+    var cmax = Math.max.apply(null, counts.concat([1]));
+    var step = Math.max(1, Math.floor((points.length - 1) / 4));
+    var xTicks = [];
+    for (var i = 0; i < points.length; i += step) {
+      xTicks.push({ left: (i / Math.max(1, points.length - 1)) * 100 + "%", l: num(points[i].wind_ms, 0) });
+    }
+    return {
+      has: true,
+      hasBand: hasBand,
+      band: hasBand ? bandPath(lo, hi, 1) : "",
+      line: linePath(norm, 1),
+      xTicks: xTicks,
+      yTicks: [0, 25, 50, 75, 100].map(function (v) {
+        return { pos: v + "%", l: v + "%" };
+      }),
+      samples: counts.map(function (c) {
+        return { h: (c / cmax) * 100 + "%" };
+      }),
+      maxSamples: cmax + "",
+      bins: points.length + " " + plural(points.length, "интервал ветра", "интервала ветра", "интервалов ветра"),
+    };
+  }
+
+  function buildUpload(s, cmp) {
+    var issues = s.data.issues || [];
+    var picked = uploadDate(s);
+    var files = s.upFiles || [];
+    var res = s.upRes;
+
+    var out = {
+      columns: UPLOAD_COLUMNS,
+      sample: UPLOAD_SAMPLE,
+      dates: issues.map(function (it) {
+        var on = it.issue_date === picked;
+        return {
+          l: ddmm(it.issue_date),
+          bg: on ? "#141816" : "#FFFFFF",
+          color: on ? "#FFFFFF" : "#4A524D",
+          border: on ? "#141816" : "rgba(20,24,22,0.12)",
+          on: function () {
+            cmp.setState({ upDate: it.issue_date });
+          },
+        };
+      }),
+      dateLabel: picked ? ddmmyyyy(picked) : "—",
+      files: files.map(function (f) {
+        return { n: f.name, s: fileSize(f.size) };
+      }),
+      hasFiles: files.length > 0,
+      noFiles: files.length === 0,
+      names: s.upNames,
+      onFiles: function (event) {
+        pickFiles(cmp, event.target.files);
+      },
+      onNames: function (event) {
+        cmp.setState({ upNames: event.target.value });
+      },
+      run: function () {
+        runUpload(cmp);
+      },
+      runLabel: s.upBusy ? "Считаем…" : "Построить прогноз",
+      runDisabled: s.upBusy || !files.length || !picked,
+      busy: s.upBusy,
+      err: s.upErr
+        ? {
+            show: true,
+            message: s.upErr.message,
+            detail: [s.upErr.code, s.upErr.detail].filter(function (part) { return part; }).join(" · "),
+          }
+        : { show: false, message: "", detail: "" },
+      has: false,
+      hasDataset: false,
+      warns: [],
+      hasWarns: false,
+      kpis: [],
+      band: "",
+      p50: "",
+      wind: "",
+      ds: { files: [], period: "—", hours: "—", step: "—", dropped: "—", reasons: [], hasDrops: false },
+      curve: powerCurve(null),
+      cells: [],
+      xTicks: [],
+      yTicks: [],
+      cols: [],
+      hv: { has: false },
+      summary: "",
+      hoursLabel: "",
+    };
+
+    if (!res) return out;
+
+    var ds = res.dataset || {};
+    var drops = ds.drop_reasons || {};
+    var dropKeys = Object.keys(drops);
+    out.ds = {
+      files: (ds.files || []).map(function (f) {
+        return { n: f.name, rows: f.rows + " " + plural(f.rows, "строка", "строки", "строк"), turbine: f.turbine };
+      }),
+      period: ddmmyyyy(ds.period_start) + " – " + ddmmyyyy(ds.period_end),
+      hours: ds.hours + " ч",
+      step: ds.step_minutes + " мин",
+      dropped: ds.dropped_rows + " " + plural(ds.dropped_rows || 0, "строка", "строки", "строк"),
+      hasDrops: dropKeys.length > 0,
+      // Коды отбраковки показываются как есть: расшифровывать их за бэкенд мы не вправе.
+      reasons: dropKeys.map(function (code) {
+        return { code: code, n: drops[code] + "" };
+      }),
+    };
+    out.hasDataset = true;
+
+    out.warns = (res.warnings || []).map(function (w) {
+      return { code: w.code, message: w.message };
+    });
+    out.hasWarns = out.warns.length > 0;
+
+    out.curve = powerCurve(res.power_curve);
+
+    var kpi = res.kpi;
+    if (kpi) {
+      out.kpis = [
+        { label: "Средняя загрузка", value: num(kpi.mean_load_pct), unit: "%", sub: "от установленной мощности, 48 ч" },
+        { label: "Пиковый час", value: num(kpi.peak_mw, 2), unit: "МВт", sub: full(kpi.peak_hour_local) },
+        { label: "Часы ниже 10%", value: kpi.hours_below_10_pct, unit: "ч", sub: "из 48 по данным выпуска" },
+        { label: "Ожидаемая ошибка", value: num(kpi.expected_error_pct), unit: "%", sub: "nMAE по бэктесту" },
+      ];
+    }
+
+    var rows = stationHours(res);
+    if (!rows.length) return out;
+
+    var view = rows.slice(0, 48);
+    var ch = hourlyChart(view);
+    var hover = s.upHover !== null && s.upHover < view.length ? s.upHover : null;
+    var hoverLeft = hover === null ? 0 : (hover / Math.max(1, view.length - 1)) * 100;
+
+    out.has = true;
+    out.summary = res.summary || "";
+    out.hoursLabel = view.length + " ч по часам · выпуск " + (res.issue ? full(res.issue.issue_time_utc) + " UTC" : "—");
+    out.band = ch.band;
+    out.p50 = ch.p50;
+    out.wind = ch.wind;
+    out.cells = ch.cells;
+    out.xTicks = ch.xTicks;
+    out.yTicks = ch.yTicks;
+    out.cols = view.map(function (_, i) {
+      return {
+        on: function () {
+          cmp.setState({ upHover: i });
+        },
+      };
+    });
+    out.hv =
+      hover === null
+        ? { has: false }
+        : {
+            has: true,
+            left: hoverLeft + "%",
+            tx: hoverLeft > 65 ? "translateX(calc(-100% - 12px))" : "translateX(12px)",
+            time: full(view[hover].local),
+            lead: view[hover].lead,
+            p50: pct(view[hover].p50),
+            band: pct(view[hover].p10) + "–" + pct(view[hover].p90) + "%",
+            wind: num(view[hover].wind),
+            temp: num(view[hover].temp),
+          };
+    return out;
+  }
 
   // --- действия ------------------------------------------------------------
 
@@ -1050,6 +1290,74 @@ window.ZHEL = (function () {
         e.forecast = error;
         merge(cmp, { err: e });
         cmp.setState({ busy: false });
+      });
+  }
+
+  /** Отказ, найденный до запроса: та же форма полей, что у ApiError. */
+  function localError(code, message) {
+    return { message: message, code: code, detail: "", unauthorized: false };
+  }
+
+  function pickFiles(cmp, list) {
+    var files = Array.prototype.slice.call(list || []);
+    if (!files.length) {
+      cmp.setState({ upFiles: [], upErr: null });
+      return;
+    }
+    if (files.length > UPLOAD_MAX_FILES) {
+      cmp.setState({
+        upFiles: [],
+        upErr: localError("UPLOAD_TOO_MANY_FILES", "Можно загрузить не больше двух файлов: по одному на турбину. Выбрано " + files.length + "."),
+      });
+      return;
+    }
+    var bad = files.filter(function (f) {
+      return !/\.csv$/i.test(f.name);
+    });
+    if (bad.length) {
+      cmp.setState({
+        upFiles: [],
+        upErr: localError(
+          "UPLOAD_BAD_FORMAT",
+          "Ждем файлы CSV. Не подходит: " + bad.map(function (f) { return f.name; }).join(", ") + ".",
+        ),
+      });
+      return;
+    }
+    cmp.setState({ upFiles: files, upErr: null });
+  }
+
+  function runUpload(cmp) {
+    var s = cmp.state;
+    var files = s.upFiles || [];
+    var date = uploadDate(s);
+    if (!files.length || !date || s.upBusy) return;
+
+    // multipart собирается браузером: свой Content-Type здесь не ставится, иначе потеряется граница частей.
+    var form = new FormData();
+    files.forEach(function (f) {
+      form.append("files", f);
+    });
+    form.append("issue_date", date);
+    (s.upNames || "")
+      .split(",")
+      .map(function (part) { return part.trim(); })
+      .filter(function (part) { return part.length > 0; })
+      .forEach(function (name) {
+        form.append("turbine_names", name);
+      });
+
+    cmp.setState({ upBusy: true, upErr: null, upRes: null, upHover: null });
+    Api.postForm("/forecast/upload", form)
+      .then(function (payload) {
+        cmp.setState({ upBusy: false, upRes: payload });
+      })
+      .catch(function (error) {
+        if (error && error.unauthorized) {
+          logout(cmp);
+          return;
+        }
+        cmp.setState({ upBusy: false, upErr: error });
       });
   }
 
@@ -1138,7 +1446,10 @@ window.ZHEL = (function () {
     return status;
   }
 
-  function stubBanner(s) {
+  function stubBanner(s, page) {
+    // На «Своих данных» плашка не нужна: там прогноз считается по файлу пользователя,
+    // и ответ всегда приходит с data_source="uploaded".
+    if (page === "upload") return { show: false, text: "" };
     var labels = { forecast: "прогноз", weather: "погода", dispatch: "заявка", backtest: "бэктест", model: "модель" };
     var stubbed = Object.keys(labels).filter(function (k) {
       return s.data[k] && s.data[k].data_source === "stub";
@@ -1221,7 +1532,7 @@ window.ZHEL = (function () {
 
       // состояния и честность данных
       st: status,
-      stub: stubBanner(s),
+      stub: stubBanner(s, page),
 
       // страницы
       isOverview: ready && page === "overview",
@@ -1231,6 +1542,7 @@ window.ZHEL = (function () {
       isWeather: ready && page === "weather",
       isModel: ready && page === "model",
       isSite: ready && page === "site",
+      isUpload: ready && page === "upload",
 
       // картинки
       heroTurbines: [
@@ -1262,6 +1574,7 @@ window.ZHEL = (function () {
       md: buildModel(s),
       site: buildSite(s),
       tb: buildTurbines(s),
+      up: buildUpload(s, cmp),
 
       // элементы управления страниц
       setH24: function () {
@@ -1278,6 +1591,9 @@ window.ZHEL = (function () {
       },
       clearHover: function () {
         cmp.setState({ hover: null });
+      },
+      clearUpHover: function () {
+        cmp.setState({ upHover: null });
       },
       onQ: function (e) {
         setRisk(cmp, +e.target.value);
