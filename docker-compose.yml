@@ -20,6 +20,7 @@ services:
 
   backend:
     build: ./backend
+    image: ${COMPOSE_PROJECT_NAME:-hackalem}-backend
     restart: unless-stopped
     env_file: .env
     ports:
@@ -35,6 +36,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # Офлайн-пайплайн прогноза выработки. Тот же образ, что и backend, но без БД,
+  # без портов и без рестарта: это разовая команда, а не сервис.
+  # Профиль pipeline не дает ему подняться вместе со стеком по `docker compose up`.
+  # Запуск: docker compose run --rm pipeline <команда>, обертка — `make pipeline`.
+  pipeline:
+    build: ./backend
+    image: ${COMPOSE_PROJECT_NAME:-hackalem}-backend
+    profiles: ["pipeline"]
+    env_file: .env
+    environment:
+      # Пути внутри контейнера. Заданы явно, потому что в образе лежит только
+      # backend/, и вычислить корень репозитория оттуда нельзя.
+      DATA_DIR: /data
+      OUTPUT_DIR: /outputs
+      REPORTS_DIR: /reports
+    volumes:
+      # Исходные данные только на чтение: пайплайн их не меняет.
+      - ./data:/data:ro
+      - ./outputs:/outputs
+      - ./reports:/reports
+    entrypoint: ["python", "-m", "src.forecast.cli"]
 
 volumes:
   pgdata:

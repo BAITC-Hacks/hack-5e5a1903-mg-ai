@@ -8,16 +8,20 @@ flowchart LR
     FE["frontend<br/>React, планируется"]
     BE["backend<br/>FastAPI, root_path=/api"]
     DB[("PostgreSQL 16")]
+    PL["pipeline<br/>прогноз, разовый запуск"]
+    VOL[("data/ ro<br/>outputs/ reports/ rw")]
 
     Client --> FE
     Client --> BE
     FE -.-> BE
     BE --> DB
+    PL --> VOL
 
     subgraph compose["docker compose"]
         FE
         BE
         DB
+        PL
     end
 
     style FE stroke-dasharray: 5 5
@@ -25,6 +29,11 @@ flowchart LR
 
 Пунктиром обозначен сервис, которого в репозитории еще нет. Сейчас реально работают
 `backend` и `db`, оба описаны в `docker-compose.yml`.
+
+`pipeline` — не сервис, а разовая команда в том же образе, что и `backend`. Он лежит
+в профиле `pipeline`, поэтому `docker compose up` его не поднимает, а `docker compose
+run --rm pipeline` запускает и удаляет контейнер. БД ему не нужна, поэтому связи
+с `db` у него нет: расчет прогноза читает `data/` и пишет в `outputs/` и `reports/`.
 
 ## Внутреннее устройство backend
 
@@ -59,6 +68,7 @@ flowchart TD
 | Линтер и формат | Ruff | конфиг в `backend/pyproject.toml` |
 | Тесты | pytest, pytest-asyncio, httpx | `backend/tests/` |
 | Запуск | Docker Compose | `docker-compose.yml` |
+| Пайплайн прогноза | тот же образ backend, разовый контейнер | сервис `pipeline` в compose |
 | CI | GitHub Actions | `.github/workflows/ci.yml` |
 
 ## Структура репозитория
@@ -83,6 +93,9 @@ HACKALEM AI/
 │   ├── protect-main.sh      # включает защиту ветки main на GitHub
 │   └── audit-deps.sh        # pip-audit и npm audit
 ├── rules/                   # PDF организаторов и выжимка из них
+├── data/                    # исходные данные SCADA, монтируются только на чтение
+├── outputs/                 # файлы прогноза, пишет сервис pipeline
+├── reports/                 # метрики бэктеста, пишет сервис pipeline
 ├── docs/
 │   ├── ARCHITECTURE.md      # этот файл
 │   ├── architecture-guidelines.md  # best practices
@@ -135,3 +148,16 @@ curl http://localhost:8000/api/health
 
 Порты берутся из `.env`. Если 8000 или 3000 на машине заняты, слот меняется,
 см. [worktrees.md](worktrees.md).
+
+Пайплайн прогноза запускается отдельно и веб-часть ему не нужна:
+
+```bash
+cp .env.example .env
+make pipeline cmd="replay --start 2026-01-31 --end 2026-02-27"
+```
+
+Результаты появляются в `outputs/` и `reports/` на хосте. Контейнер работает
+от пользователя `appuser` с uid 1000, поэтому оба каталога лежат в репозитории
+с файлом `.gitkeep`: если бы их не было, Docker создал бы их от root, и запись
+из контейнера упала бы. Для разработки тот же пайплайн запускается без Docker,
+через `uv` из каталога `backend`.
