@@ -1,0 +1,15 @@
+# Три разработчика на разных ОС. Без этого файла Windows закоммитит CRLF,
+# и bash-скрипты в CI упадут с "\r: command not found".
+* text=auto eol=lf
+
+*.sh text eol=lf
+Makefile text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary

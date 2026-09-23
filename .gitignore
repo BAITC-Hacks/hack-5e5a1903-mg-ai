@@ -1,0 +1,35 @@
+# секреты
+.env
+.env.*
+!.env.example
+
+# личная идентификация разработчика
+.dev-notes/me.md
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+*.egg
+.pytest_cache/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+build/
+
+# данные и служебное
+postgres_data/
+storage/
+
+# ide / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# claude локальные настройки
+.claude/settings.local.json
+CLAUDE.local.md
