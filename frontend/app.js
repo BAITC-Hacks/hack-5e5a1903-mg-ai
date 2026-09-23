@@ -833,7 +833,7 @@ window.ZHEL = (function () {
           name: m.name,
           color: MODEL_COLORS[i % MODEL_COLORS.length],
           path: linePath(m.wind_ms || [], wmax),
-          mae: num(m.wind_mae_ms, 2) + " м/с",
+          mae: m.wind_mae_ms === null || m.wind_mae_ms === undefined ? "—" : num(m.wind_mae_ms, 2) + " м/с",
           w: num(m.weight, 2),
           avg: num(mean(m.wind_ms || [])) + " м/с",
         };
