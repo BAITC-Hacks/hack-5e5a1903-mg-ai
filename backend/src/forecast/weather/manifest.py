@@ -72,6 +72,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.forecast.weather.asof import LeakageError
+
 logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = 1
@@ -90,11 +92,6 @@ GIT_TIMEOUT_S = 5
 
 _HASH_CHUNK = 1 << 20
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-
-
-# TODO(#7): импортировать LeakageError из .asof, когда get_nwp будет смерджен.
-class LeakageError(RuntimeError):
-    """В данных есть строка, опубликованная позже момента выпуска."""
 
 
 def build_manifest(
