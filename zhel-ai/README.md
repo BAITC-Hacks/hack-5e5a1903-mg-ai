@@ -83,22 +83,6 @@ made. It must not use February turbine data either. Most shortcuts leak the futu
 quietly, so the system is built around one rule: every piece of weather carries the time it
 became public, and nothing newer than the issue time reaches the model.
 
-## Case solution: OrgDiff, organisational structure and functions analysis
-
-The solution of the case *"AI agent: analysis of organisational structure and
-functions"* lives in [check-theory-kazakhtelecom/](check-theory-kazakhtelecom/) and runs
-on its own with one command:
-
-```bash
-cd check-theory-kazakhtelecom
-cp .env.example .env          # OPENAI_API_KEY is optional
-docker compose up -d --build  # then open http://localhost:8765
-```
-
-Its README, [check-theory-kazakhtelecom/README.md](check-theory-kazakhtelecom/README.md),
-has the installation steps, the jury scenario on the control set, the tests and the
-measured results. The rest of this file describes the shared backend foundation.
-
 ## What is implemented
 
 The case has five mandatory requirements. Status of each, checked on the running stack:
