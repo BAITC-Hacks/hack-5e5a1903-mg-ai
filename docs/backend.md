@@ -33,7 +33,7 @@ FastAPI 0.129 + SQLAlchemy 2.0 async (asyncpg) + Alembic + PostgreSQL 16. Пак
 ```
 src/
 ├── core/                 # config, database, base_model, base_schemas,
-│                         # security, exceptions, logger, dependencies
+│                         # security, exceptions, logger
 ├── modules/
 │   └── auth/             # образец модуля: models, schemas, service, router, dependencies
 └── main.py
@@ -47,15 +47,43 @@ migrations/               # alembic, env.py импортирует модели
 1. импортировать модели в `migrations/env.py`, иначе alembic их не увидит и миграция выйдет пустой;
 2. подключить роутер в `src/main.py` через `app.include_router(...)`.
 
-## Модуль auth как образец
+## Вход в систему
 
-`POST /api/auth/login` принимает email, password, remember_me. Сервис ищет юзера, проверяет пароль, отдает access и refresh токены. `GET /api/auth/me` берет Bearer-токен, `get_current_user` его декодирует и достает юзера.
+`POST /api/auth/login` принимает идентификатор пользователя, пароль и необязательный
+`remember_me`. Идентификатор передается ключом `email` **или** ключом `username`:
+в схеме `LoginRequest` у поля стоит `AliasChoices("email", "username")`, поэтому
+оба тела запроса равнозначны и старый контракт не сломан.
 
-Токены различаются полем `type`: `access` (30 минут) и `refresh` (1 день, либо 30 дней при `remember_me`). `get_current_user` пускает только `access`.
+```bash
+curl -X POST http://localhost:8000/api/auth/login   -H 'Content-Type: application/json'   -d '{"username": "admin", "password": "admin"}'
+```
 
-Модели: `User` (email, hashed_password, full_name, is_active, role_id) и `Role`. `User.role` грузится через `lazy="joined"`, поэтому `/me` отдает роль без отдельного запроса и без проблем с async lazy-load.
+```json
+{"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
+```
 
-Роли захардкожены числами в `src/core/dependencies.py`: admin=1, tech=2, manager=3, плюс готовые зависимости `require_admin` и `require_tech`. Под наш кейс эти значения скорее всего нужно будет переписать.
+Значение это идентификатор, а не обязательно почта: колонка `users.email` хранит то,
+чем пользователь входит, и у демонстрационного администратора там лежит логин `admin`.
+Неверный пароль и несуществующий пользователь дают одинаковый ответ: 401 с кодом
+`INVALID_CREDENTIALS` в общем конверте ошибки. Тело без идентификатора дает 422,
+имя недостающего поля в `details` — `email`.
+
+Дальше токен идет в заголовке: `GET /api/auth/me` и все эндпоинты прогноза требуют
+`Authorization: Bearer <access_token>`. Токены различаются полем `type`: `access`
+(30 минут) и `refresh` (1 день, либо 30 дней при `remember_me`). `get_current_user`
+пускает только `access`.
+
+Учетная запись создается скриптом `make seed`. Без переменных окружения получается
+демонстрационная пара **admin/admin**: судья должен войти без подготовки. Свои значения
+задаются через `SEED_ADMIN_EMAIL` и `SEED_ADMIN_PASSWORD` **до первого** запуска
+скрипта, потому что существующему пользователю пароль он не переписывает. Почему пара
+admin/admin оставлена и чем это плохо вне показа — в [../SECURITY.md](../SECURITY.md).
+
+Модели: `User` (email, hashed_password, full_name, is_active, role_id) и `Role`.
+`User.role` грузится через `lazy="joined"`, поэтому `/me` отдает роль без отдельного
+запроса и без проблем с async lazy-load. Проверок по ролям в коде нет: пользователь
+у стенда один, а шаблонные числовые роли из `src/core/dependencies.py` удалены вместе
+с файлом как мертвый код.
 
 ## Запуск
 
@@ -80,9 +108,10 @@ Dockerfile: gunicorn с четырьмя воркерами uvicorn.
 
 ## Тесты
 
-Лежат в `backend/tests/`, запускаются `make test`. Сейчас их 26. Покрыто: хеширование
+Лежат в `backend/tests/`, запускаются `make test`. Сейчас их 52. Покрыто: хеширование
 паролей и выпуск токенов, сервис аутентификации, HTTP-слой вместе с конвертом ошибок,
-health-эндпоинт и скрипт seed.
+вход демонстрационного администратора обоими ключами тела запроса, health-эндпоинт,
+эндпоинты прогноза, сравнение погоды со SCADA и скрипт seed.
 
 Тесты идут на SQLite в памяти, а не на PostgreSQL, поэтому не требуют поднятого стека
 и проходят примерно за две секунды. Из-за этого в `src/core/base_model.py` тип
@@ -102,10 +131,10 @@ HTTP-тесты используют `httpx.ASGITransport`, который не 
 - **Не было начальной миграции.** Создана `migrations/versions/44afa53fd865_initial.py`
   на таблицы `roles` и `users`.
 - **Цель `make seed` звала несуществующий модуль.** Написан `src/scripts/seed.py`,
-  который создает первого администратора. Он идемпотентен и не хранит пароль в коде:
-  пароль берется из `SEED_ADMIN_PASSWORD`, а без этой переменной генерируется случайный
-  и печатается один раз. Без этого скрипта получить токен было невозможно, потому что
-  регистрации в API нет.
+  который создает первого администратора. Он идемпотентен: повторный запуск не трогает
+  существующего пользователя и не переписывает ему пароль. Логин и пароль берутся из
+  `SEED_ADMIN_EMAIL` и `SEED_ADMIN_PASSWORD`, по умолчанию admin/admin для показа.
+  Без этого скрипта получить токен было невозможно, потому что регистрации в API нет.
 - **Дубли настроек.** Свои `docker-compose.yaml`, `docker-compose.local.yaml`,
   `Makefile`, `.env.example` и `.gitignore` у backend удалены, их роль перешла корневым
   файлам. `backend/README.md` сокращен до ссылки на этот документ.
@@ -126,9 +155,6 @@ HTTP-тесты используют `httpx.ASGITransport`, который не 
   Правится на `users: Mapped[list["User"]]` плюс переименование `back_populates`.
 - **Refresh-токен выдается, но применить его нечем.** Есть `create_refresh_token`
   и схема `RefreshRequest`, а эндпоинта `/auth/refresh` нет. Значит и отзыва токенов нет.
-- **Числовые роли в `src/core/dependencies.py`** захардкожены (admin=1, tech=2,
-  manager=3) и нигде не используются. До сдачи их нужно приспособить под кейс или
-  удалить, иначе это мертвый шаблонный код.
 - **passlib 1.7.4 не поддерживается** и при чтении версии argon2 сыпет
   DeprecationWarning. Работает, но если начнет падать, схема хеширования это первое
   место для проверки.

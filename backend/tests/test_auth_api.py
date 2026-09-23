@@ -1,9 +1,11 @@
 """Тесты HTTP-слоя: коды ответов и единый конверт ошибок."""
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.security import create_access_token, create_refresh_token
 from src.modules.auth.models import User
+from src.scripts.seed import DEFAULT_EMAIL, DEFAULT_PASSWORD, seed_admin
 from tests.conftest import TEST_PASSWORD
 
 
@@ -75,3 +77,42 @@ async def test_token_of_deleted_user_is_rejected(client: AsyncClient, user: User
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "USER_NOT_FOUND"
+
+
+async def test_demo_admin_logs_in_with_default_credentials(client: AsyncClient, session: AsyncSession):
+    """Сценарий судьи: make seed, затем вход admin/admin."""
+    await seed_admin(session, DEFAULT_EMAIL, DEFAULT_PASSWORD)
+
+    response = await client.post("/api/auth/login", json={"username": DEFAULT_EMAIL, "password": DEFAULT_PASSWORD})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"] and body["refresh_token"]
+
+
+async def test_demo_admin_with_wrong_password_uses_error_envelope(client: AsyncClient, session: AsyncSession):
+    await seed_admin(session, DEFAULT_EMAIL, DEFAULT_PASSWORD)
+
+    response = await client.post("/api/auth/login", json={"username": DEFAULT_EMAIL, "password": "wrong"})
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+async def test_username_key_works_like_email_key(client: AsyncClient, user: User):
+    by_email = await client.post("/api/auth/login", json={"email": user.email, "password": TEST_PASSWORD})
+    by_username = await client.post("/api/auth/login", json={"username": user.email, "password": TEST_PASSWORD})
+
+    assert by_email.status_code == by_username.status_code == 200
+    assert by_username.json()["token_type"] == "bearer"
+    assert by_username.json()["access_token"]
+
+
+async def test_login_without_identifier_reports_the_field_name(client: AsyncClient):
+    response = await client.post("/api/auth/login", json={"password": TEST_PASSWORD})
+
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert error["details"] == {"email": "Field required"}

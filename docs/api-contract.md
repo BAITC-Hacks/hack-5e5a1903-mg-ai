@@ -24,13 +24,19 @@ frontend  ->  backend (dev1)  ->  weather (dev3)
 ## Авторизация
 
 ```
-POST /api/auth/login     {"email": "...", "password": "..."}  ->  {access_token, refresh_token}
+POST /api/auth/login     {"username": "admin", "password": "admin"}  ->  {access_token, refresh_token}
 GET  /api/auth/me        Authorization: Bearer <access_token>
 ```
 
+Идентификатор пользователя передается ключом `username` или ключом `email`, это
+псевдонимы одного поля: интерфейс волен слать любой из двух. Значение не обязано быть
+почтой. Пользователь создается скриптом `make seed`, по умолчанию это демонстрационная
+пара **admin/admin**, ее можно переопределить через `SEED_ADMIN_EMAIL` и
+`SEED_ADMIN_PASSWORD` до первого запуска скрипта.
+
 Все эндпоинты прогноза требуют заголовок `Authorization: Bearer <access_token>`.
-Без него приходит 401 в общем конверте ошибки. Вход `admin:admin` делается
-отдельной задачей, до нее пользователь создается скриптом `make seed`.
+Без него приходит 401 в общем конверте ошибки. Неверный пароль дает 401 с кодом
+`INVALID_CREDENTIALS`, тело без идентификатора — 422 с полем `email` в `details`.
 
 ## Эндпоинты прогноза
 
