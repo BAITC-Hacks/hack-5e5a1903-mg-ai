@@ -2,8 +2,34 @@
 
 ## Правило
 
-Каждый разработчик берет фичу и пилит ее в своей ветке. **В `main` напрямую не пушим
-и не коммитим, попасть туда можно только мерджем ветки через pull request.**
+Каждый разработчик берет фичу и пилит ее в своей ветке. **Все PR идут в `dev`, а не
+в `main`.** В `main` попадает только PR из `dev` в `main`. Напрямую не пушим и не коммитим
+ни в `main`, ни в `dev`.
+
+## Ветки main и dev
+
+| Ветка | Что в ней | Как туда попадает изменение |
+|---|---|---|
+| `dev` | интеграционная ветка: здесь собираются фичи всех троих | PR из ветки фичи, squash-мердж |
+| `main` | то, что оценивают: проверенное состояние `dev` | только PR из `dev` в `main`, обычный мердж |
+
+Ветки фич создаются от `origin/dev`. `main` обновляется, когда в `dev` все проходит:
+`make check` зеленый и стек поднимается по README.
+
+```bash
+gh pr create --base main --head dev --title "release: <что вошло>"
+gh pr merge --merge                  # не squash: иначе dev и main разойдутся историей
+```
+
+Оценивается состояние `main`, поэтому **последний PR из `dev` в `main` мерджится
+до дедлайна**, с запасом на проверку с чистого клона.
+
+Задачи закрываются автоматически, только когда PR попадает в `main`: GitHub смотрит
+на ветку по умолчанию. `Closes #N` в PR в `dev` задачу не закроет, поэтому в описание
+PR из `dev` в `main` переносим строки `Closes #N` всех вошедших задач.
+
+Запрет прямого push хуком и защитой ветки на GitHub действует для `main`.
+Для `dev` это договоренность.
 
 Ветка под фичу поднимается **в отдельном worktree** со своим слотом портов,
 см. [worktrees.md](worktrees.md).
@@ -106,7 +132,8 @@ PR может закрывать одну задачу и продвигать �
 ## Порядок работы
 
 ```bash
-git worktree add ../hackalem-worktrees/features-dev1-auth -b features-dev1-auth
+git fetch origin
+git worktree add ../hackalem-worktrees/features-dev1-auth -b features-dev1-auth origin/dev
 cd ../hackalem-worktrees/features-dev1-auth
 cp ../../HACKALEM\ AI/.env .env      # и поменять слот портов на свободный
 docker compose up -d --build
@@ -114,11 +141,11 @@ docker compose up -d --build
 make lint && make test               # обязательно перед пушем
 make audit                           # уязвимости в зависимостях
 git push -u origin features-dev1-auth
-gh pr create --base main --fill      # в описании: Closes #N, Fixes #N или Refs #N
+gh pr create --base dev --fill       # в описании: Closes #N, Fixes #N или Refs #N
 gh pr merge --squash --delete-branch
 ```
 
-- Фича доделана → создаем **PR в `main`** со ссылкой на задачу и мерджим.
+- Фича доделана → создаем **PR в `dev`** со ссылкой на задачу и мерджим.
 - **Ревью остальных разработчиков не нужно.** Мерджит сам автор, сразу после создания PR.
   Хакатон, ждать никого не надо.
 - Шаблон PR подставляется автоматически из `.github/pull_request_template.md`,
@@ -129,9 +156,9 @@ gh pr merge --squash --delete-branch
 - Перед пушем проверить, что не уезжают секреты: `.env`, ключи, токены
   (см. [../rules/README.md](../rules/README.md)).
 - Если фича задевает чужую зону, пишем об этом в свой файл `.dev-notes/dev{N}.md`.
-- Перед PR подтянуть `main`, чтобы поймать конфликты у себя, а не в PR:
+- Перед PR подтянуть `dev`, чтобы поймать конфликты у себя, а не в PR:
 
 ```bash
 git fetch origin
-git rebase origin/main
+git rebase origin/dev
 ```

@@ -9,6 +9,10 @@
 Кэш источника лежит в ``<cache_root>/<source.cache_dir>/*.csv.gz`` в длинном формате:
 строка на пару (прогон, час), колонки ``run_init_utc``, ``valid_time_utc`` и переменные
 Open-Meteo. Кэш читается один раз на экземпляр хранилища.
+
+Строка прогона без скорости ветра ни на одной высоте считается отсутствующей: на такой
+час берется более старый прогон с ветром. Иначе сбой архива (IFS, 04–09.08.2025) давал
+бы свежий прогон с пустым ветром, а без ветра модель прогноз не строит.
 """
 
 import logging
@@ -35,6 +39,7 @@ CACHE_TO_OUTPUT = {
     "surface_pressure": "psfc",
 }
 VALUE_COLUMNS = list(CACHE_TO_OUTPUT.values())
+WIND_COLUMNS = ["ws80", "ws100", "ws120"]
 OUTPUT_COLUMNS = ["valid_time_utc", "source", "run_init_utc", "available_at_utc", "lead_h", *VALUE_COLUMNS]
 REQUIRED_CACHE_COLUMNS = ("run_init_utc", "valid_time_utc")
 
@@ -85,7 +90,11 @@ def _to_utc_index(values: Iterable[datetime | pd.Timestamp | str]) -> pd.Datetim
         raise ValueError("Пустой список часов valid_times")
     if index.tz is None:
         raise ValueError("Часы valid_times без часового пояса, нужен UTC")
-    return index.tz_convert("UTC").as_unit("ns").unique().sort_values()
+    index = index.tz_convert("UTC").as_unit("ns")
+    off_hour = index[index != index.floor("h")]
+    if len(off_hour):
+        raise ValueError(f"Часы valid_times не на целом часе: {', '.join(f'{t:%Y-%m-%d %H:%M}' for t in off_hour[:3])}")
+    return index.unique().sort_values()
 
 
 def _naive_ns(values: pd.Series | pd.DatetimeIndex) -> np.ndarray:
@@ -157,6 +166,16 @@ def load_source_cache(source: Source, cache_root: Path) -> pd.DataFrame:
         logger.warning("Кэш %s: %d повторов (прогон, час), оставлена последняя запись", source.name, int(duplicated.sum()))
         frame = frame.loc[~duplicated]
 
+    no_wind = frame[WIND_COLUMNS].isna().all(axis=1)
+    if no_wind.any():
+        logger.warning(
+            "Кэш %s: %d строк без скорости ветра отброшены, на эти часы возьмется более старый прогон (%s)",
+            source.name,
+            int(no_wind.sum()),
+            ", ".join(sorted(frame.loc[no_wind, "run_init_utc"].dt.strftime("%Y-%m-%d %Hz").unique())),
+        )
+        frame = frame.loc[~no_wind]
+
     frame["available_at_utc"] = frame["run_init_utc"] + source.delay
     frame["lead_h"] = ((frame["valid_time_utc"] - frame["run_init_utc"]) // HOUR).astype("int64")
     return frame[OUTPUT_COLUMNS].sort_values(["valid_time_utc", "run_init_utc"], kind="stable").reset_index(drop=True)
@@ -182,10 +201,26 @@ class AsOfStore:
             self._data[name] = _SourceData(frame, _naive_ns(frame["valid_time_utc"]), _naive_ns(frame["available_at_utc"]), runs)
         return self._data[name]
 
-    def get_nwp(self, source: str, as_of: datetime | pd.Timestamp, valid_times: Iterable[datetime | pd.Timestamp]) -> pd.DataFrame:
-        """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of``.
+    def cache(self, name: str) -> pd.DataFrame:
+        """Весь кэш источника в колонках выхода ``get_nwp``, без отбора по as_of. Только для чтения.
 
-        Нет прогона хотя бы для одного часа — ``NoRunAvailable``.
+        Нужен для описания архива: какие прогоны покрывают часы, какие колонки пустые.
+        Отдавать эти строки в прогноз нельзя: в них есть прогоны, опубликованные позже любого момента.
+        """
+        return self._load(name).frame
+
+    def get_nwp(
+        self,
+        source: str,
+        as_of: datetime | pd.Timestamp,
+        valid_times: Iterable[datetime | pd.Timestamp],
+        required: Sequence[str] = (),
+    ) -> pd.DataFrame:
+        """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of`` и ветром.
+
+        Строки идут по возрастанию часа, повторы часов во входе схлопываются в одну строку.
+        ``required`` — колонки, без которых строка прогона считается отсутствующей, как строка без ветра:
+        на такой час берется более старый прогон. Нет прогона хотя бы для одного часа — ``NoRunAvailable``.
         """
         as_of = to_utc(as_of)
         wanted = _to_utc_index(valid_times)
@@ -196,6 +231,8 @@ class AsOfStore:
         lo = np.searchsorted(data.valid_ns, wanted_ns[0], side="left")
         hi = np.searchsorted(data.valid_ns, wanted_ns[-1], side="right")
         mask = (data.available_ns[lo:hi] <= as_of_ns) & np.isin(data.valid_ns[lo:hi], wanted_ns)
+        for column in required:
+            mask &= data.frame[column].iloc[lo:hi].notna().to_numpy()
         # Кадр отсортирован по (час, прогон), поэтому последняя строка часа — самый свежий доступный прогон.
         chosen = data.frame.iloc[lo:hi].loc[mask].drop_duplicates("valid_time_utc", keep="last").reset_index(drop=True)
 
@@ -209,6 +246,8 @@ class AsOfStore:
         """Длинная таблица ``get_nwp`` по нескольким источникам. Источник без прогона пропускается."""
         if not sources:
             raise ValueError("Пустой список источников")
+        if len(set(sources)) != len(sources):
+            raise ValueError(f"Источники повторяются: {', '.join(sources)}")
         as_of = to_utc(as_of)
         wanted = _to_utc_index(valid_times)
         frames = []

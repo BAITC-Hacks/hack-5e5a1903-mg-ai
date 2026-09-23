@@ -1,8 +1,8 @@
 """Синтетический кэш прогнозов в формате ``data/nwp/<source>/*.csv.gz``.
 
 Single Runs (``ifs``): каждый прогон по шагу источника, часы с заблаговременностью 0…horizon_h.
-Previous Runs (остальные): на каждый час t строки ``prev_day`` N = 0…3 от прогона
-floor_step(t) − 24·N ч, как их отдает Open-Meteo.
+Previous Runs (остальные): на каждый час t строки ``prev_day`` N = 1…3 от прогона
+floor_step(t) − 24·N ч, как их пишет ``fetch_prev_runs``.
 """
 
 from pathlib import Path
@@ -11,10 +11,10 @@ import numpy as np
 import pandas as pd
 
 from src.forecast.weather.asof import CACHE_TO_OUTPUT
+from src.forecast.weather.prev_runs_rule import PREV_DAYS
 from src.forecast.weather.sources import Source
 
 SINGLE_RUNS = {"ifs"}
-PREV_DAYS = range(4)
 EMPTY_COLUMNS = {"gfs": ["wind_speed_100m"], "icon": ["wind_gusts_10m"], "gem": ["wind_speed_100m", "surface_pressure"]}
 
 

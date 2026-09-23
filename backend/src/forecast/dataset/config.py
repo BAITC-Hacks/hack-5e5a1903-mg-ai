@@ -1,8 +1,4 @@
-"""Настройки данных dev3: пути, часовой пояс SCADA, пороги флагов очистки.
-
-TODO: после #5 перенести пути, паспорт турбины и правило пояса в ``src/forecast/config.py``,
-после #27 брать колонки ScadaHistory из ``src/forecast/ml/schema.py``.
-"""
+"""Настройки данных dev3: пути, часовой пояс SCADA, пороги флагов очистки."""
 
 import os
 from pathlib import Path

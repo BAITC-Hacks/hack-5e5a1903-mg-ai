@@ -35,12 +35,13 @@
 - **dev3** — все входные данные. Сам выбирает источник погоды, отдает погоду строго на момент
   прогноза, историю турбин и проверенный часовой пояс.
 
-Границы между частями: [api-contract.md](api-contract.md), контракт модели:
+Границы между частями: [api-contract.md](api-contract.md), контракт сервиса погоды:
+[dev3/weather-openapi.json](dev3/weather-openapi.json), контракт модели:
 [../ml/openapi.json](../ml/openapi.json).
 
 - dev1: [dev1/README.md](dev1/README.md)
 - dev2: [dev2/README.md](dev2/README.md)
-- dev3: [dev3/README.md](dev3/README.md)
+- dev3: [dev3/README.md](dev3/README.md), сервис погоды: [dev3/weather-service.md](dev3/weather-service.md)
 
 Правило: новый модуль или сервис получает свой `.md` здесь и строку в этом списке.
 Значимое решение получает запись в `adr/`.

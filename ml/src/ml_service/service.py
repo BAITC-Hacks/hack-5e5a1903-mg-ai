@@ -34,7 +34,7 @@ def predict(request: PredictRequest, model: LoadedModel) -> PredictResponse:
     if not model.trained:
         warnings.append(PredictWarning(code="BASELINE_MODEL", message="Обученной модели нет, прогноз по паспортной кривой мощности"))
 
-    turbines = list(dict.fromkeys(request.options.turbines))
+    turbines = request.selected_turbines
     table = _calibrate(model.predictor.predict(frame, turbines), request.options.interval_scale)
     table["order"] = table["turbine"].map(_TURBINE_ORDER)
     table = table.sort_values(["valid_time_utc", "order"])

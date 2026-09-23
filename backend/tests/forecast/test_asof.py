@@ -49,6 +49,18 @@ def asof_logs(caplog):
     asof_module.logger.removeHandler(caplog.handler)
 
 
+PINNED_DELAYS = {"ifs": (6, "7:30"), "ifs025": (6, "10:00"), "gfs": (6, "7:00"), "icon": (6, "8:00"), "gem": (12, "8:00")}
+# Задержка по метаданным Open-Meteo, замер 23.09.2026. У GEM метаданные устарели.
+OBSERVED_DELAYS = {"ifs": "7:00", "ifs025": "7:46", "gfs": "6:28", "icon": "3:47"}
+
+
+def test_source_delays_are_pinned():
+    """Остальные тесты берут задержку из того же реестра и ее ошибку не заметят. Меняешь задержку — меняй и эту таблицу."""
+    assert {name: (s.run_step_h, f"{s.delay.seconds // 3600}:{s.delay.seconds % 3600 // 60:02d}") for name, s in SOURCES.items()} == PINNED_DELAYS
+    for name, observed in OBSERVED_DELAYS.items():
+        assert SOURCES[name].delay > pd.Timedelta(f"{observed}:00"), name
+
+
 def reference_choice(cache: pd.DataFrame, source: str, as_of: pd.Timestamp, valid_times: pd.DatetimeIndex) -> pd.Series:
     """Прямой перебор: для каждого часа самый поздний прогон, доступный к as_of."""
     delay = SOURCES[source].delay
@@ -98,9 +110,17 @@ def test_asof_never_returns_future_runs(store, caches, source, as_of):
     assert list(out["run_init_utc"]) == list(expected)
 
 
+def canary_t0(source: str, moment: str) -> pd.Timestamp:
+    """Время выпуска и минута до публикации прогона 00z: во втором случае утечка даже на минуту подмешает мусор."""
+    if moment == "issue":
+        return ts("2026-01-25 02:00")
+    return ts("2026-01-25 00:00") + SOURCES[source].delay - pd.Timedelta(minutes=1)
+
+
 @pytest.mark.parametrize("source", list(SOURCES))
-def test_canary_future_runs_replaced_with_garbage(tmp_path, caches, source):
-    t0 = ts("2026-01-25 02:00")
+@pytest.mark.parametrize("moment", ["issue", "minute_before_publication"])
+def test_canary_future_runs_replaced_with_garbage(tmp_path, caches, source, moment):
+    t0 = canary_t0(source, moment)
     clean = caches[source]
     poisoned = clean.copy()
     future = poisoned["run_init_utc"] + SOURCES[source].delay > t0
@@ -109,7 +129,7 @@ def test_canary_future_runs_replaced_with_garbage(tmp_path, caches, source):
     poisoned.loc[future, value_columns] = rng.uniform(-1e6, 1e6, (int(future.sum()), len(value_columns)))
     write_cache(clean, tmp_path / "clean", SOURCES[source])
     write_cache(poisoned, tmp_path / "poisoned", SOURCES[source])
-    valid_times = pd.date_range(t0 - pd.Timedelta(hours=72), t0 + pd.Timedelta(hours=48), freq="h")
+    valid_times = pd.date_range(t0.floor("h") - pd.Timedelta(hours=72), t0.floor("h") + pd.Timedelta(hours=48), freq="h")
 
     a = AsOfStore(tmp_path / "clean").get_nwp(source, t0, valid_times)
     b = AsOfStore(tmp_path / "poisoned").get_nwp(source, t0, valid_times)
@@ -190,6 +210,71 @@ def test_empty_columns_stay_nan(store):
     assert out["ws80"].notna().all()
 
 
+WIND_CACHE_COLUMNS = ["wind_speed_80m", "wind_speed_100m", "wind_speed_120m"]
+
+
+def ifs_with_blank_wind(caches, runs: list[str], columns: list[str]) -> pd.DataFrame:
+    frame = caches["ifs"].copy()
+    frame.loc[frame["run_init_utc"].isin([ts(run) for run in runs]), columns] = np.nan
+    return frame
+
+
+def test_run_without_wind_falls_back_to_older_run(tmp_path, caches, asof_logs):
+    """Сбой архива, как у IFS 04–09.08.2025: у свежего прогона ветер пуст на всех высотах."""
+    write_cache(ifs_with_blank_wind(caches, ["2026-01-30 18:00"], WIND_CACHE_COLUMNS), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    out = AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of))
+
+    assert (out["run_init_utc"] == ts("2026-01-30 12:00")).all()
+    assert out["ws80"].notna().all()
+    assert "без скорости ветра" in asof_logs.text
+
+
+def test_run_with_wind_at_some_height_is_kept(tmp_path, caches):
+    write_cache(ifs_with_blank_wind(caches, ["2026-01-30 18:00"], ["wind_speed_80m"]), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    out = AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of))
+
+    assert (out["run_init_utc"] == ts("2026-01-30 18:00")).all()
+    assert out["ws80"].isna().all()
+    assert out["ws100"].notna().all()
+
+
+def test_no_run_with_wind_is_reported_not_returned_as_nan(tmp_path, caches):
+    runs = ["2026-01-30 00:00", "2026-01-30 06:00", "2026-01-30 12:00", "2026-01-30 18:00"]
+    write_cache(ifs_with_blank_wind(caches, runs, WIND_CACHE_COLUMNS), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    with pytest.raises(NoRunAvailable) as exc:
+        AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of))
+    assert list(exc.value.missing) == list(pd.date_range("2026-02-01 19:00", "2026-02-02 02:00", freq="h", tz=UTC))
+
+
+def test_required_column_falls_back_to_older_run(tmp_path, caches):
+    """Свежий прогон с ветром, но без температуры: по умолчанию он выбирается, с ``required`` — нет."""
+    write_cache(ifs_with_blank_wind(caches, ["2026-01-30 18:00"], ["temperature_2m"]), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+    store = AsOfStore(tmp_path)
+
+    plain = store.get_nwp("ifs", as_of, horizon(as_of))
+    strict = store.get_nwp("ifs", as_of, horizon(as_of), required=("t2m",))
+
+    assert (plain["run_init_utc"] == ts("2026-01-30 18:00")).all() and plain["t2m"].isna().all()
+    assert (strict["run_init_utc"] == ts("2026-01-30 12:00")).all() and strict["t2m"].notna().all()
+
+
+def test_required_column_missing_everywhere_is_no_run(tmp_path, caches):
+    runs = ["2026-01-30 00:00", "2026-01-30 06:00", "2026-01-30 12:00", "2026-01-30 18:00"]
+    write_cache(ifs_with_blank_wind(caches, runs, ["temperature_2m"]), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    with pytest.raises(NoRunAvailable) as exc:
+        AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of), required=("t2m",))
+    assert list(exc.value.missing) == list(pd.date_range("2026-02-01 19:00", "2026-02-02 02:00", freq="h", tz=UTC))
+
+
 def test_multi_skips_source_without_runs(tmp_path, caches, asof_logs):
     for name in ("ifs", "gfs"):
         write_cache(caches[name], tmp_path, SOURCES[name])
@@ -260,6 +345,22 @@ def test_naive_times_are_rejected(store):
         store.get_nwp("ifs", pd.Timestamp("2026-01-31 02:00"), horizon(ts("2026-01-31 02:00")))
     with pytest.raises(ValueError, match="часового пояса"):
         store.get_nwp("ifs", ts("2026-01-31 02:00"), pd.date_range("2026-01-31 03:00", periods=3, freq="h"))
+
+
+def test_valid_times_off_the_hour_are_rejected(store):
+    with pytest.raises(ValueError, match="не на целом часе: 2026-01-31 03:30"):
+        store.get_nwp("gfs", ts("2026-01-31 02:00"), [ts("2026-01-31 03:00"), ts("2026-01-31 03:30")])
+
+
+def test_valid_times_are_sorted_and_deduplicated(store):
+    out = store.get_nwp("gfs", ts("2026-01-31 02:00"), [ts("2026-01-31 05:00"), ts("2026-01-31 03:00"), ts("2026-01-31 03:00")])
+    assert list(out["valid_time_utc"]) == [ts("2026-01-31 03:00"), ts("2026-01-31 05:00")]
+
+
+def test_multi_rejects_repeated_sources(store):
+    as_of = ts("2026-01-31 02:00")
+    with pytest.raises(ValueError, match="повторяются"):
+        store.get_nwp_multi(["gfs", "icon", "gfs"], as_of, horizon(as_of))
 
 
 def test_unknown_source(store):

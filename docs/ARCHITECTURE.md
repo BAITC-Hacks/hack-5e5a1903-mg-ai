@@ -5,43 +5,48 @@
 ```mermaid
 flowchart LR
     Client["Браузер"]
-    FE["frontend<br/>React, планируется"]
+    FE["frontend<br/>nginx: статика и прокси /api"]
     BE["backend<br/>FastAPI, root_path=/api"]
     DB[("PostgreSQL 16")]
-    PL["pipeline<br/>прогноз, разовый запуск"]
     ML["ml<br/>FastAPI + LightGBM<br/>P10/P50/P90"]
-    VOL[("data/ ro<br/>outputs/ reports/ rw")]
+    WX["weather<br/>FastAPI, погода на момент T<br/>и история турбин"]
+    DATA[("data/ ro")]
 
     Client --> FE
-    Client --> BE
-    FE -.-> BE
+    FE --> BE
     BE --> DB
-    PL --> VOL
     BE -- "POST /predict" --> ML
+    BE -- "GET /nwp /runs" --> WX
+    BE --> DATA
+    WX --> DATA
 
     subgraph compose["docker compose"]
         FE
         BE
         DB
-        PL
         ML
+        WX
     end
-
-    style FE stroke-dasharray: 5 5
 ```
 
-Пунктиром обозначен сервис, которого в репозитории еще нет. Сейчас реально работают
-`backend`, `db` и `ml`, все описаны в `docker-compose.yml`.
+Браузер ходит только на `frontend`. nginx раздает статику из `frontend/` и проксирует
+`/api` на backend внутри сети compose, поэтому интерфейс и API живут на одном адресе:
+CORS не нужен, порт backend в ссылки не попадает. Почему статика, а не сборка фронтенда:
+[adr/0007-frontend-as-static-behind-nginx.md](adr/0007-frontend-as-static-behind-nginx.md).
+
+`weather` — погода строго на момент прогноза и история турбин за HTTP-контрактом
+`docs/dev3/weather-openapi.json`. Код лежит в `backend/src/weather_service/`, это тонкий слой над
+`src.forecast.weather` и `src.forecast.dataset`, запускается из образа backend другой командой.
+Кэш прогнозов и SCADA читает из `data/` один раз на старте, в сеть не ходит. Backend стартует
+после того, как `weather` здоров, и ходит в него по `WEATHER_SERVICE_URL`; не ответил сервис —
+агент читает тот же кэш через `AsOfStore` в процессе и пишет переключение в журнал. Наружу
+опубликован только порт `WEATHER_PORT` для Swagger. Эндпоинты:
+[dev3/weather-service.md](dev3/weather-service.md).
 
 `ml` — модель прогноза за HTTP-контрактом `ml/openapi.json`: принимает прогнозы погоды,
 доступные на момент T, и отдает P10/P50/P90. Вызывает ее backend, наружу опубликован
 только порт `ML_PORT` для Swagger. Почему отдельный сервис:
 [adr/0006-ml-service.md](adr/0006-ml-service.md), эндпоинты: [../ml/README.md](../ml/README.md).
-
-`pipeline` — не сервис, а разовая команда в том же образе, что и `backend`. Он лежит
-в профиле `pipeline`, поэтому `docker compose up` его не поднимает, а `docker compose
-run --rm pipeline` запускает и удаляет контейнер. БД ему не нужна, поэтому связи
-с `db` у него нет: расчет прогноза читает `data/` и пишет в `outputs/` и `reports/`.
 
 ## Внутреннее устройство backend
 
@@ -69,15 +74,15 @@ flowchart TD
 
 | Слой | Технология | Где |
 |------|-----------|-----|
-| Frontend | React, планируется | `frontend/` |
+| Frontend | React как статика, без сборки; раздает nginx | `frontend/` |
 | Backend | FastAPI, SQLAlchemy 2.0 async, Alembic | `backend/` |
 | ML-сервис | FastAPI, LightGBM, pandas; контракт `ml/openapi.json` | `ml/`, сервис `ml` в compose |
+| Сервис погоды | FastAPI, pandas; контракт `docs/dev3/weather-openapi.json` | `backend/src/weather_service/`, образ backend |
 | БД | PostgreSQL 16 | сервис `db` в compose |
 | Пакеты Python | uv | `backend/pyproject.toml`, `backend/uv.lock`; `ml/pyproject.toml`, `ml/uv.lock` |
 | Линтер и формат | Ruff | конфиг в `backend/pyproject.toml` и `ml/pyproject.toml` |
 | Тесты | pytest, pytest-asyncio, httpx | `backend/tests/`, `ml/tests/` |
 | Запуск | Docker Compose | `docker-compose.yml` |
-| Пайплайн прогноза | тот же образ backend, разовый контейнер | сервис `pipeline` в compose |
 | CI | GitHub Actions | `.github/workflows/ci.yml` |
 
 ## Структура репозитория
@@ -103,8 +108,11 @@ HACKALEM AI/
 │   └── audit-deps.sh        # pip-audit и npm audit
 ├── rules/                   # PDF организаторов и выжимка из них
 ├── data/                    # исходные данные SCADA, монтируются только на чтение
-├── outputs/                 # файлы прогноза, пишет сервис pipeline
-├── reports/                 # метрики бэктеста, пишет сервис pipeline
+├── frontend/                # интерфейс: статика дашборда
+├── deploy/nginx/            # конфиг nginx: раздача статики и прокси /api
+├── ml/                      # ML-сервис dev2: контракт, модель, артефакты
+├── outputs/                 # пустой каталог под выгрузки, пока ничем не заполняется
+├── reports/                 # материалы анализа данных, например сравнение моделей погоды
 ├── docs/
 │   ├── ARCHITECTURE.md      # этот файл
 │   ├── architecture-guidelines.md  # best practices
@@ -121,6 +129,8 @@ HACKALEM AI/
 ├── backend/
 │   ├── src/core/            # config, database, security, exceptions, logger
 │   ├── src/modules/auth/    # образцовый модуль
+│   ├── src/forecast/        # погода на момент T (weather/) и история турбин (dataset/)
+│   ├── src/weather_service/ # HTTP-сервис погоды поверх src/forecast, без БД
 │   ├── migrations/          # Alembic
 │   └── tests/               # pytest
 └── ml/                      # ML-сервис: FastAPI + LightGBM, свой uv.lock
@@ -157,23 +167,26 @@ HACKALEM AI/
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
-docker compose exec backend alembic upgrade head
-curl http://localhost:8000/api/health
+make demo
 ```
 
-Порты берутся из `.env`. Если 8000 или 3000 на машине заняты, слот меняется,
-см. [worktrees.md](worktrees.md).
+`make demo` поднимает стек, дожидается готовности базы и backend, накатывает миграции
+и создает администратора `admin` с паролем `admin`. После этого интерфейс открывается
+на `FRONTEND_PORT` из `.env`, а API доступно по тому же адресу с префиксом `/api`.
 
-Пайплайн прогноза запускается отдельно и веб-часть ему не нужна:
+Пошагово то же самое без `make`:
 
 ```bash
 cp .env.example .env
-make pipeline cmd="replay --start 2026-01-31 --end 2026-02-27"
+docker compose up -d --build
+docker compose exec backend alembic upgrade head
+docker compose exec backend python -m src.scripts.seed
+curl http://localhost:3000/api/health
 ```
 
-Результаты появляются в `outputs/` и `reports/` на хосте. Контейнер работает
-от пользователя `appuser` с uid 1000, поэтому оба каталога лежат в репозитории
-с файлом `.gitkeep`: если бы их не было, Docker создал бы их от root, и запись
-из контейнера упала бы. Для разработки тот же пайплайн запускается без Docker,
-через `uv` из каталога `backend`.
+Порты берутся из `.env`. Если 3000, 8000 или 8010 на машине заняты, слот меняется,
+см. [worktrees.md](worktrees.md).
+
+Каталоги `outputs/` и `reports/` лежат в репозитории с файлом `.gitkeep`. Это не
+формальность: контейнеры работают от пользователя с uid 1000, а бинд-маунт, которого
+нет на хосте, Docker создает от root, и запись из контейнера после этого падает.

@@ -1,0 +1,50 @@
+{
+  "model": "ExtraTreesRegressor",
+  "sklearn_version": "1.9.1",
+  "params": {
+    "n_estimators": 200,
+    "min_samples_leaf": 30,
+    "max_features": 1.0,
+    "random_state": 42
+  },
+  "features": [
+    "ws",
+    "t",
+    "hour",
+    "doy_sin",
+    "doy_cos",
+    "turbine"
+  ],
+  "split": {
+    "kind": "random_days",
+    "check_share": 0.2,
+    "seed": 42,
+    "check_days": 211
+  },
+  "train_hours": 38298,
+  "check_hours": 9459,
+  "check_measured_nmae_pct": {
+    "T1": 1.73,
+    "T2": 1.6
+  },
+  "predict_seconds_96_rows": 0.0045,
+  "issue_hour_utc": 2,
+  "nwp_sources": [
+    "ifs025",
+    "gfs",
+    "icon",
+    "gem"
+  ],
+  "check_forecast_nmae_pct": {
+    "T1": {
+      "1-24": 15.08,
+      "25-48": 16.99,
+      "hours": 3118
+    },
+    "T2": {
+      "1-24": 15.59,
+      "25-48": 17.25,
+      "hours": 3415
+    }
+  }
+}

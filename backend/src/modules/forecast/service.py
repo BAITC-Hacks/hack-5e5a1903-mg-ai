@@ -1,13 +1,18 @@
-"""Наполнение контракта прогноза.
+"""Запасное наполнение контракта прогноза и общие предметные функции.
 
-**Сейчас это заглушка.** Числа считаются детерминированно из даты выпуска,
+**Числа здесь синтетические.** Они считаются детерминированно из даты выпуска,
 поэтому один и тот же день всегда дает один и тот же ответ, но к реальным
-данным они отношения не имеют. Каждый ответ помечен ``data_source="stub"``,
+данным они отношения не имеют. Каждый такой ответ помечен ``data_source="stub"``,
 чтобы это было видно и в API, и в интерфейсе.
 
-Когда появятся сервисы погоды (dev3) и модели (dev2), функции ниже заменяются
-на сборку из их ответов, а схемы в ``schemas.py`` остаются прежними: на них
-завязан фронтенд.
+Живой выпуск собирает ``orchestrator.py`` из ответов сервиса погоды (dev3)
+и сервиса модели (dev2). Пока соседи не отвечают, эндпоинты отдают заглушку
+отсюда. Схемы в ``schemas.py`` в обоих случаях одни и те же: на них завязан
+фронтенд.
+
+Предметные функции, которыми пользуются оба пути, объявлены публично:
+``power_curve``, ``flags_for``, ``build_kpi``, ``dispatch_from_forecast``,
+``issue_time`` и ``ensure_known_issue``. Синтетика спрятана под подчеркивание.
 
 Состояния в памяти процесса здесь нет: все функции чистые, репликам бэкенда
 нечего делить.
@@ -19,6 +24,40 @@ import random
 from datetime import UTC, date, datetime, timedelta
 
 from src.core.exceptions import BusinessError
+from src.modules.forecast import analyze
+from src.modules.forecast.config import (
+    CUT_IN_MS,
+    CUT_OUT_MS,
+    FIRST_ISSUE,
+    HORIZON_HOURS,
+    HUB_HEIGHT_M,
+    ISSUE_HOUR_UTC,
+    LAST_ISSUE,
+    LOCAL_OFFSET,
+    NWP_POINT,
+    RATED_MS,
+    SOURCE_GFS,
+    SOURCE_IFS,
+    TURBINES,
+    WEATHER_MODELS,
+    rated_mw,
+)
+from src.modules.forecast.decisions import (
+    LEVEL_OK,
+    LEVEL_THINK,
+    LEVEL_WARN,
+    REASON_FALLBACK,
+    REASON_NO_MATERIAL_CHANGE,
+    REASON_PUBLISH_NEW_VERSION,
+    REASON_RISK_FLAGS,
+    REASON_USE_SOURCE,
+    STEP_ANALYZE,
+    STEP_FORECAST,
+    STEP_PREPARE,
+    STEP_RECOMPUTE,
+    STEP_RUN_MODEL,
+    DecisionLog,
+)
 from src.modules.forecast.schemas import (
     AgentDecision,
     BacktestBaseline,
@@ -36,35 +75,12 @@ from src.modules.forecast.schemas import (
     ModelInfo,
     PowerCurvePoint,
     SiteInfo,
-    Turbine,
     WeatherModel,
     WeatherResponse,
     WeatherRun,
 )
 
 DATA_SOURCE_STUB = "stub"
-
-# Объект: ВЭС «Шелек», две турбины Goldwind GW109/2500.
-TURBINES = (
-    Turbine(name="T1", lat=43.645150, lon=78.535604, rated_mw=2.5),
-    Turbine(name="T2", lat=43.643198, lon=78.538828, rated_mw=2.5),
-)
-NWP_POINT = (43.6442, 78.5372)
-HUB_HEIGHT_M = 80
-CUT_IN_MS = 3.0
-RATED_MS = 10.3
-CUT_OUT_MS = 25.0
-LOCAL_OFFSET = timedelta(hours=5)
-
-# Ретро-симуляция: 28 выпусков, каждый в 07:00 по Астане накануне целевых суток.
-FIRST_ISSUE = date(2026, 1, 31)
-LAST_ISSUE = date(2026, 2, 27)
-ISSUE_HOUR_UTC = 2
-HORIZON_HOURS = 48
-
-SOURCE_IFS = "ecmwf_ifs"
-SOURCE_GFS = "gfs_global"
-WEATHER_MODELS = ("ECMWF IFS", "GFS", "ICON", "GEM")
 
 
 def issue_dates() -> list[date]:
@@ -122,23 +138,44 @@ def _temperature_profile(issue_date: date) -> list[float]:
     return [round(base + 3.0 * math.sin((hour / 24.0) * 2 * math.pi - 2.0), 1) for hour in range(HORIZON_HOURS)]
 
 
+def _humidity_profile(issue_date: date) -> list[float]:
+    """Влажность нужна проверке на обледенение: она смотрит на температуру и влажность вместе."""
+    rng = _rng(issue_date, "humidity")
+    base = rng.uniform(62.0, 88.0)
+    return [round(min(99.0, max(35.0, base + 12.0 * math.sin((hour / 24.0) * 2 * math.pi + 0.7))), 1) for hour in range(HORIZON_HOURS)]
+
+
 def _source_of(issue_date: date) -> tuple[str, bool]:
     """Каждый пятый день симуляции идет на запасном источнике."""
     degraded = issue_date.day % 5 == 0
     return (SOURCE_GFS if degraded else SOURCE_IFS, degraded)
 
 
-def _flags_for(wind_ms: float, temp_c: float, ramp: float, degraded: bool) -> list[str]:
-    flags: list[str] = []
-    if wind_ms > CUT_OUT_MS:
-        flags.append("cut_out_risk")
-    if temp_c <= 1.0 and wind_ms > 2.0:
-        flags.append("icing_risk")
-    if abs(ramp) > 0.40:
-        flags.append("ramp")
-    if degraded:
-        flags.append("degraded")
-    return flags
+def build_kpi(hours: list[ForecastHour], target_date: date, expected_error_pct: float) -> ForecastKpi:
+    """Плитки «Обзора» по часам целевых суток.
+
+    Часы приходят по каждой турбине отдельно, а пользователю нужна станция
+    целиком, поэтому мощность складывается по локальному часу. Ожидаемая ошибка
+    приходит снаружи: у заглушки это константа, у живого выпуска — ширина
+    интервала P10…P90, которую вернула модель.
+    """
+    day_hours = [hour for hour in hours if hour.valid_time_local.date() == target_date] or hours
+    by_local_time: dict[datetime, list[ForecastHour]] = {}
+    for hour in day_hours:
+        by_local_time.setdefault(hour.valid_time_local, []).append(hour)
+
+    station_mw = {moment: sum(row.p50_mw for row in rows) for moment, rows in by_local_time.items()}
+    station_load = {moment: sum(row.p50 for row in rows) / len(rows) for moment, rows in by_local_time.items()}
+    peak_time = max(station_mw, key=lambda moment: station_mw[moment])
+
+    return ForecastKpi(
+        mean_load_pct=round(sum(station_load.values()) / len(station_load) * 100, 1),
+        peak_hour_local=peak_time,
+        peak_mw=round(station_mw[peak_time], 2),
+        hours_below_10_pct=sum(1 for load in station_load.values() if load < 0.1),
+        expected_error_pct=round(expected_error_pct, 1),
+        day_energy_mwh=round(sum(station_mw.values()), 2),
+    )
 
 
 def build_issue_summary(issue_date: date) -> IssueSummary:
@@ -167,19 +204,20 @@ def build_forecast(issue_date: date) -> ForecastResponse:
     source, degraded = _source_of(issue_date)
     winds = _wind_profile(issue_date)
     temps = _temperature_profile(issue_date)
+    humidity = _humidity_profile(issue_date)
     run_init = start - timedelta(hours=8)
     available_at = run_init + timedelta(hours=7, minutes=30)
 
     hours: list[ForecastHour] = []
+    weather: dict[datetime, analyze.WeatherPoint] = {}
     for turbine in TURBINES:
-        previous: list[float] = []
         for index in range(HORIZON_HOURS):
             valid = start + timedelta(hours=index + 1)
             # Турбины стоят в 340 м друг от друга, поэтому ветер почти одинаков.
             wind = round(winds[index] * (1.0 if turbine.name == "T1" else 0.98), 2)
             p50 = power_curve(wind)
             spread = 0.05 + 0.0035 * index + (0.03 if degraded else 0.0)
-            ramp = p50 - previous[-3] if len(previous) >= 3 else 0.0
+            weather.setdefault(valid, analyze.WeatherPoint(wind_ms=wind, temp_c=temps[index], humidity_pct=humidity[index]))
             hours.append(
                 ForecastHour(
                     valid_time_utc=valid,
@@ -197,14 +235,15 @@ def build_forecast(issue_date: date) -> ForecastResponse:
                     source=source,
                     run_init_utc=run_init,
                     available_at_utc=available_at,
-                    flags=_flags_for(wind, temps[index], ramp, degraded),
                 )
             )
-            previous.append(p50)
 
-    day_hours = [hour for hour in hours if hour.valid_time_local.date() == issue_date + timedelta(days=1)]
-    peak = max(day_hours, key=lambda hour: hour.p50)
-    mean_load = sum(hour.p50 for hour in day_hours) / len(day_hours)
+    # Флаги риска ставит тот же ``analyze``, что и у живого выпуска: правило одно.
+    base_flags = [analyze.FLAG_DEGRADED] if degraded else []
+    for hour, flags in zip(hours, analyze.risk_flags(hours, weather, base_flags), strict=True):
+        hour.flags = flags
+
+    kpi = build_kpi(hours, issue_date + timedelta(days=1), 11.0 + 4.0 * (1 if degraded else 0))
     return ForecastResponse(
         issue=IssueSummary(
             issue_date=issue_date,
@@ -216,17 +255,10 @@ def build_forecast(issue_date: date) -> ForecastResponse:
             source=source,
             flagged_hours=sum(1 for hour in hours if hour.flags),
         ),
-        kpi=ForecastKpi(
-            mean_load_pct=round(mean_load * 100, 1),
-            peak_hour_local=peak.valid_time_local,
-            peak_mw=round(peak.p50_mw * len(TURBINES), 2),
-            hours_below_10_pct=sum(1 for hour in day_hours if hour.p50 < 0.1) // len(TURBINES),
-            expected_error_pct=round(11.0 + 4.0 * (1 if degraded else 0), 1),
-            day_energy_mwh=round(sum(hour.p50_mw for hour in day_hours), 2),
-        ),
+        kpi=kpi,
         summary=(
             f"На сутки {(issue_date + timedelta(days=1)).isoformat()} ожидается средняя загрузка "
-            f"{round(mean_load * 100)}%, пик в {peak.valid_time_local.strftime('%H:%M')} по местному времени. "
+            f"{round(kpi.mean_load_pct)}%, пик в {kpi.peak_hour_local.strftime('%H:%M')} по местному времени. "
             + ("Основной прогон погоды не пришел, использован запасной источник." if degraded else "Прогноз построен на основном прогоне ECMWF.")
         ),
         hours=hours,
@@ -235,83 +267,67 @@ def build_forecast(issue_date: date) -> ForecastResponse:
 
 
 def build_agent_log(issue_date: date) -> list[AgentDecision]:
-    """Журнал решений агента по шести шагам ТЗ."""
+    """Демонстрационный журнал решений по шести шагам ТЗ.
+
+    Показывает тот же цикл, который живьем проходит ``orchestrator.py``,
+    теми же шагами и кодами причин, но по синтетическому выпуску.
+    """
     ensure_known_issue(issue_date)
     start = issue_time(issue_date)
     source, degraded = _source_of(issue_date)
     version = 2 if issue_date.day % 3 == 0 else 1
 
-    log: list[AgentDecision] = []
+    log = DecisionLog(issue_time_utc=start)
     if degraded:
-        log.append(
-            AgentDecision(
-                as_of_utc=start,
-                step="fetch_weather",
-                decision="try_next_source",
-                reason_code="FALLBACK",
-                reason=f"{SOURCE_IFS} недоступен на момент выпуска, беру запасной источник",
-                level="WARN",
-            )
+        log.record(
+            "try_next_source",
+            REASON_FALLBACK,
+            f"{SOURCE_IFS} недоступен на момент выпуска, беру запасной источник",
+            level=LEVEL_WARN,
         )
-    log += [
-        AgentDecision(as_of_utc=start, step="fetch_weather", decision="use_source", reason_code="USE_SOURCE", reason=f"взят {source}", level="TOOL"),
-        AgentDecision(
-            as_of_utc=start,
-            step="prepare",
-            decision="build_features",
-            reason_code="USE_SOURCE",
-            reason="признаки построены по прогнозу погоды",
-            level="TOOL",
-        ),
-        AgentDecision(
-            as_of_utc=start,
-            step="run_model",
-            decision="predict",
-            reason_code="USE_SOURCE",
-            reason="модель посчитала квантили P10/P50/P90",
-            level="TOOL",
-        ),
-        AgentDecision(
-            as_of_utc=start,
-            step="forecast",
-            decision="publish_version",
-            reason_code="USE_SOURCE",
-            reason=f"версия 1: {HORIZON_HOURS * len(TURBINES)} строк на горизонт +1…+{HORIZON_HOURS} ч",
-            level="OK",
-        ),
-        AgentDecision(
-            as_of_utc=start,
-            step="analyze",
-            decision="flag_hours",
-            reason_code="RISK_FLAGS",
-            reason="проверены диапазон, рампы, отсечка и обледенение",
-            level="THINK",
-        ),
-    ]
+    log.record("use_source", REASON_USE_SOURCE, f"взят {source}")
+
+    log.at(STEP_PREPARE)
+    log.record("build_features", REASON_USE_SOURCE, "признаки построены по прогнозу погоды")
+
+    log.at(STEP_RUN_MODEL)
+    log.record("predict", REASON_USE_SOURCE, "модель посчитала квантили P10/P50/P90")
+
+    log.at(STEP_FORECAST)
+    log.record(
+        "publish_version",
+        REASON_USE_SOURCE,
+        f"версия 1: {HORIZON_HOURS * len(TURBINES)} строк на горизонт +1…+{HORIZON_HOURS} ч",
+        level=LEVEL_OK,
+    )
+
+    log.at(STEP_ANALYZE)
+    log.record(
+        "flag_hours",
+        REASON_RISK_FLAGS,
+        f"проверены диапазон, рампы, отсечка и обледенение: {analyze.flag_counts(build_forecast(issue_date).hours)}",
+        level=LEVEL_THINK,
+    )
+
+    log.at(STEP_RECOMPUTE)
+    moment = start + timedelta(hours=5, minutes=30)
     if version > 1:
-        moment = start + timedelta(hours=5, minutes=30)
-        log.append(
-            AgentDecision(
-                as_of_utc=moment,
-                step="recompute_on_update",
-                decision="publish_new_version",
-                reason_code="PUBLISH_NEW_VERSION",
-                reason="вышел новый прогон, выработка суток D изменилась больше чем на 3%",
-                level="OK",
-            )
+        log.record(
+            "publish_new_version",
+            REASON_PUBLISH_NEW_VERSION,
+            f"вышел новый прогон, выработка суток D изменилась больше чем на {analyze.ENERGY_CHANGE_SHARE:.0%}",
+            level=LEVEL_OK,
+            as_of=moment,
         )
     else:
-        log.append(
-            AgentDecision(
-                as_of_utc=start + timedelta(hours=5, minutes=30),
-                step="recompute_on_update",
-                decision="keep_version",
-                reason_code="NO_MATERIAL_CHANGE",
-                reason="новый прогон меняет сутки D меньше чем на 3%, версия оставлена прежней",
-                level="OK",
-            )
+        log.record(
+            "keep_version",
+            REASON_NO_MATERIAL_CHANGE,
+            f"новый прогон меняет сутки D меньше чем на {analyze.ENERGY_CHANGE_SHARE:.0%}, версия оставлена прежней",
+            level=LEVEL_OK,
+            as_of=moment,
         )
-    return log
+    return log.rows
 
 
 def build_weather(issue_date: date) -> WeatherResponse:
@@ -372,11 +388,14 @@ def build_weather(issue_date: date) -> WeatherResponse:
     )
 
 
-def build_dispatch(issue_date: date, risk: float) -> DispatchResponse:
-    """Почасовая заявка: чем выше допустимый риск, тем ближе к P50."""
-    ensure_known_issue(issue_date)
-    forecast = build_forecast(issue_date)
-    target = issue_date + timedelta(days=1)
+def dispatch_from_forecast(forecast: ForecastResponse, risk: float) -> DispatchResponse:
+    """Почасовая заявка: чем выше допустимый риск, тем ближе к P50.
+
+    Заявка строится из уже готового прогноза, поэтому живой выпуск и заглушка
+    считаются одинаково, а ``data_source`` наследуется от прогноза.
+    """
+    issue_date = forecast.issue.issue_date
+    target = forecast.issue.target_date
 
     by_hour: dict[datetime, list[ForecastHour]] = {}
     for hour in forecast.hours:
@@ -386,9 +405,9 @@ def build_dispatch(issue_date: date, risk: float) -> DispatchResponse:
     hours: list[DispatchHour] = []
     for local_time in sorted(by_hour):
         rows = by_hour[local_time]
-        p10 = sum(row.p10 * TURBINES[0].rated_mw for row in rows)
-        p50 = sum(row.p50 * TURBINES[0].rated_mw for row in rows)
-        p90 = sum(row.p90 * TURBINES[0].rated_mw for row in rows)
+        p10 = sum(row.p10 * rated_mw(row.turbine) for row in rows)
+        p50 = sum(row.p50 * rated_mw(row.turbine) for row in rows)
+        p90 = sum(row.p90 * rated_mw(row.turbine) for row in rows)
         bid = p10 + (risk - 0.1) / 0.4 * (p50 - p10)
         hours.append(
             DispatchHour(
@@ -412,7 +431,7 @@ def build_dispatch(issue_date: date, risk: float) -> DispatchResponse:
             mean_shortfall_mwh=round(max(0.0, expected - day_bid) / max(1, len(hours)), 3),
         ),
         hours=hours,
-        data_source=DATA_SOURCE_STUB,
+        data_source=forecast.data_source,
     )
 
 

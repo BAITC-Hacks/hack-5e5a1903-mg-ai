@@ -8,5 +8,7 @@
 | `model_info.json` | паспорт модели, `kind: "lightgbm_quantile"` | `ModelInfo` в `src/ml_service/schemas.py` |
 | `metrics.json` | качество на отложенном периоде | `ModelMetrics` в `src/ml_service/schemas.py` |
 | файлы LightGBM | по одному бустеру на квантиль, например `lgbm_q10.txt` | читает `src/ml_service/predictors/lgbm.py` |
+| `mlp/mlp.joblib`, `mlp/metrics.json` | участник ансамбля MLP и его проверки А и Б | пишет `training/train_mlp.py`, читает `src/ml_service/members/mlp.py` |
+| `extratrees/` | участник ансамбля на ExtraTrees: `model.joblib` и `metrics.json` с проверками | пишет `training/train_extratrees.py`, читает `src/ml_service/members/extratrees.py` |
 
 Подробно, как подключить обученную модель: [../README.md](../README.md).

@@ -1,16 +1,21 @@
 """Паспорт выпуска: сборка, запрет утечки, детерминированность, работа без git."""
 
+import dataclasses
 import hashlib
 import json
+import shutil
 import subprocess
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
+from src.forecast.dataset import config as dataset_config
 from src.forecast.weather import manifest as manifest_module
 from src.forecast.weather.manifest import SCADA_FILES, LeakageError, build_manifest, manifest_json, write_manifest
+from src.forecast.weather.sources import SOURCES
 
 ISSUE = datetime(2026, 2, 1, 2, tzinfo=UTC)
 
@@ -45,7 +50,12 @@ def data_dir(tmp_path):
     for source in ("gfs", "ifs"):
         cache = root / "nwp" / source
         cache.mkdir(parents=True)
-        (cache / "SHA256SUMS").write_bytes(f"{'a' * 64}  {source}_2026013112.json\n{'b' * 64}  {source}_2026013118.json\n".encode())
+        sums = []
+        for year in (2025, 2026):
+            content = f"{source} {year}".encode()
+            (cache / f"{year}.csv.gz").write_bytes(content)
+            sums.append(f"{hashlib.sha256(content).hexdigest()}  {year}.csv.gz\n")
+        (cache / "SHA256SUMS").write_bytes("".join(sums).encode())
     return root
 
 
@@ -107,7 +117,7 @@ def test_recompute_keeps_issue_time_and_checks_as_of(data_dir):
     with pytest.raises(LeakageError, match="на момент 2026-02-01T02:00:00Z"):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
     with pytest.raises(LeakageError):
-        build_manifest(ISSUE, nwp, as_of=as_of - pd.Timedelta(minutes=1), data_dir=data_dir)
+        build_manifest(ISSUE, nwp, as_of=as_of - pd.Timedelta(minutes=1), version=2, data_dir=data_dir)
 
 
 def test_as_of_defaults_to_issue_time_and_cannot_precede_it(data_dir):
@@ -158,14 +168,34 @@ def test_manifest_without_git(monkeypatch, data_dir, error):
     monkeypatch.setattr(manifest_module.subprocess, "run", broken_git)
     manifest = build_manifest(ISSUE, _nwp(), data_dir=data_dir)
 
-    assert manifest["git_sha"] is None
+    assert manifest["git_sha"] is None and manifest["git_dirty"] is None
     assert json.loads(manifest_json(manifest))["git_sha"] is None
 
 
 def test_git_sha_in_repository(data_dir):
-    sha = build_manifest(ISSUE, _nwp(), data_dir=data_dir)["git_sha"]
+    # Раньше тест принимал None и не ловил сломанный вызов git внутри репозитория.
+    if shutil.which("git") is None:
+        pytest.skip("git не установлен")
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(manifest_module.__file__).parent, capture_output=True, text=True)
+    if head.returncode != 0:
+        pytest.skip("код лежит не в git-репозитории")
+    manifest = build_manifest(ISSUE, _nwp(), data_dir=data_dir)
 
-    assert sha is None or len(sha) == 40
+    assert manifest["git_sha"] == head.stdout.strip()
+    assert isinstance(manifest["git_dirty"], bool)
+
+
+@pytest.mark.parametrize(("status", "dirty"), [(" M backend/src/forecast/weather/manifest.py\n", True), ("", False)])
+def test_git_dirty_follows_status(monkeypatch, data_dir, status, dirty):
+    def fake_git(args, **kwargs):
+        stdout = "a" * 40 + "\n" if "rev-parse" in args else status
+        return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", fake_git)
+    manifest = build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+    assert manifest["git_sha"] == "a" * 40
+    assert manifest["git_dirty"] is dirty
 
 
 def test_missing_cache_and_scada_do_not_fail(tmp_path):
@@ -200,3 +230,147 @@ def test_default_data_dir_hashes_repository_scada(monkeypatch):
     manifest = build_manifest(ISSUE, _nwp())
 
     assert all(len(entry["sha256"]) == 64 for entry in manifest["scada"].values())
+
+
+@pytest.mark.parametrize("field", ["issue_time", "as_of"])
+def test_naive_moment_is_rejected(data_dir, field):
+    # 07:00 по Астане без пояса иначе стал бы 07:00 UTC и сдвинул границу утечки на 5 ч.
+    naive = datetime(2026, 2, 1, 7, 0)
+    kwargs = {"as_of": naive} if field == "as_of" else {}
+    issue = naive if field == "issue_time" else ISSUE
+
+    with pytest.raises(ValueError, match="без часового пояса"):
+        build_manifest(issue, _nwp(), data_dir=data_dir, **kwargs)
+
+
+def test_naive_weather_column_is_rejected(data_dir):
+    nwp = _nwp()
+    nwp["available_at_utc"] = nwp["available_at_utc"].dt.tz_localize(None)
+
+    with pytest.raises(ValueError, match="available_at_utc без часового пояса"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+@pytest.mark.parametrize(
+    ("version", "as_of_shift_h", "message"),
+    [
+        (1, 30, "версия 1 берет погоду на момент выпуска"),
+        (2, 0, "as_of должен быть позже"),
+        (0, 0, "нумерация начинается с 1"),
+    ],
+    ids=["v1-late-as-of", "v2-at-issue-time", "v0"],
+)
+def test_version_is_bound_to_as_of(data_dir, version, as_of_shift_h, message):
+    # Без этой связки версия 1 с as_of = T+30 ч подписывала погоду, вышедшую через 20 ч после выпуска.
+    nwp = _nwp()
+    nwp["available_at_utc"] = pd.Timestamp(ISSUE) + pd.Timedelta(hours=min(as_of_shift_h, 20))
+    as_of = pd.Timestamp(ISSUE) + pd.Timedelta(hours=as_of_shift_h)
+
+    with pytest.raises(ValueError, match=message):
+        build_manifest(ISSUE, nwp, as_of=as_of, version=version, data_dir=data_dir)
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [("available_at_utc", pd.Timestamp(ISSUE) + pd.Timedelta(days=3)), ("run_init_utc", pd.Timestamp(ISSUE)), ("ws100", 9.0)],
+)
+def test_row_without_source_but_with_weather_is_leakage(data_dir, column, value):
+    # Раньше такая строка молча выбрасывалась из проверки, а во фрейме для модели оставалась.
+    nwp = _nwp().astype({"source": object})
+    nwp["ws100"] = 7.5
+    nwp.loc[5, ["source", "run_init_utc", "available_at_utc", "ws100"]] = [None, pd.NaT, pd.NaT, np.nan]
+    nwp.loc[5, column] = value
+
+    with pytest.raises(LeakageError, match="без source"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+@pytest.mark.parametrize(
+    ("run_init_shift_h", "available_shift_h"),
+    [(6, -1), (0, 0)],
+    ids=["run-started-after-issue", "zero-delay"],
+)
+def test_available_at_earlier_than_registry_allows_is_leakage(data_dir, run_init_shift_h, available_shift_h):
+    # GFS публикуется через 7 ч после запуска: прогон 18z не может быть доступен раньше 01:00.
+    nwp = _nwp()
+    run_init = pd.Timestamp("2026-01-31 18:00", tz="UTC") + pd.Timedelta(hours=run_init_shift_h)
+    nwp.loc[0, "run_init_utc"] = run_init
+    nwp.loc[0, "available_at_utc"] = run_init + pd.Timedelta(hours=available_shift_h)
+
+    with pytest.raises(LeakageError, match="раньше, чем прогон мог выйти"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+def test_unknown_source_needs_available_at_not_before_run_init(data_dir):
+    nwp = _nwp()
+    nwp["source"] = "ensemble"
+    assert build_manifest(ISSUE, nwp, data_dir=data_dir)["max_available_at_utc"] == "2026-02-01T01:00:00Z"
+
+    nwp.loc[0, "available_at_utc"] = nwp.loc[0, "run_init_utc"] - pd.Timedelta(minutes=1)
+    with pytest.raises(LeakageError, match="ensemble"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+def test_cache_file_changed_after_sums_is_rejected(data_dir):
+    # Раньше паспорт хэшировал только SHA256SUMS и не замечал подмененный файл кэша.
+    (data_dir / "nwp" / "gfs" / "2026.csv.gz").write_bytes(b"tampered")
+
+    with pytest.raises(ValueError, match=r"кэш gfs не совпадает с SHA256SUMS.*2026\.csv\.gz"):
+        build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+
+def test_cache_file_missing_from_sums_is_rejected(data_dir):
+    # AsOfStore читает все *.csv.gz папки, поэтому лишний файл тоже меняет погоду.
+    (data_dir / "nwp" / "ifs" / "extra.csv.gz").write_bytes(b"extra")
+
+    with pytest.raises(ValueError, match=r"файлы вне SHA256SUMS: \['extra\.csv\.gz'\]"):
+        build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+
+def test_sums_in_binary_mode_and_non_cache_files_are_verified(data_dir):
+    cache = data_dir / "nwp" / "ifs"
+    (cache / "gaps.csv").write_bytes(b"run_init_utc,reason\n")
+    lines = [f"{hashlib.sha256((cache / name).read_bytes()).hexdigest()} *{name}" for name in ("2025.csv.gz", "2026.csv.gz", "gaps.csv")]
+    (cache / "SHA256SUMS").write_bytes(("\n".join(lines) + "\n").encode())
+
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir)["sources"]["ifs"]["cache"]["files"] == 3
+    (cache / "gaps.csv").write_bytes(b"changed")
+    with pytest.raises(ValueError, match="gaps.csv"):
+        build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+
+def test_missing_sources_lists_requested_models_without_a_run(data_dir):
+    # #39: ансамбль строится по оставшимся моделям, а в паспорте видно, каких не было.
+    manifest = build_manifest(ISSUE, _nwp(), requested_sources=["ifs", "ifs025", "gfs", "icon", "gem"], data_dir=data_dir)
+
+    assert manifest["missing_sources"] == ["gem", "icon", "ifs025"]
+    assert sorted(manifest["sources"]) == ["gfs", "ifs"]
+    assert build_manifest(ISSUE, _nwp(), requested_sources=["gfs", "ifs"], data_dir=data_dir)["missing_sources"] == []
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir)["missing_sources"] is None
+
+
+def test_config_with_source_registry_is_hashed(data_dir):
+    # После #5 реестр с задержками (timedelta в dataclass) переезжает в конфиг.
+    registry = build_manifest(ISSUE, _nwp(), data_dir=data_dir, config={"sources": SOURCES})["config_sha256"]
+    shorter = {**SOURCES, "gfs": dataclasses.replace(SOURCES["gfs"], delay=timedelta(hours=6))}
+
+    assert len(registry) == 64
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir, config={"sources": shorter})["config_sha256"] != registry
+
+
+def test_sub_second_times_are_rejected(data_dir):
+    # Иначе 01:00:00.300 и 01:00:00 давали два прогона с одинаковой записью в runs.
+    nwp = _nwp()
+    nwp.loc[:11, "available_at_utc"] += pd.Timedelta(milliseconds=300)
+
+    with pytest.raises(ValueError, match="available_at_utc время с долями секунды"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+def test_default_data_dir_is_the_one_scada_loader_uses(monkeypatch, data_dir):
+    # Раньше паспорт вычислял DATA_DIR сам и мог хэшировать другой каталог, чем читает load_scada.
+    monkeypatch.setattr(dataset_config, "DATA_DIR", data_dir)
+    manifest = build_manifest(ISSUE, _nwp())
+
+    assert manifest["scada"]["T1"]["sha256"] == hashlib.sha256((data_dir / SCADA_FILES["T1"]).read_bytes()).hexdigest()
+    assert manifest["sources"]["gfs"]["cache"]["files"] == 2

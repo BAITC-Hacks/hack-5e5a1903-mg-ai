@@ -484,6 +484,39 @@
         ],
         "title": "MetricsPoint"
       },
+      "MetricsTurbine": {
+        "properties": {
+          "turbine": {
+            "type": "string",
+            "enum": [
+              "T1",
+              "T2",
+              "station"
+            ],
+            "title": "Turbine"
+          },
+          "nmae_d1_pct": {
+            "type": "number",
+            "title": "Nmae D1 Pct"
+          },
+          "nmae_d2_pct": {
+            "type": "number",
+            "title": "Nmae D2 Pct"
+          },
+          "coverage_p10_p90_pct": {
+            "type": "number",
+            "title": "Coverage P10 P90 Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "turbine",
+          "nmae_d1_pct",
+          "nmae_d2_pct",
+          "coverage_p10_p90_pct"
+        ],
+        "title": "MetricsTurbine"
+      },
       "ModelInfo": {
         "properties": {
           "name": {
@@ -568,6 +601,14 @@
             },
             "type": "array",
             "title": "Turbines"
+          },
+          "turbines_info": {
+            "items": {
+              "$ref": "#/components/schemas/TurbineInfo"
+            },
+            "type": "array",
+            "title": "Turbines Info",
+            "description": "Турбины, по которым модель дает прогноз: координаты и мощность"
           },
           "capacity_mw": {
             "additionalProperties": {
@@ -727,6 +768,14 @@
             "type": "array",
             "title": "By Lead",
             "description": "Ошибка для каждого часа горизонта 1…48"
+          },
+          "by_turbine": {
+            "items": {
+              "$ref": "#/components/schemas/MetricsTurbine"
+            },
+            "type": "array",
+            "title": "By Turbine",
+            "description": "Те же метрики отдельно по каждой турбине"
           },
           "series": {
             "items": {
@@ -892,6 +941,27 @@
             "title": "Rows",
             "description": "Строки «час × модель погоды» из `GET /nwp`. На каждый час горизонта нужна хотя бы одна строка со скоростью ветра"
           },
+          "turbines": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "T1",
+                    "T2",
+                    "station"
+                  ]
+                },
+                "type": "array",
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turbines",
+            "description": "Какие турбины прогнозировать: `T1`, `T2`, станция целиком `station`. Если поле не задано, берется `options.turbines` (по умолчанию обе турбины)"
+          },
           "options": {
             "$ref": "#/components/schemas/PredictOptions"
           }
@@ -910,10 +980,6 @@
             "issue_time_utc": "2026-01-31T02:00:00Z",
             "options": {
               "interval_scale": 1.0,
-              "turbines": [
-                "T1",
-                "T2"
-              ],
               "wind_shift_ms": 0.0
             },
             "request_id": "issue-2026-01-31T02Z-v1",
@@ -958,6 +1024,10 @@
                 "wd100": 255,
                 "ws80": 8.3
               }
+            ],
+            "turbines": [
+              "T1",
+              "T2"
             ]
           }
         ]
@@ -1104,6 +1174,56 @@
           "required"
         ],
         "title": "SourceSpec"
+      },
+      "TurbineInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "T1",
+              "T2",
+              "station"
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "capacity_mw": {
+            "type": "number",
+            "title": "Capacity Mw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "capacity_mw"
+        ],
+        "title": "TurbineInfo"
       },
       "WeatherRow": {
         "properties": {
