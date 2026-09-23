@@ -10,6 +10,9 @@
 
   var TOKEN_KEY = "zhel.access_token";
   var TIMEOUT_MS = 20000;
+  // Разбор пользовательского CSV и прогноз по нему идут дольше обычного запроса,
+  // поэтому у загрузки отдельный таймаут. Без таймаута запрос висел бы бесконечно.
+  var UPLOAD_TIMEOUT_MS = 180000;
 
   function base() {
     return String(window.API_BASE || "/api").replace(/\/+$/, "");
@@ -69,30 +72,44 @@
     return ApiError(message || "Запрос отклонен бэкендом.", url, status, code);
   }
 
+  /**
+   * Тело запроса: JSON по умолчанию, FormData отдельной веткой.
+   *
+   * multipart нельзя слать со своим Content-Type: браузер сам проставляет заголовок
+   * вместе с границей частей. Поэтому для FormData заголовок не выставляется,
+   * а тело уходит объектом как есть, без JSON.stringify.
+   */
+  function bodyOf(options) {
+    if (options.form !== undefined) return options.form;
+    if (options.body === undefined) return undefined;
+    return JSON.stringify(options.body);
+  }
+
   function request(path, options) {
     options = options || {};
     var url = base() + path;
     var headers = { Accept: "application/json" };
     var token = readToken();
+    var timeout = options.timeout || TIMEOUT_MS;
     if (options.auth !== false && token) headers.Authorization = "Bearer " + token;
-    if (options.body !== undefined) headers["Content-Type"] = "application/json";
+    if (options.form === undefined && options.body !== undefined) headers["Content-Type"] = "application/json";
 
     var controller = typeof AbortController === "function" ? new AbortController() : null;
     var timer = window.setTimeout(function () {
       if (controller) controller.abort();
-    }, TIMEOUT_MS);
+    }, timeout);
 
     return window
       .fetch(url, {
         method: options.method || "GET",
         headers: headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        body: bodyOf(options),
         signal: controller ? controller.signal : undefined,
       })
       .catch(function (err) {
         window.clearTimeout(timer);
         if (err && err.name === "AbortError") {
-          throw ApiError("Бэкенд не ответил за " + TIMEOUT_MS / 1000 + " секунд.", url, 0, "TIMEOUT");
+          throw ApiError("Бэкенд не ответил за " + timeout / 1000 + " секунд.", url, 0, "TIMEOUT");
         }
         throw describeNetwork(url);
       })
@@ -137,6 +154,10 @@
     },
     post: function (path, body) {
       return request(path, { method: "POST", body: body === undefined ? {} : body });
+    },
+    /** POST multipart/form-data: заголовок Content-Type ставит браузер, не мы. */
+    postForm: function (path, formData) {
+      return request(path, { method: "POST", form: formData, timeout: UPLOAD_TIMEOUT_MS });
     },
   };
 })();
