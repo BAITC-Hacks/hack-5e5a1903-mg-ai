@@ -88,7 +88,13 @@ TRIGGER_SCHEDULED = "scheduled"
 TRIGGER_RECOMPUTE = "recompute_on_update"
 
 #: Во сколько раз просим модель расширить интервал, когда источники разошлись.
-WIDE_INTERVAL_SCALE = 1.5
+# Расхождение источников расширяет интервал P10…P90, но соразмерно расхождению,
+# а не одним прыжком. Фиксированные полтора раза на калиброванном интервале модели
+# давали P10 = 0 и P90 = 1 больше чем у половины часов: такой интервал ничего
+# не сообщает диспетчеру. Шаг за каждый метр в секунду сверх порога и потолок
+# подобраны так, чтобы интервал оставался читаемым.
+WIDE_INTERVAL_STEP = 0.05
+WIDE_INTERVAL_SCALE_MAX = 1.25
 #: Сколько времени после выпуска агент реагирует на новые прогоны.
 RECOMPUTE_WINDOW = timedelta(days=1)
 #: Турбины, на которые агент просит прогноз у модели.
@@ -501,15 +507,27 @@ def _drop_leakage(rows: list[NwpRow], issue_time: datetime, as_of: datetime, jou
     return kept
 
 
+def _interval_scale(collected: _Weather) -> float:
+    """Во сколько раз расширить интервал модели из-за расхождения источников.
+
+    Пока источники согласны, интервал остается таким, каким его откалибровала
+    модель. Дальше он растет соразмерно расхождению и не выше потолка.
+    """
+    if analyze.FLAG_SOURCE_SPREAD not in collected.flags or collected.spread_ms is None:
+        return 1.0
+    excess = collected.spread_ms - analyze.SOURCE_SPREAD_MS
+    return round(min(WIDE_INTERVAL_SCALE_MAX, 1.0 + max(0.0, excess) * WIDE_INTERVAL_STEP), 3)
+
+
 async def _run_model(model: MlClient, issue_time: datetime, as_of: datetime, collected: _Weather, journal: DecisionLog) -> PredictResponse:
     """Шаг 3: квантили считает модель dev2, бэкенд их только проверяет."""
     journal.at(STEP_RUN_MODEL)
-    scale = WIDE_INTERVAL_SCALE if analyze.FLAG_SOURCE_SPREAD in collected.flags else 1.0
+    scale = _interval_scale(collected)
     journal.record(
         "call_model_service",
         REASON_USE_SOURCE,
         f"отдаю модели {len(collected.rows)} строк погоды"
-        + (f", интервал P10…P90 расширен в {scale} раза: источники разошлись" if scale > 1 else ""),
+        + (f", интервал P10…P90 расширен в {scale} раза: источники разошлись на {collected.spread_ms:.1f} м/с" if scale > 1 else ""),
         as_of=as_of,
     )
 

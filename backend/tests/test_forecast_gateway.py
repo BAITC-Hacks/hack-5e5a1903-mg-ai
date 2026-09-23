@@ -271,8 +271,21 @@ async def test_sources_that_disagree_widen_the_interval(client: AsyncClient, use
 
     body = (await client.get(f"/api/forecast/{ISSUE_PATH}", headers=auth(user))).json()
 
-    assert seen["scale"] == orchestrator.WIDE_INTERVAL_SCALE
+    # Ветер расходится на 11 м/с при пороге 5: шаг за каждый метр сверх порога
+    # упирается в потолок, и интервал расширяется ровно на него.
+    assert seen["scale"] == pytest.approx(orchestrator.WIDE_INTERVAL_SCALE_MAX)
     assert all(analyze.FLAG_SOURCE_SPREAD in hour["flags"] for hour in body["hours"])
+
+
+async def test_interval_widening_grows_with_the_spread_and_stops_at_the_cap():
+    def collected(spread):
+        weather = orchestrator._Weather(rows=[], points={}, sources=[], flags={analyze.FLAG_SOURCE_SPREAD}, spread_ms=spread)
+        return orchestrator._interval_scale(weather)
+
+    assert orchestrator._interval_scale(orchestrator._Weather(rows=[], points={}, sources=[], flags=set(), spread_ms=9.0)) == 1.0
+    assert collected(analyze.SOURCE_SPREAD_MS) == 1.0
+    assert collected(7.0) < collected(12.0)
+    assert collected(100.0) == orchestrator.WIDE_INTERVAL_SCALE_MAX
 
 
 async def test_weather_published_after_the_issue_is_dropped(client: AsyncClient, user: User, live):
