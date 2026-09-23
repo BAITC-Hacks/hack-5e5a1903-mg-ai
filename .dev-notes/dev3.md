@@ -2,7 +2,7 @@
 
 ## Сейчас делаю
 
--
+- #6: загрузчик IFS из Single Runs и кэш прогонов, ветка `features-dev3-ifs-fetch`.
 
 ## Сделано
 
@@ -69,9 +69,11 @@ surface_pressure`. Время ISO с `Z`. Чего у модели нет, то 
   стоит сойтись на одной.
 - dev1, Makefile: цель для обновления кэша, например в `make fetch` из #6 рядом
   с IFS: `cd backend && uv run python -m src.forecast.weather.fetch_prev_runs`.
+  IFS добавляется туда же: `uv run python -m src.forecast.weather.fetch_ifs`.
   Сеть нужна только ей, обычный запуск читает закоммиченный кэш.
 - dev1, README, раздел данных: Open-Meteo Previous Runs API, модели ECMWF IFS 0.25°,
   GFS, ICON, GEM, лицензия данных Open-Meteo CC BY 4.0 с атрибуцией.
+  Плюс Single Runs API, модель ECMWF IFS HRES 9 км (#6), текст абзаца передан с PR.
 - dev1: новая переменная `NWP_HTTP_TIMEOUT_S` добавлена в `.env.example`, нужна
   только загрузчику. Зависимостей не добавлял.
 - #7 уже в main, кэш Previous Runs читается `AsOfStore` без изменений. Тест
@@ -80,3 +82,8 @@ surface_pressure`. Время ISO с `Z`. Чего у модели нет, то 
 - `asof.CACHE_TO_OUTPUT` не знает `wind_direction_80m`, поэтому у GEM `wd100`
   пустой. Нужно добавить колонку направления на 80 м или брать `wd_hub` из нее
   при сборке запроса (#28, #39).
+- #7, `AsOfStore`: 9 прогонов IFS за 04.08–09.08.2025 есть в кэше, но часть переменных
+  у них пуста целиком (сбой архива Open-Meteo, перечислено в `data/nwp/ifs/gaps.csv`).
+  `get_nwp` берет самый свежий прогон и отдаст NaN, а не откатится на предыдущий.
+  На феврале и январе 2026 это не сказывается, но для обучающей выборки стоит
+  пропускать строки с пустым `ws80`.
