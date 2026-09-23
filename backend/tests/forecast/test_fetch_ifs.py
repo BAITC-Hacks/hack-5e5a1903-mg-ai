@@ -212,12 +212,12 @@ def test_fetch_skips_unavailable_runs_and_resumes_without_requests(tmp_path):
     assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == before
 
 
-def test_fetch_retry_unavailable_replaces_gap_record(tmp_path):
+def test_fetch_retry_gaps_replaces_unavailable_record(tmp_path):
     with Api(missing={"2024-10-01T18:00"}).client() as client:
         ifs.fetch(date(2024, 10, 1), date(2024, 10, 1), tmp_path, client, no_wait())
     api = Api()
     with api.client() as client:
-        summary = ifs.fetch(date(2024, 10, 1), date(2024, 10, 1), tmp_path, client, no_wait(), retry_unavailable=True)
+        summary = ifs.fetch(date(2024, 10, 1), date(2024, 10, 1), tmp_path, client, no_wait(), retry_gaps=True)
     assert api.calls == ["2024-10-01T18:00"]
     assert summary.downloaded == 1
     assert ifs.read_gaps(tmp_path).empty
@@ -239,6 +239,29 @@ def test_fetch_lists_null_values_in_gaps(tmp_path):
         {"run_init_utc": "2024-10-01T12:00:00Z", "variable": "wind_speed_80m", "lead_hours": "3;4", "reason": "null"}
     ]
     assert ifs.verify_sums(tmp_path) == []
+
+
+def test_fetch_retry_gaps_refetches_run_with_nulls(tmp_path):
+    with Api([damaged_run_response()]).client() as client:
+        ifs.fetch(date(2024, 10, 1), date(2024, 10, 1), tmp_path, client, no_wait())
+    api = Api()
+    with api.client() as client:
+        summary = ifs.fetch(date(2024, 10, 1), date(2024, 10, 1), tmp_path, client, no_wait(), retry_gaps=True)
+    assert api.calls == ["2024-10-01T12:00"]
+    assert summary.downloaded == 1
+    assert ifs.read_gaps(tmp_path).empty
+    runs = ifs.load_runs(tmp_path)
+    assert len(runs) == 2 * ifs.HOURS
+    assert runs["wind_speed_80m"].notna().all()
+    assert ifs.verify_sums(tmp_path) == []
+
+
+def test_main_rejects_bad_timeout_from_env_without_traceback(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("NWP_HTTP_TIMEOUT_S", "abc")
+    with pytest.raises(SystemExit) as exc:
+        ifs.main(["--cache-dir", str(tmp_path)])
+    assert exc.value.code == 2
+    assert "NWP_HTTP_TIMEOUT_S" in capsys.readouterr().err
 
 
 def test_fetch_saves_progress_when_stopped(tmp_path):
