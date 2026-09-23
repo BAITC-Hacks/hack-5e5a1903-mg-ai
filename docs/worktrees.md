@@ -23,7 +23,8 @@ C:\meirzhan\dev\
 
 ```bash
 # из основного репозитория
-git worktree add ../hackalem-worktrees/features-dev1-auth -b features-dev1-auth
+git fetch origin
+git worktree add ../hackalem-worktrees/features-dev1-auth -b features-dev1-auth origin/dev
 cd ../hackalem-worktrees/features-dev1-auth
 cp ../../HACKALEM\ AI/.env .env
 ```
