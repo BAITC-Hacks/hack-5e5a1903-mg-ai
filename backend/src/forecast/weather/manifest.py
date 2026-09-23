@@ -68,7 +68,6 @@ import dataclasses
 import hashlib
 import json
 import logging
-import os
 import subprocess
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timedelta
@@ -78,6 +77,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.forecast.dataset import config as dataset_config
+from src.forecast.dataset.config import SCADA_FILES
 from src.forecast.weather.asof import VALUE_COLUMNS, LeakageError, to_utc
 from src.forecast.weather.sources import SOURCES, Source
 
@@ -87,10 +88,6 @@ SCHEMA_VERSION = 1
 
 REQUIRED_COLUMNS: tuple[str, ...] = ("valid_time_utc", "source", "run_init_utc", "available_at_utc")
 
-SCADA_FILES: dict[str, str] = {
-    "T1": "Dataset HackAlemAI turbine 1.csv",
-    "T2": "Dataset HackAlemAI turbine 2.csv",
-}
 
 NWP_CACHE_DIR = "nwp"
 SUMS_FILE = "SHA256SUMS"
@@ -98,7 +95,6 @@ SUMS_FILE = "SHA256SUMS"
 GIT_TIMEOUT_S = 5
 
 _HASH_CHUNK = 1 << 20
-_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def build_manifest(
@@ -120,8 +116,10 @@ def build_manifest(
     часового пояса отклоняется, как и в ``AsOfStore``: иначе местное время молча
     станет UTC. Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в
     паспорт не попадают, если в них нет ни прогона, ни значений погоды; иначе
-    их время публикации не проверить, и это ``LeakageError``. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
-    ``data/`` в корне репозитория.
+    их время публикации не проверить, и это ``LeakageError``.
+
+    ``data_dir`` по умолчанию тот же, что у загрузки SCADA: ``DATA_DIR``
+    из ``dataset/config.py``.
 
     ``requested_sources`` — источники, которые выпуск запрашивал у ``get_nwp_multi``.
     Те из них, что пропущены без прогона, попадают в ``missing_sources``.
@@ -319,7 +317,7 @@ def _git_sha() -> str | None:
 def _data_dir(data_dir: str | Path | None) -> Path:
     if data_dir is not None:
         return Path(data_dir)
-    return Path(os.environ.get("DATA_DIR") or _REPO_ROOT / "data")
+    return dataset_config.DATA_DIR
 
 
 def _canonical_json(value: Any) -> str:

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from src.forecast.dataset import config as dataset_config
 from src.forecast.weather import manifest as manifest_module
 from src.forecast.weather.manifest import SCADA_FILES, LeakageError, build_manifest, manifest_json, write_manifest
 from src.forecast.weather.sources import SOURCES
@@ -342,3 +343,12 @@ def test_sub_second_times_are_rejected(data_dir):
 
     with pytest.raises(ValueError, match="available_at_utc время с долями секунды"):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
+
+
+def test_default_data_dir_is_the_one_scada_loader_uses(monkeypatch, data_dir):
+    # Раньше паспорт вычислял DATA_DIR сам и мог хэшировать другой каталог, чем читает load_scada.
+    monkeypatch.setattr(dataset_config, "DATA_DIR", data_dir)
+    manifest = build_manifest(ISSUE, _nwp())
+
+    assert manifest["scada"]["T1"]["sha256"] == hashlib.sha256((data_dir / SCADA_FILES["T1"]).read_bytes()).hexdigest()
+    assert manifest["sources"]["gfs"]["cache"]["files"] == 2
