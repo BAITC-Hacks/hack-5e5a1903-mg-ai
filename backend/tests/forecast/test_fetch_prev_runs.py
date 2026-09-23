@@ -193,7 +193,8 @@ def test_committed_cache(source):
     absent = [v for v in fpr.VARIABLES if v not in model.variables]
     assert frame[absent].isna().all().all()
     assert frame[list(model.wind_speeds)].notna().any(axis=1).all()
-    # Февраль 2026 нужен для ретро-симуляции целиком и без пропусков ветра.
+    # Весь горизонт ретро-симуляции, февраль и +48 ч последнего выпуска, без пропусков ветра.
     feb = frame[frame["valid_time_utc"] >= pd.Timestamp("2026-02-01", tz="UTC")]
-    assert (feb.groupby("prev_day").size() == 28 * 24).all()
+    assert feb["valid_time_utc"].max() >= pd.Timestamp("2026-03-01 02:00", tz="UTC")
+    assert (feb.groupby("prev_day").size() == 29 * 24).all()
     assert feb[model.wind_speeds[0]].notna().all()
