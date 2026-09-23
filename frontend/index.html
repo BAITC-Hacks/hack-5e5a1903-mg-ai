@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZHEL.ai — почасовой прогноз выработки ВЭС</title>
+<script>
+  // Единственное место, где задается адрес API.
+  // По умолчанию тот же источник, что и страница: nginx раздает статику и проксирует /api.
+  // Для отладки без nginx раскомментируйте строку ниже и подставьте свой адрес.
+  // window.API_BASE = "http://localhost:8000/api";
+  window.API_BASE = window.API_BASE || "/api";
+  window.__resources = {};
+</script>
+<script src="vendor/react.js"></script>
+<script src="vendor/react-dom.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+<script src="vendor/dc-runtime.js"></script>
+
+</head>
+<body style="margin:0;background:#F4F5F2;color:#141816;font-family:'Onest',-apple-system,BlinkMacSystemFont,system-ui,sans-serif">
+<!-- Экран входа. Показывается, пока в localStorage нет токена, и при ответе 401. -->
+<div id="zhel-login" style="display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px">
+  <form id="zhel-login-form" style="width:100%;max-width:380px;background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:22px;padding:28px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-weight:700;font-size:20px;letter-spacing:-0.02em">ZHEL<span style="color:oklch(0.6 0.16 135)">.ai</span></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762;letter-spacing:0.06em">AGENTIC FORECAST</div>
+    </div>
+    <div style="font-size:14px;color:#4A524D;line-height:1.5">Почасовой прогноз выработки ВЭС. Войдите, чтобы открыть дашборд.</div>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#4A524D">Логин
+      <input id="zhel-login-email" type="text" autocomplete="username" required style="padding:11px 13px;border-radius:11px;border:1px solid rgba(20,24,22,0.14);font:inherit;font-size:14px;background:#FBFBF9;color:#141816">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#4A524D">Пароль
+      <input id="zhel-login-password" type="password" autocomplete="current-password" required style="padding:11px 13px;border-radius:11px;border:1px solid rgba(20,24,22,0.14);font:inherit;font-size:14px;background:#FBFBF9;color:#141816">
+    </label>
+    <div id="zhel-login-error" style="display:none;padding:10px 12px;border-radius:10px;background:oklch(0.6 0.18 25 / 0.1);color:oklch(0.45 0.16 25);font-size:13px;line-height:1.45"></div>
+    <button id="zhel-login-submit" type="submit" style="padding:12px;border-radius:12px;border:none;background:oklch(0.6 0.16 135);color:#FFFFFF;font:inherit;font-size:15px;font-weight:600;cursor:pointer">Войти</button>
+    <div id="zhel-login-api" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A827D"></div>
+  </form>
+</div>
+<div id="zhel-app" style="display:none">
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-cyrillic-ext.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-cyrillic.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-greek.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-vietnamese.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-cyrillic-ext.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-cyrillic.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-greek.woff2") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-vietnamese.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic-ext.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* math */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-math.woff2") format('woff2');
+  unicode-range: U+0302-0303, U+0305, U+0307-0308, U+0310, U+0312, U+0315, U+031A, U+0326-0327, U+032C, U+032F-0330, U+0332-0333, U+0338, U+033A, U+0346, U+034D, U+0391-03A1, U+03A3-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F4-03F5, U+2016-2017, U+2034-2038, U+203C, U+2040, U+2043, U+2047, U+2050, U+2057, U+205F, U+2070-2071, U+2074-208E, U+2090-209C, U+20D0-20DC, U+20E1, U+20E5-20EF, U+2100-2112, U+2114-2115, U+2117-2121, U+2123-214F, U+2190, U+2192, U+2194-21AE, U+21B0-21E5, U+21F1-21F2, U+21F4-2211, U+2213-2214, U+2216-22FF, U+2308-230B, U+2310, U+2319, U+231C-2321, U+2336-237A, U+237C, U+2395, U+239B-23B7, U+23D0, U+23DC-23E1, U+2474-2475, U+25AF, U+25B3, U+25B7, U+25BD, U+25C1, U+25CA, U+25CC, U+25FB, U+266D-266F, U+27C0-27FF, U+2900-2AFF, U+2B0E-2B11, U+2B30-2B4C, U+2BFE, U+3030, U+FF5B, U+FF5D, U+1D400-1D7FF, U+1EE00-1EEFF;
+}
+/* symbols */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-latin-extra.woff2") format('woff2');
+  unicode-range: U+0001-000C, U+000E-001F, U+007F-009F, U+20DD-20E0, U+20E2-20E4, U+2150-218F, U+2190, U+2192, U+2194-2199, U+21AF, U+21E6-21F0, U+21F3, U+2218-2219, U+2299, U+22C4-22C6, U+2300-243F, U+2440-244A, U+2460-24FF, U+25A0-27BF, U+2800-28FF, U+2921-2922, U+2981, U+29BF, U+29EB, U+2B00-2BFF, U+4DC0-4DFF, U+FFF9-FFFB, U+10140-1018E, U+10190-1019C, U+101A0, U+101D0-101FD, U+102E0-102FB, U+10E60-10E7E, U+1D2C0-1D2D3, U+1D2E0-1D37F, U+1F000-1F0FF, U+1F100-1F1AD, U+1F1E6-1F1FF, U+1F30D-1F30F, U+1F315, U+1F31C, U+1F31E, U+1F320-1F32C, U+1F336, U+1F378, U+1F37D, U+1F382, U+1F393-1F39F, U+1F3A7-1F3A8, U+1F3AC-1F3AF, U+1F3C2, U+1F3C4-1F3C6, U+1F3CA-1F3CE, U+1F3D4-1F3E0, U+1F3ED, U+1F3F1-1F3F3, U+1F3F5-1F3F7, U+1F408, U+1F415, U+1F41F, U+1F426, U+1F43F, U+1F441-1F442, U+1F444, U+1F446-1F449, U+1F44C-1F44E, U+1F453, U+1F46A, U+1F47D, U+1F4A3, U+1F4B0, U+1F4B3, U+1F4B9, U+1F4BB, U+1F4BF, U+1F4C8-1F4CB, U+1F4D6, U+1F4DA, U+1F4DF, U+1F4E3-1F4E6, U+1F4EA-1F4ED, U+1F4F7, U+1F4F9-1F4FB, U+1F4FD-1F4FE, U+1F503, U+1F507-1F50B, U+1F50D, U+1F512-1F513, U+1F53E-1F54A, U+1F54F-1F5FA, U+1F610, U+1F650-1F67F, U+1F687, U+1F68D, U+1F691, U+1F694, U+1F698, U+1F6AD, U+1F6B2, U+1F6B9-1F6BA, U+1F6BC, U+1F6C6-1F6CF, U+1F6D3-1F6D7, U+1F6E0-1F6EA, U+1F6F0-1F6F3, U+1F6F7-1F6FC, U+1F700-1F7FF, U+1F800-1F80B, U+1F810-1F847, U+1F850-1F859, U+1F860-1F887, U+1F890-1F8AD, U+1F8B0-1F8BB, U+1F8C0-1F8C1, U+1F900-1F90B, U+1F93B, U+1F946, U+1F984, U+1F996, U+1F9E9, U+1FA00-1FA6F, U+1FA70-1FA7C, U+1FA80-1FA89, U+1FA8F-1FAC6, U+1FACE-1FADC, U+1FADF-1FAE9, U+1FAF0-1FAF8, U+1FB00-1FBFF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-symbols.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/onest-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic-ext.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* math */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-math.woff2") format('woff2');
+  unicode-range: U+0302-0303, U+0305, U+0307-0308, U+0310, U+0312, U+0315, U+031A, U+0326-0327, U+032C, U+032F-0330, U+0332-0333, U+0338, U+033A, U+0346, U+034D, U+0391-03A1, U+03A3-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F4-03F5, U+2016-2017, U+2034-2038, U+203C, U+2040, U+2043, U+2047, U+2050, U+2057, U+205F, U+2070-2071, U+2074-208E, U+2090-209C, U+20D0-20DC, U+20E1, U+20E5-20EF, U+2100-2112, U+2114-2115, U+2117-2121, U+2123-214F, U+2190, U+2192, U+2194-21AE, U+21B0-21E5, U+21F1-21F2, U+21F4-2211, U+2213-2214, U+2216-22FF, U+2308-230B, U+2310, U+2319, U+231C-2321, U+2336-237A, U+237C, U+2395, U+239B-23B7, U+23D0, U+23DC-23E1, U+2474-2475, U+25AF, U+25B3, U+25B7, U+25BD, U+25C1, U+25CA, U+25CC, U+25FB, U+266D-266F, U+27C0-27FF, U+2900-2AFF, U+2B0E-2B11, U+2B30-2B4C, U+2BFE, U+3030, U+FF5B, U+FF5D, U+1D400-1D7FF, U+1EE00-1EEFF;
+}
+/* symbols */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-latin-extra.woff2") format('woff2');
+  unicode-range: U+0001-000C, U+000E-001F, U+007F-009F, U+20DD-20E0, U+20E2-20E4, U+2150-218F, U+2190, U+2192, U+2194-2199, U+21AF, U+21E6-21F0, U+21F3, U+2218-2219, U+2299, U+22C4-22C6, U+2300-243F, U+2440-244A, U+2460-24FF, U+25A0-27BF, U+2800-28FF, U+2921-2922, U+2981, U+29BF, U+29EB, U+2B00-2BFF, U+4DC0-4DFF, U+FFF9-FFFB, U+10140-1018E, U+10190-1019C, U+101A0, U+101D0-101FD, U+102E0-102FB, U+10E60-10E7E, U+1D2C0-1D2D3, U+1D2E0-1D37F, U+1F000-1F0FF, U+1F100-1F1AD, U+1F1E6-1F1FF, U+1F30D-1F30F, U+1F315, U+1F31C, U+1F31E, U+1F320-1F32C, U+1F336, U+1F378, U+1F37D, U+1F382, U+1F393-1F39F, U+1F3A7-1F3A8, U+1F3AC-1F3AF, U+1F3C2, U+1F3C4-1F3C6, U+1F3CA-1F3CE, U+1F3D4-1F3E0, U+1F3ED, U+1F3F1-1F3F3, U+1F3F5-1F3F7, U+1F408, U+1F415, U+1F41F, U+1F426, U+1F43F, U+1F441-1F442, U+1F444, U+1F446-1F449, U+1F44C-1F44E, U+1F453, U+1F46A, U+1F47D, U+1F4A3, U+1F4B0, U+1F4B3, U+1F4B9, U+1F4BB, U+1F4BF, U+1F4C8-1F4CB, U+1F4D6, U+1F4DA, U+1F4DF, U+1F4E3-1F4E6, U+1F4EA-1F4ED, U+1F4F7, U+1F4F9-1F4FB, U+1F4FD-1F4FE, U+1F503, U+1F507-1F50B, U+1F50D, U+1F512-1F513, U+1F53E-1F54A, U+1F54F-1F5FA, U+1F610, U+1F650-1F67F, U+1F687, U+1F68D, U+1F691, U+1F694, U+1F698, U+1F6AD, U+1F6B2, U+1F6B9-1F6BA, U+1F6BC, U+1F6C6-1F6CF, U+1F6D3-1F6D7, U+1F6E0-1F6EA, U+1F6F0-1F6F3, U+1F6F7-1F6FC, U+1F700-1F7FF, U+1F800-1F80B, U+1F810-1F847, U+1F850-1F859, U+1F860-1F887, U+1F890-1F8AD, U+1F8B0-1F8BB, U+1F8C0-1F8C1, U+1F900-1F90B, U+1F93B, U+1F946, U+1F984, U+1F996, U+1F9E9, U+1FA00-1FA6F, U+1FA70-1FA7C, U+1FA80-1FA89, U+1FA8F-1FAC6, U+1FACE-1FADC, U+1FADF-1FAE9, U+1FAF0-1FAF8, U+1FB00-1FBFF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-symbols.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/onest-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic-ext.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* math */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-math.woff2") format('woff2');
+  unicode-range: U+0302-0303, U+0305, U+0307-0308, U+0310, U+0312, U+0315, U+031A, U+0326-0327, U+032C, U+032F-0330, U+0332-0333, U+0338, U+033A, U+0346, U+034D, U+0391-03A1, U+03A3-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F4-03F5, U+2016-2017, U+2034-2038, U+203C, U+2040, U+2043, U+2047, U+2050, U+2057, U+205F, U+2070-2071, U+2074-208E, U+2090-209C, U+20D0-20DC, U+20E1, U+20E5-20EF, U+2100-2112, U+2114-2115, U+2117-2121, U+2123-214F, U+2190, U+2192, U+2194-21AE, U+21B0-21E5, U+21F1-21F2, U+21F4-2211, U+2213-2214, U+2216-22FF, U+2308-230B, U+2310, U+2319, U+231C-2321, U+2336-237A, U+237C, U+2395, U+239B-23B7, U+23D0, U+23DC-23E1, U+2474-2475, U+25AF, U+25B3, U+25B7, U+25BD, U+25C1, U+25CA, U+25CC, U+25FB, U+266D-266F, U+27C0-27FF, U+2900-2AFF, U+2B0E-2B11, U+2B30-2B4C, U+2BFE, U+3030, U+FF5B, U+FF5D, U+1D400-1D7FF, U+1EE00-1EEFF;
+}
+/* symbols */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-latin-extra.woff2") format('woff2');
+  unicode-range: U+0001-000C, U+000E-001F, U+007F-009F, U+20DD-20E0, U+20E2-20E4, U+2150-218F, U+2190, U+2192, U+2194-2199, U+21AF, U+21E6-21F0, U+21F3, U+2218-2219, U+2299, U+22C4-22C6, U+2300-243F, U+2440-244A, U+2460-24FF, U+25A0-27BF, U+2800-28FF, U+2921-2922, U+2981, U+29BF, U+29EB, U+2B00-2BFF, U+4DC0-4DFF, U+FFF9-FFFB, U+10140-1018E, U+10190-1019C, U+101A0, U+101D0-101FD, U+102E0-102FB, U+10E60-10E7E, U+1D2C0-1D2D3, U+1D2E0-1D37F, U+1F000-1F0FF, U+1F100-1F1AD, U+1F1E6-1F1FF, U+1F30D-1F30F, U+1F315, U+1F31C, U+1F31E, U+1F320-1F32C, U+1F336, U+1F378, U+1F37D, U+1F382, U+1F393-1F39F, U+1F3A7-1F3A8, U+1F3AC-1F3AF, U+1F3C2, U+1F3C4-1F3C6, U+1F3CA-1F3CE, U+1F3D4-1F3E0, U+1F3ED, U+1F3F1-1F3F3, U+1F3F5-1F3F7, U+1F408, U+1F415, U+1F41F, U+1F426, U+1F43F, U+1F441-1F442, U+1F444, U+1F446-1F449, U+1F44C-1F44E, U+1F453, U+1F46A, U+1F47D, U+1F4A3, U+1F4B0, U+1F4B3, U+1F4B9, U+1F4BB, U+1F4BF, U+1F4C8-1F4CB, U+1F4D6, U+1F4DA, U+1F4DF, U+1F4E3-1F4E6, U+1F4EA-1F4ED, U+1F4F7, U+1F4F9-1F4FB, U+1F4FD-1F4FE, U+1F503, U+1F507-1F50B, U+1F50D, U+1F512-1F513, U+1F53E-1F54A, U+1F54F-1F5FA, U+1F610, U+1F650-1F67F, U+1F687, U+1F68D, U+1F691, U+1F694, U+1F698, U+1F6AD, U+1F6B2, U+1F6B9-1F6BA, U+1F6BC, U+1F6C6-1F6CF, U+1F6D3-1F6D7, U+1F6E0-1F6EA, U+1F6F0-1F6F3, U+1F6F7-1F6FC, U+1F700-1F7FF, U+1F800-1F80B, U+1F810-1F847, U+1F850-1F859, U+1F860-1F887, U+1F890-1F8AD, U+1F8B0-1F8BB, U+1F8C0-1F8C1, U+1F900-1F90B, U+1F93B, U+1F946, U+1F984, U+1F996, U+1F9E9, U+1FA00-1FA6F, U+1FA70-1FA7C, U+1FA80-1FA89, U+1FA8F-1FAC6, U+1FACE-1FADC, U+1FADF-1FAE9, U+1FAF0-1FAF8, U+1FB00-1FBFF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-symbols.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/onest-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic-ext.woff2") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-cyrillic.woff2") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* math */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-math.woff2") format('woff2');
+  unicode-range: U+0302-0303, U+0305, U+0307-0308, U+0310, U+0312, U+0315, U+031A, U+0326-0327, U+032C, U+032F-0330, U+0332-0333, U+0338, U+033A, U+0346, U+034D, U+0391-03A1, U+03A3-03A9, U+03B1-03C9, U+03D1, U+03D5-03D6, U+03F0-03F1, U+03F4-03F5, U+2016-2017, U+2034-2038, U+203C, U+2040, U+2043, U+2047, U+2050, U+2057, U+205F, U+2070-2071, U+2074-208E, U+2090-209C, U+20D0-20DC, U+20E1, U+20E5-20EF, U+2100-2112, U+2114-2115, U+2117-2121, U+2123-214F, U+2190, U+2192, U+2194-21AE, U+21B0-21E5, U+21F1-21F2, U+21F4-2211, U+2213-2214, U+2216-22FF, U+2308-230B, U+2310, U+2319, U+231C-2321, U+2336-237A, U+237C, U+2395, U+239B-23B7, U+23D0, U+23DC-23E1, U+2474-2475, U+25AF, U+25B3, U+25B7, U+25BD, U+25C1, U+25CA, U+25CC, U+25FB, U+266D-266F, U+27C0-27FF, U+2900-2AFF, U+2B0E-2B11, U+2B30-2B4C, U+2BFE, U+3030, U+FF5B, U+FF5D, U+1D400-1D7FF, U+1EE00-1EEFF;
+}
+/* symbols */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-latin-extra.woff2") format('woff2');
+  unicode-range: U+0001-000C, U+000E-001F, U+007F-009F, U+20DD-20E0, U+20E2-20E4, U+2150-218F, U+2190, U+2192, U+2194-2199, U+21AF, U+21E6-21F0, U+21F3, U+2218-2219, U+2299, U+22C4-22C6, U+2300-243F, U+2440-244A, U+2460-24FF, U+25A0-27BF, U+2800-28FF, U+2921-2922, U+2981, U+29BF, U+29EB, U+2B00-2BFF, U+4DC0-4DFF, U+FFF9-FFFB, U+10140-1018E, U+10190-1019C, U+101A0, U+101D0-101FD, U+102E0-102FB, U+10E60-10E7E, U+1D2C0-1D2D3, U+1D2E0-1D37F, U+1F000-1F0FF, U+1F100-1F1AD, U+1F1E6-1F1FF, U+1F30D-1F30F, U+1F315, U+1F31C, U+1F31E, U+1F320-1F32C, U+1F336, U+1F378, U+1F37D, U+1F382, U+1F393-1F39F, U+1F3A7-1F3A8, U+1F3AC-1F3AF, U+1F3C2, U+1F3C4-1F3C6, U+1F3CA-1F3CE, U+1F3D4-1F3E0, U+1F3ED, U+1F3F1-1F3F3, U+1F3F5-1F3F7, U+1F408, U+1F415, U+1F41F, U+1F426, U+1F43F, U+1F441-1F442, U+1F444, U+1F446-1F449, U+1F44C-1F44E, U+1F453, U+1F46A, U+1F47D, U+1F4A3, U+1F4B0, U+1F4B3, U+1F4B9, U+1F4BB, U+1F4BF, U+1F4C8-1F4CB, U+1F4D6, U+1F4DA, U+1F4DF, U+1F4E3-1F4E6, U+1F4EA-1F4ED, U+1F4F7, U+1F4F9-1F4FB, U+1F4FD-1F4FE, U+1F503, U+1F507-1F50B, U+1F50D, U+1F512-1F513, U+1F53E-1F54A, U+1F54F-1F5FA, U+1F610, U+1F650-1F67F, U+1F687, U+1F68D, U+1F691, U+1F694, U+1F698, U+1F6AD, U+1F6B2, U+1F6B9-1F6BA, U+1F6BC, U+1F6C6-1F6CF, U+1F6D3-1F6D7, U+1F6E0-1F6EA, U+1F6F0-1F6F3, U+1F6F7-1F6FC, U+1F700-1F7FF, U+1F800-1F80B, U+1F810-1F847, U+1F850-1F859, U+1F860-1F887, U+1F890-1F8AD, U+1F8B0-1F8BB, U+1F8C0-1F8C1, U+1F900-1F90B, U+1F93B, U+1F946, U+1F984, U+1F996, U+1F9E9, U+1FA00-1FA6F, U+1FA70-1FA7C, U+1FA80-1FA89, U+1FA8F-1FAC6, U+1FACE-1FADC, U+1FADF-1FAE9, U+1FAF0-1FAF8, U+1FB00-1FBFF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-symbols.woff2") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-latin-ext.woff2") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Onest';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/onest-latin.woff2") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#F4F5F2;color:#141816;font-family:Onest,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:oklch(0.6 0.16 135);text-decoration:none}
+a:hover{text-decoration:underline}
+input[type=range]{accent-color:oklch(0.6 0.16 135)}
+@keyframes zspin{to{transform:rotate(360deg)}}
+@keyframes zpulse{0%,100%{opacity:1}50%{opacity:.3}}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(20,24,22,0.1);border-radius:8px}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh">
+  <aside style="width:224px;flex-shrink:0;border-right:1px solid rgba(20,24,22,0.07);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:30px;background:#FBFBF9">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
+      <div style="width:34px;height:34px;flex-shrink:0">{{ rotorLogo }}</div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-weight:700;font-size:17px;letter-spacing:-0.02em">ZHEL<span style="color:oklch(0.6 0.16 135)">.ai</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762;letter-spacing:0.06em">AGENTIC FORECAST</div>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ nav }}" as="it" hint-placeholder-count="7">
+        <button sc-camel-on-click="{{ it.onClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 10px;border:none;border-radius:10px;background:{{ it.bg }};color:{{ it.color }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left" style-hover="color:#141816">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.7">{{ it.num }}</span>
+          <span style="flex:1;display:flex;flex-direction:column;gap:1px"><span>{{ it.label }}</span><span style="font-size:11px;font-weight:400;color:#5F6762">{{ it.desc }}</span></span>
+          <span style="width:6px;height:6px;border-radius:50%;background:{{ it.dot }}"></span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;background:#FFFFFF;border:1px solid rgba(20,24,22,0.07)">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;color:#5F6762">HACKALEM AI · КЕЙС</div>
+      <div style="font-size:13px;line-height:1.45">Почасовой прогноз выработки ВЭС на 24–48 ч</div>
+      <div style="font-size:12px;color:#5F6762;line-height:1.5">История: 03.2023 – 31.01.2026<br>Тест: 01.02 – 28.02.2026</div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0">
+    <header style="position:sticky;top:0;z-index:20;background:rgba(244,245,242,0.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(20,24,22,0.07);padding:12px 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;color:#5F6762">ДЕНЬ ВЫПУСКА ПРОГНОЗА</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500">{{ top.issueLabel }} <span style="color:#5F6762">UTC+5</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:240px;max-width:460px">
+        <button sc-camel-on-click="{{ prevIssue }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(20,24,22,0.1);background:transparent;color:#141816;cursor:pointer;font-size:15px" style-hover="background:rgba(20,24,22,0.06)">‹</button>
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px"><input type="range" min="0" max="{{ issueMax }}" value="{{ issue }}" sc-camel-on-change="{{ onSlide }}" style="width:100%;margin:0"><div style="display:flex;justify-content:space-between;font-size:10px;color:#5F6762;font-family:'JetBrains Mono',monospace"><span>{{ top.firstLabel }}</span><span>двигайте, чтобы выбрать день</span><span>{{ top.lastLabel }}</span></div></div>
+        <button sc-camel-on-click="{{ nextIssue }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(20,24,22,0.1);background:transparent;color:#141816;cursor:pointer;font-size:15px" style-hover="background:rgba(20,24,22,0.06)">›</button>
+      </div>
+      <div style="font-size:13px;color:#5F6762">Прогноз на: <span style="color:#141816;font-family:'JetBrains Mono',monospace">{{ top.horizonLabel }}</span></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;border:1px solid rgba(20,24,22,0.1);font-size:13px">
+          <sc-if value="{{ running }}" hint-placeholder-val="{{ false }}">
+            <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.6 0.16 75);animation:zpulse 1s infinite"></span>
+          </sc-if>
+          <sc-if value="{{ notRunning }}" hint-placeholder-val="{{ true }}">
+            <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.6 0.16 135)"></span>
+          </sc-if>
+          <span>{{ top.status }}</span>
+        </div>
+        <button sc-camel-on-click="{{ toggleReplay }}" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(20,24,22,0.14);background:{{ replayBg }};color:#141816;font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">{{ replayLabel }}</button>
+        <button sc-camel-on-click="{{ rerun }}" style="padding:8px 14px;border-radius:10px;border:none;background:oklch(0.6 0.16 135);color:#FFFFFF;font:inherit;font-size:13px;font-weight:600;cursor:pointer" style-hover="filter:brightness(1.08)">{{ rerunLabel }}</button>
+        <button sc-camel-on-click="{{ logout }}" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(20,24,22,0.14);background:transparent;color:#4A524D;font:inherit;font-size:13px;cursor:pointer">Выйти</button>
+      </div>
+    </header>
+
+    <sc-if value="{{ stub.show }}" hint-placeholder-val="{{ true }}">
+      <div style="margin:18px 32px 0;padding:12px 16px;border-radius:14px;background:oklch(0.6 0.16 75 / 0.12);border:1px solid oklch(0.6 0.16 75 / 0.4);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:14px;font-weight:600;color:oklch(0.45 0.14 75)">Демонстрационные данные</span>
+        <span style="font-size:13px;color:#4A524D;line-height:1.45">{{ stub.text }}</span>
+      </div>
+    </sc-if>
+
+    <div style="padding:30px 32px 72px;max-width:1380px">
+
+      <sc-if value="{{ st.loading }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:48px 24px;display:flex;flex-direction:column;align-items:center;gap:14px">
+          <span style="width:26px;height:26px;border-radius:50%;border:3px solid rgba(20,24,22,0.12);border-top-color:oklch(0.6 0.16 135);animation:zspin 0.9s linear infinite"></span>
+          <div style="font-size:15px;font-weight:500">{{ st.loadingText }}</div>
+          <div style="font-size:13px;color:#5F6762">{{ st.loadingSub }}</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.error }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FFFFFF;border:1px solid oklch(0.6 0.18 25 / 0.35);border-radius:20px;padding:32px 28px;display:flex;flex-direction:column;gap:14px;max-width:720px">
+          <div style="font-size:20px;font-weight:600">Не удалось загрузить данные</div>
+          <div style="font-size:15px;line-height:1.55;color:#4A524D">{{ st.errorText }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#7A827D;word-break:break-all">{{ st.errorDetail }}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button sc-camel-on-click="{{ retry }}" style="padding:11px 16px;border-radius:12px;border:none;background:#141816;color:#FFFFFF;font:inherit;font-size:14px;font-weight:500;cursor:pointer">Повторить запрос</button>
+            <button sc-camel-on-click="{{ logout }}" style="padding:11px 16px;border-radius:12px;border:1px solid rgba(20,24,22,0.14);background:transparent;color:#141816;font:inherit;font-size:14px;cursor:pointer">Сменить пользователя</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ st.empty }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:32px 28px;display:flex;flex-direction:column;gap:12px;max-width:720px">
+          <div style="font-size:20px;font-weight:600">Данных нет</div>
+          <div style="font-size:15px;line-height:1.55;color:#4A524D">{{ st.emptyText }}</div>
+          <button sc-camel-on-click="{{ retry }}" style="align-self:flex-start;padding:11px 16px;border-radius:12px;border:1px solid rgba(20,24,22,0.14);background:transparent;color:#141816;font:inherit;font-size:14px;cursor:pointer">Обновить</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="position:relative;min-height:360px;border-radius:26px;overflow:hidden;border:1px solid rgba(20,24,22,0.07);background:linear-gradient(180deg,oklch(0.88 0.06 225) 0%,oklch(0.95 0.025 225) 65%,oklch(0.97 0.015 150) 100%)">
+            <sc-for list="{{ heroTurbines }}" as="t" hint-placeholder-count="6">
+              <div style="position:absolute;left:{{ t.left }};bottom:{{ t.bottom }};width:{{ t.w }};height:{{ t.h }};opacity:{{ t.op }};pointer-events:none">{{ t.el }}</div>
+            </sc-for>
+            <div style="position:absolute;left:-15%;right:25%;bottom:-150px;height:230px;border-radius:50%;background:oklch(0.9 0.07 140);pointer-events:none"></div>
+            <div style="position:absolute;left:35%;right:-20%;bottom:-170px;height:250px;border-radius:50%;background:oklch(0.86 0.09 140);pointer-events:none"></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.9) 0%,rgba(255,255,255,0.65) 38%,rgba(255,255,255,0) 62%);pointer-events:none"></div>
+            <div style="position:relative;padding:30px 32px 34px;max-width:600px;display:flex;flex-direction:column;gap:14px">
+              <div style="align-self:flex-start;display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:99px;background:rgba(255,255,255,0.85);border:1px solid rgba(20,24,22,0.08);font-size:12px;color:#4A524D"><span style="width:7px;height:7px;border-radius:50%;background:oklch(0.6 0.16 135)"></span>{{ ov.subtitle }}</div>
+              <h1 style="margin:0;font-size:44px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">{{ ov.title }}</h1>
+              <div style="font-size:20px;line-height:1.4;text-wrap:pretty">В среднем станция будет работать на <span style="font-weight:700;color:oklch(0.6 0.16 135)">{{ ov.meanP }}%</span> мощности.</div>
+              <div style="font-size:15px;line-height:1.55;color:#4A524D;text-wrap:pretty">{{ ov.plain }}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+                <button sc-camel-on-click="{{ downloadCsv }}" style="padding:11px 16px;border-radius:12px;border:none;background:#141816;color:#FFFFFF;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#2A302C">Скачать прогноз (CSV)</button>
+                <button sc-camel-on-click="{{ goAgent }}" style="padding:11px 16px;border-radius:12px;border:1px solid rgba(20,24,22,0.14);background:rgba(255,255,255,0.8);color:#141816;font:inherit;font-size:14px;cursor:pointer" style-hover="background:#FFFFFF">Как агент это посчитал →</button>
+              </div>
+              <div style="align-self:flex-start;margin-top:4px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,0.9);backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:2px;border:1px solid rgba(20,24,22,0.06)">
+              <div style="font-size:11px;color:#5F6762">{{ ov.tb.time }}</div>
+              <div style="display:flex;align-items:baseline;gap:8px;white-space:nowrap"><span style="font-size:20px;font-weight:600">{{ ov.tb.wind }} м/с</span><span style="color:#5F6762">→</span><span style="font-size:20px;font-weight:600;color:oklch(0.6 0.16 135)">{{ ov.tb.p }}%</span></div>
+              <div style="font-size:11px;color:#5F6762">Турбины крутятся со скоростью прогнозного ветра</div>
+            </div>
+            </div>
+            
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <sc-for list="{{ ov.kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:13px;color:#5F6762">{{ k.label }}</div>
+                <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">{{ k.value }}</span><span style="font-size:16px;color:#5F6762">{{ k.unit }}</span></div>
+                <div style="font-size:12px;color:#5F6762;font-family:'JetBrains Mono',monospace">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px 20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:18px;font-weight:600">Сколько энергии будет каждый час</span><span style="font-size:12px;color:#5F6762">наведите на график, чтобы увидеть детали часа</span></div><div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#5F6762">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;border-radius:2px;background:oklch(0.6 0.16 135)"></span>Ожидаемая мощность</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:10px;border-radius:3px;background:oklch(0.6 0.16 135 / 0.2)"></span>Диапазон 80% (P10–P90)</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:0;border-top:2px dashed #141816"></span>Факт SCADA</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:2px;background:oklch(0.6 0.16 215)"></span>Ветер на высоте ступицы, м/с (шкала справа)</div>
+              </div></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div style="display:flex;padding:3px;border-radius:10px;background:#EEF0EC;border:1px solid rgba(20,24,22,0.07)">
+                  <button sc-camel-on-click="{{ setH24 }}" style="padding:6px 12px;border:none;border-radius:7px;background:{{ ov.h24bg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">24 ч</button>
+                  <button sc-camel-on-click="{{ setH48 }}" style="padding:6px 12px;border:none;border-radius:7px;background:{{ ov.h48bg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">48 ч</button>
+                </div>
+                <button sc-camel-on-click="{{ toggleWind }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(20,24,22,0.1);background:{{ ov.windBg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">Ветер</button>
+                <button sc-camel-on-click="{{ toggleActual }}" style="padding:6px 12px;border-radius:10px;border:1px solid rgba(20,24,22,0.1);background:{{ ov.actBg }};color:#141816;font:inherit;font-size:12px;cursor:pointer">Факт</button>
+              </div>
+            </div>
+            <div style="position:relative;height:320px;margin:22px 42px 0 38px" sc-camel-on-mouse-leave="{{ clearHover }}">
+              <sc-for list="{{ ov.yTicks }}" as="y" hint-placeholder-count="5">
+                <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(20,24,22,0.06)">
+                  <span style="position:absolute;left:-38px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ y.l }}</span>
+                  <span style="position:absolute;right:-42px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:oklch(0.6 0.16 215);opacity:{{ ov.windOp }}">{{ y.w }}</span>
+                </div>
+              </sc-for>
+              <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <path d="{{ ov.band }}" style="fill:oklch(0.6 0.16 135 / 0.16)"></path>
+                <path d="{{ ov.wind }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 215);stroke-width:1.5;opacity:{{ ov.windOp }}"></path>
+                <path d="{{ ov.act }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:#141816;stroke-width:1.5;stroke-dasharray:4 4;opacity:{{ ov.actOp }}"></path>
+                <path d="{{ ov.p50 }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 135);stroke-width:2.5;stroke-linejoin:round"></path>
+              </svg>
+              <sc-if value="{{ ov.hv.has }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;top:0;bottom:0;left:{{ ov.hv.left }};width:1px;background:rgba(20,24,22,0.35);pointer-events:none"></div>
+                <div style="position:absolute;top:8px;left:{{ ov.hv.left }};transform:{{ ov.hv.tx }};background:rgba(255,255,255,0.97);border:1px solid rgba(20,24,22,0.12);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:190px;pointer-events:none;z-index:3;box-shadow:0 12px 40px rgba(20,24,22,0.14)">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5F6762">{{ ov.hv.time }} · +{{ ov.hv.lead }} ч</div>
+                  <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:26px;font-weight:600;color:oklch(0.6 0.16 135)">{{ ov.hv.p50 }}%</span><span style="font-size:12px;color:#5F6762">P50</span></div>
+                  <div style="display:grid;grid-template-columns:auto auto;gap:4px 16px;font-size:12px"><span style="color:#5F6762">P10–P90</span><span>{{ ov.hv.band }}</span><span style="color:#5F6762">Факт</span><span>{{ ov.hv.act }}</span><span style="color:#5F6762">Ветер</span><span>{{ ov.hv.wind }} м/с</span><span style="color:#5F6762">Темп.</span><span>{{ ov.hv.temp }} °C</span></div>
+                </div>
+              </sc-if>
+              <div style="position:absolute;inset:0;display:flex">
+                <sc-for list="{{ ov.cols }}" as="c" hint-placeholder-count="48">
+                  <div sc-camel-on-mouse-enter="{{ c.on }}" style="flex:1;height:100%"></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:relative;height:34px;margin:8px 42px 0 38px">
+              <sc-for list="{{ ov.xTicks }}" as="x" hint-placeholder-count="8">
+                <div style="position:absolute;left:{{ x.left }};transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762;white-space:nowrap"><span>{{ x.t }}</span><span style="color:#141816">{{ x.d }}</span></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:2px;margin:10px 42px 0 38px;height:10px">
+              <sc-for list="{{ ov.cells }}" as="c" hint-placeholder-count="48">
+                <div style="flex:1;border-radius:2px;background:{{ c.bgStrong }}"></div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ЧТО ГОВОРИТ АГЕНТ</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 8px;border-radius:6px;background:oklch(0.6 0.16 300 / 0.12);color:oklch(0.6 0.16 300);white-space:nowrap">Вывод бэкенда · выпуск v{{ ov.version }}</div>
+              </div>
+              <div style="font-size:17px;line-height:1.55;text-wrap:pretty">{{ ov.summary }}</div>
+              <div style="display:flex;flex-direction:column;gap:1px;border-radius:12px;overflow:hidden">
+                <sc-for list="{{ ov.checks }}" as="c" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#F4F5F2;font-size:13px">
+                    <span style="width:7px;height:7px;border-radius:50%;background:{{ c.color }}"></span>
+                    <span style="flex:1">{{ c.name }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;color:#5F6762;font-size:12px">{{ c.val }}</span>
+                    <span style="font-size:11px;padding:3px 7px;border-radius:5px;background:rgba(20,24,22,0.05);color:{{ c.color }}">{{ c.st }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ПОГОДА НА ТОЧКЕ ВЭС · ПРОГНОЗ</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <sc-for list="{{ ov.wx }}" as="w" hint-placeholder-count="4">
+                  <div style="padding:14px;border-radius:14px;background:#F4F5F2;display:flex;flex-direction:column;gap:6px">
+                    <div style="font-size:12px;color:#5F6762">{{ w.l }}</div>
+                    <div style="font-size:22px;font-weight:600;letter-spacing:-0.02em">{{ w.v }}</div>
+                    <div style="font-size:11px;color:#5F6762;font-family:'JetBrains Mono',monospace">{{ w.s }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <button sc-camel-on-click="{{ goWeather }}" style="align-self:flex-start;padding:0;border:none;background:none;color:oklch(0.6 0.16 135);font:inherit;font-size:13px;cursor:pointer">Источники и прогоны NWP →</button>
+            </div>
+          </div>
+
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ПРОГНОЗ ПО ЧАСАМ · % ОТ МОЩНОСТИ СТАНЦИИ</div>
+              <div style="font-size:12px;color:#5F6762">Крупно — ожидаемое значение, ниже — возможный диапазон</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px">
+              <sc-for list="{{ ov.cells }}" as="c" hint-placeholder-count="48">
+                <div style="padding:9px 10px;border-radius:10px;background:{{ c.bg }};display:flex;flex-direction:column;gap:3px">
+                  <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:#4A524D"><span>{{ c.t }}</span><span>{{ c.d }}</span></div>
+                  <div style="font-size:18px;font-weight:600">{{ c.v }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4A524D">{{ c.band }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDispatch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">РЕЖИМ ДИСПЕТЧЕРА · ЗАЯВКА НА {{ dp.day }}</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Сколько заявить на рынок на завтра</h1>
+            <div style="color:#5F6762;font-size:15px;line-height:1.5;text-wrap:pretty">Заявка строится из прогнозного диапазона. Чем осторожнее заявка, тем меньше риск не довыработать и получить штраф, но тем меньше продаётся энергии.</div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
+              <span style="font-size:18px;font-weight:600">Риск недовыработки в час</span>
+              <span style="font-size:28px;font-weight:600;color:oklch(0.6 0.16 135);font-family:'JetBrains Mono',monospace">{{ dp.qLabel }}</span>
+            </div>
+            <input type="range" min="10" max="50" step="5" value="{{ dp.q }}" sc-camel-on-change="{{ onQ }}" style="width:100%;margin:0">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#5F6762"><span>10% · осторожно (P10)</span><span>30% · баланс</span><span>50% · по ожиданию (P50)</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <sc-for list="{{ dp.kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:13px;color:#5F6762">{{ k.label }}</div>
+                <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">{{ k.value }}</span><span style="font-size:16px;color:#5F6762">{{ k.unit }}</span></div>
+                <div style="font-size:12px;color:#5F6762">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center">
+              <span style="font-size:18px;font-weight:600">Заявка по часам, МВт</span>
+              <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#5F6762">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:12px;height:12px;border-radius:3px;background:oklch(0.6 0.16 135)"></span>Заявка</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:12px;height:12px;border-radius:3px;background:oklch(0.6 0.16 135 / 0.16)"></span>Диапазон P10–P90</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:14px;height:2px;background:#141816"></span>Ожидание P50</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:4px;height:220px;align-items:stretch">
+              <sc-for list="{{ dp.hours }}" as="b" hint-placeholder-count="24">
+                <div style="flex:1;position:relative;border-radius:6px;background:#F4F5F2">
+                  <div style="position:absolute;left:0;right:0;bottom:{{ b.lo }};height:{{ b.band }};background:oklch(0.6 0.16 135 / 0.16);border-radius:4px"></div>
+                  <div style="position:absolute;left:22%;right:22%;bottom:0;height:{{ b.bid }};background:oklch(0.6 0.16 135);border-radius:4px 4px 0 0"></div>
+                  <div style="position:absolute;left:0;right:0;bottom:{{ b.mid }};height:2px;background:#141816"></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">
+              <sc-for list="{{ dp.hours }}" as="b" hint-placeholder-count="24"><span style="flex:1;text-align:center">{{ b.h }}</span></sc-for>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:6px;overflow-x:auto">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762;margin-bottom:8px">ТАБЛИЦА ЗАЯВКИ</div>
+            <div style="display:grid;grid-template-columns:80px repeat(4,minmax(90px,1fr));gap:10px;font-size:11px;color:#5F6762;padding-bottom:8px;border-bottom:1px solid rgba(20,24,22,0.07)"><span>Час</span><span>Ожидание, МВт</span><span>Диапазон, МВт</span><span>Заявка, МВт</span><span>Недобор, если P10</span></div>
+            <sc-for list="{{ dp.hours }}" as="b" hint-placeholder-count="24">
+              <div style="display:grid;grid-template-columns:80px repeat(4,minmax(90px,1fr));gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid rgba(20,24,22,0.05);font-family:'JetBrains Mono',monospace">
+                <span style="color:#5F6762">{{ b.t }}</span><span>{{ b.p50 }}</span><span style="color:#5F6762">{{ b.range }}</span><span style="font-weight:600;color:oklch(0.5 0.16 135)">{{ b.bidMw }}</span><span style="color:{{ b.gapC }}">{{ b.gap }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isAgent }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">AGENTIC AI · ПОЛНЫЙ ЦИКЛ</div>
+              <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Агент сам проходит цикл и решает, нужен ли перерасчёт</h1>
+              <div style="color:#5F6762;font-size:15px;line-height:1.5;text-wrap:pretty">Журнал ниже приходит из ответа <span style="font-family:'JetBrains Mono',monospace;font-size:13px">/api/forecast/{дата}/agent-log</span>: что агент сделал на каждом шаге и почему.</div>
+            </div>
+            <button sc-camel-on-click="{{ rerun }}" style="padding:12px 18px;border-radius:12px;border:none;background:oklch(0.6 0.16 135);color:#FFFFFF;font:inherit;font-size:14px;font-weight:600;cursor:pointer">{{ rerunLabel }}</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+            <sc-for list="{{ ag.stages }}" as="s" hint-placeholder-count="6">
+              <div style="background:#FFFFFF;border:1px solid {{ s.border }};border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:150px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5F6762">{{ s.num }}</span>
+                  <span style="font-size:11px;padding:3px 8px;border-radius:99px;background:{{ s.chipBg }};color:{{ s.color }}">{{ s.st }}</span>
+                </div>
+                <div style="font-size:16px;font-weight:600">{{ s.name }}</div>
+                <div style="font-size:12px;color:#5F6762;line-height:1.45">{{ s.desc }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#5F6762;padding:0 4px">
+            <span style="flex:1;height:1px;background:rgba(20,24,22,0.08)"></span>
+            <span>↺ Перерасчёт запускается при выходе нового прогона NWP или если анализ нашёл проблему</span>
+            <span style="flex:1;height:1px;background:rgba(20,24,22,0.08)"></span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:18px">
+            <div style="background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);border-radius:20px;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid rgba(20,24,22,0.07)">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5F6762">agent.log · as_of={{ ag.asOf }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5F6762">{{ ag.progress }}</div>
+              </div>
+              <div ref="{{ logRef }}" style="height:520px;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:9px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.5">
+                <sc-for list="{{ ag.logs }}" as="l" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:62px 52px minmax(0,1fr);gap:10px;align-items:start">
+                    <span style="color:#7A827D">{{ l.time }}</span>
+                    <span style="font-size:10px;padding:2px 0;text-align:center;border-radius:4px;background:{{ l.tagBg }};color:{{ l.tagColor }}">{{ l.tag }}</span>
+                    <span style="color:{{ l.color }};word-break:break-word">{{ l.text }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ПРИЧИНЫ РЕШЕНИЙ В ЖУРНАЛЕ</div>
+                <sc-for list="{{ ag.triggers }}" as="t" hint-placeholder-count="4">
+                  <div style="display:flex;gap:10px;font-size:13px;line-height:1.45"><span style="color:oklch(0.6 0.16 135)">→</span><span>{{ t }}</span></div>
+                </sc-for>
+              </div>
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ВЫПУСК ПРОГНОЗА</div>
+                <sc-for list="{{ ag.tools }}" as="t" hint-placeholder-count="7">
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px"><span style="font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.16 215)">{{ t.n }}</span><span style="color:#5F6762;text-align:right">{{ t.d }}</span></div>
+                </sc-for>
+              </div>
+              <div style="background:oklch(0.6 0.16 75 / 0.07);border:1px solid oklch(0.6 0.16 75 / 0.25);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:oklch(0.6 0.16 75)">ЗАЩИТА ОТ ЗАГЛЯДЫВАНИЯ В БУДУЩЕЕ</div>
+                <div style="font-size:13px;line-height:1.5">Каждый инструмент получает <span style="font-family:'JetBrains Mono',monospace">as_of = T</span>. Прогоны NWP с временем публикации позже T отклоняются, данные SCADA обрезаются по T.</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 12px;border-radius:10px;background:#EEF0EC;color:#4A524D">assert run.available_at &lt;= as_of</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isBacktest }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:800px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">РЕТРО-ПРОГНОЗ · {{ bt.period }} · {{ bt.runs }} ЗАПУСКОВ</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Бэктест по данным API</h1>
+            <div style="color:#5F6762;font-size:15px;line-height:1.5">Каждый день агент выпускает прогноз на 48 ч, используя только данные, доступные на момент T. Нажмите на день, чтобы открыть его прогноз.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <sc-for list="{{ bt.kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:8px">
+                <div style="font-size:13px;color:#5F6762">{{ k.label }}</div>
+                <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">{{ k.value }}</span><span style="font-size:16px;color:#5F6762">{{ k.unit }}</span></div>
+                <div style="font-size:12px;color:#5F6762">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ОШИБКА ПО ДНЯМ ВЫПУСКА · {{ bt.period }}</div>
+              <div style="display:flex;gap:18px;font-size:13px;color:#5F6762">
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:3px;background:oklch(0.6 0.16 135)"></span>nMAE за день, %</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:16px;height:2px;background:rgba(20,24,22,0.5)"></span>Смещение (bias), %</div>
+                <div style="display:flex;align-items:center;gap:7px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(20,24,22,0.08)"></span>Выбранный день</div>
+              </div>
+            </div>
+            <div style="position:relative;height:240px;margin-top:20px">
+              <div style="position:absolute;top:0;bottom:0;left:{{ bt.selLeft }};width:{{ bt.selWidth }};background:rgba(20,24,22,0.06);border-radius:6px"></div>
+              <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <path d="{{ bt.actPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:rgba(20,24,22,0.5);stroke-width:1"></path>
+                <path d="{{ bt.fcPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 135);stroke-width:1.6"></path>
+              </svg>
+            </div>
+            <div style="position:relative;height:18px;margin-top:8px">
+              <sc-for list="{{ bt.xTicks }}" as="x" hint-placeholder-count="4">
+                <span style="position:absolute;left:{{ x.left }};font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ x.t }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">КАЛЕНДАРЬ ЗАПУСКОВ · nMAE D+1</div>
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+                <sc-for list="{{ bt.cal }}" as="c" hint-placeholder-count="28">
+                  <button sc-camel-on-click="{{ c.on }}" style="aspect-ratio:1/0.9;border-radius:10px;border:1.5px solid {{ c.border }};background:{{ c.bg }};color:#141816;font:inherit;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;padding:7px;text-align:left">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4A524D">{{ c.d }}</span>
+                    <span style="font-size:15px;font-weight:600">{{ c.v }}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#5F6762"><span>точнее</span><span style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,oklch(0.6 0.16 135 / 0.5),oklch(0.6 0.16 75 / 0.5),oklch(0.6 0.18 25 / 0.55))"></span><span>хуже</span></div>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">СРАВНЕНИЕ С БАЗОВЫМИ МЕТОДАМИ · nMAE 48 Ч</div>
+              <sc-for list="{{ bt.compare }}" as="c" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:{{ c.tc }}">{{ c.n }}</span><span style="font-family:'JetBrains Mono',monospace">{{ c.v }}%</span></div>
+                  <div style="height:8px;border-radius:4px;background:rgba(20,24,22,0.05)"><div style="height:100%;width:{{ c.w }};border-radius:4px;background:{{ c.c }}"></div></div>
+                </div>
+              </sc-for>
+              <div style="font-size:12px;color:#5F6762;line-height:1.5">nMAE — средняя абсолютная ошибка в % от установленной мощности.</div>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ОШИБКА ПО ГОРИЗОНТУ · СРЕДНЕЕ ЗА 28 ЗАПУСКОВ</div>
+            <div style="display:flex;align-items:flex-end;gap:3px;height:170px;margin-top:20px">
+              <sc-for list="{{ bt.lead }}" as="b" hint-placeholder-count="48">
+                <div style="flex:1;height:{{ b.h }};border-radius:3px 3px 0 0;background:{{ b.c }}"></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762"><span>+1 ч</span><span>+12</span><span>+24 · D+1 | D+2</span><span>+36</span><span>+48 ч</span></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isWeather }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ИСТОЧНИКИ ПОГОДЫ · {{ wx.count }}</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Погода, которая была известна в момент T</h1>
+            <div style="color:#5F6762;font-size:15px;line-height:1.5;text-wrap:pretty">Агент запрашивает прогнозы по координатам ВЭС и берёт только прогоны, опубликованные до T. Фактическая погода, ставшая известной позже, в прогноз не попадает.</div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ПРОГОНЫ NWP · ДОСТУПНОСТЬ НА T = {{ wx.tUtc }}</div>
+              <div style="font-size:12px;color:#5F6762">{{ wx.delay }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px">
+              <sc-for list="{{ wx.runs }}" as="r" hint-placeholder-count="8">
+                <div style="padding:12px;border-radius:12px;border:1px solid {{ r.border }};background:{{ r.bg }};display:flex;flex-direction:column;gap:6px;opacity:{{ r.op }}">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500">{{ r.l }}</div>
+                  <div style="font-size:11px;color:{{ r.c }}">{{ r.st }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">СКОРОСТЬ ВЕТРА НА ВЫСОТЕ СТУПИЦЫ · {{ wx.range }} · РАЗБРОС {{ wx.spread }}</div>
+              <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#5F6762">
+                <sc-for list="{{ wx.srcs }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:2px;background:{{ s.color }}"></span>{{ s.name }}</div>
+                </sc-for>
+                <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;background:#141816"></span>Ансамбль</div>
+              </div>
+            </div>
+            <div style="position:relative;height:280px;margin:20px 0 0 34px">
+              <sc-for list="{{ wx.yTicks }}" as="y" hint-placeholder-count="5">
+                <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(20,24,22,0.06)"><span style="position:absolute;left:-34px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ y.l }}</span></div>
+              </sc-for>
+              <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <sc-for list="{{ wx.srcs }}" as="s" hint-placeholder-count="4">
+                  <path d="{{ s.path }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:{{ s.color }};stroke-width:1.3;opacity:0.85"></path>
+                </sc-for>
+                <path d="{{ wx.blendPath }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:#141816;stroke-width:2.6"></path>
+              </svg>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:18px">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:6px;overflow-x:auto">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762;margin-bottom:8px">ИСТОЧНИКИ · ВЕС В АНСАМБЛЕ</div>
+              <div style="display:grid;grid-template-columns:minmax(0,1.6fr) 0.9fr 0.7fr 0.9fr;gap:10px;font-size:11px;color:#5F6762;padding:0 0 8px;border-bottom:1px solid rgba(20,24,22,0.07)"><span>Модель</span><span>MAE ветра</span><span>Вес</span><span>Средний ветер</span></div>
+              <sc-for list="{{ wx.srcs }}" as="s" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:minmax(0,1.6fr) 0.9fr 0.7fr 0.9fr;gap:10px;font-size:13px;padding:10px 0;border-bottom:1px solid rgba(20,24,22,0.05);align-items:center">
+                  <span style="display:flex;align-items:center;gap:8px;min-width:0"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{{ s.color }}"></span><span>{{ s.name }}</span></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ s.mae }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ s.w }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px">{{ s.avg }}</span>
+                </div>
+              </sc-for>
+              <div style="font-size:12px;color:#5F6762;margin-top:8px;line-height:1.5">Вес и ошибка каждого источника приходят из ответа <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px">/api/forecast/{дата}/weather</span>.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="background:oklch(0.6 0.16 75 / 0.07);border:1px solid oklch(0.6 0.16 75 / 0.25);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:oklch(0.6 0.16 75)">ЛОВУШКА С ДАННЫМИ</div>
+                <div style="font-size:13px;line-height:1.55">Historical Forecast API склеивает первые часы каждого прогона. Для горизонта 24–48 ч это утечка: точность будет завышена.</div>
+                <div style="font-size:13px;line-height:1.55">Решение: <span style="font-family:'JetBrains Mono',monospace;font-size:12px">Previous Runs API</span> (переменные <span style="font-family:'JetBrains Mono',monospace;font-size:12px">*_previous_day1/2</span>) или сырые прогоны GFS и ECMWF Open Data с явным временем выпуска.</div>
+              </div>
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ОТКУДА ЭТИ ЧИСЛА</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;color:#4A524D;word-break:break-all">{{ wx.request }}</div>
+                <sc-for list="{{ wx.meta }}" as="f" hint-placeholder-count="3">
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px"><span style="color:#5F6762">{{ f.l }}</span><span style="font-family:'JetBrains Mono',monospace">{{ f.v }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isModel }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ML-МОДЕЛЬ · ФИЗИКА + ГРАДИЕНТНЫЙ БУСТИНГ</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">От прогноза ветра к мощности</h1>
+            <div style="color:#5F6762;font-size:15px;line-height:1.5">{{ md.lead }}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+            <sc-for list="{{ md.steps }}" as="s" hint-placeholder-count="4">
+              <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:oklch(0.6 0.16 135)">{{ s.n }}</div>
+                <div style="font-size:16px;font-weight:600">{{ s.t }}</div>
+                <div style="font-size:13px;color:#5F6762;line-height:1.5">{{ s.d }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px">
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px">
+              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">КРИВАЯ МОЩНОСТИ ИЗ ОТВЕТА API</div>
+                <div style="font-size:12px;color:#5F6762">линия: кривая мощности из ответа /api/forecast/model</div>
+              </div>
+              <div style="position:relative;height:300px;margin:20px 0 0 34px">
+                <sc-for list="{{ md.yTicks }}" as="y" hint-placeholder-count="5">
+                  <div style="position:absolute;left:0;right:0;bottom:{{ y.pos }};border-top:1px solid rgba(20,24,22,0.06)"><span style="position:absolute;left:-34px;top:-8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ y.l }}</span></div>
+                </sc-for>
+                <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                  <path d="{{ md.curve }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:oklch(0.6 0.16 135);stroke-width:2.5"></path>
+                </svg>
+                <sc-for list="{{ md.marks }}" as="f" hint-placeholder-count="2">
+                  <div style="position:absolute;left:{{ f.left }};top:6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ f.l }}</div>
+                </sc-for>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin:8px 0 0 34px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">
+                <sc-for list="{{ md.xTicks }}" as="f" hint-placeholder-count="5"><span>{{ f.l }}</span></sc-for>
+              </div>
+            </div>
+            <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ВАЖНОСТЬ ПРИЗНАКОВ</div>
+              <sc-for list="{{ md.imp }}" as="f" hint-placeholder-count="9">
+                <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) 40px;gap:12px;align-items:center;font-size:12px">
+                  <span style="font-family:'JetBrains Mono',monospace;color:#4A524D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.n }}</span>
+                  <div style="height:8px;border-radius:4px;background:rgba(20,24,22,0.05)"><div style="height:100%;width:{{ f.w }};border-radius:4px;background:{{ f.c }}"></div></div>
+                  <span style="font-family:'JetBrains Mono',monospace;text-align:right">{{ f.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">СХЕМА ОБУЧЕНИЯ · WALK-FORWARD</div>
+            <div style="font-size:15px;line-height:1.55;text-wrap:pretty">{{ md.walkForward }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ md.feats }}" as="f" hint-placeholder-count="10">
+                <span style="padding:6px 10px;border-radius:8px;background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#4A524D">{{ f }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSite }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ОБЪЕКТ · {{ site.name }}</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">{{ site.headline }}</h1>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px">
+            <div style="position:relative;height:560px;border-radius:20px;overflow:hidden;border:1px solid rgba(20,24,22,0.07);background:#E8EAE5">
+              <img src="img/site-satellite.jpg" alt="Спутниковый снимок площадки ВЭС" style="position:absolute;left:calc(50% - 835.5px);top:calc(50% - 758.5px);width:1792px;height:1280px;max-width:none;display:block">
+              <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(20,24,22,0.28) 100%);pointer-events:none"></div>
+              <sc-for list="{{ site.markers }}" as="m" hint-placeholder-count="2">
+                <div style="position:absolute;left:{{ m.left }};top:{{ m.top }};transform:translate(-50%,-50%)">
+                  <div style="width:46px;height:46px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5))">{{ rotorMap }}</div>
+                  <div style="position:absolute;left:50px;top:10px;white-space:nowrap;padding:6px 10px;border-radius:9px;background:rgba(255,255,255,0.94);border:1px solid rgba(20,24,22,0.1);font-size:12px;display:flex;gap:8px"><span style="font-weight:600">{{ m.name }}</span><span style="font-family:'JetBrains Mono',monospace;color:#4A524D">{{ m.coord }}</span></div>
+                </div>
+              </sc-for>
+              <div style="position:absolute;left:14px;bottom:12px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.94);font-family:'JetBrains Mono',monospace;font-size:11px;white-space:nowrap">Точка NWP: {{ site.center }}</div>
+              <div style="position:absolute;right:12px;bottom:10px;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.6)">Imagery © Esri</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ site.facts }}" as="f" hint-placeholder-count="5">
+                <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:12px;color:#5F6762">{{ f.l }}</div>
+                  <div style="font-size:18px;font-weight:600">{{ f.v }}</div>
+                  <div style="font-size:12px;color:#5F6762;line-height:1.45">{{ f.s }}</div>
+                </div>
+              </sc-for>
+              <div style="display:flex;gap:8px">
+                <sc-for list="{{ site.markers }}" as="m" hint-placeholder-count="2">
+                  <a href="{{ m.map }}" target="_blank" rel="noreferrer" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(20,24,22,0.12);text-align:center;font-size:13px;color:#141816">{{ m.name }} на карте ↗</a>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:4px;line-height:1.35">
+              <span style="font-size:18px;font-weight:600">Прогноз по каждой турбине · {{ tb.range }}</span>
+              <span style="font-size:12px;color:#5F6762">Установленная мощность {{ tb.capEach }} МВт на турбину</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">
+              <sc-for list="{{ tb.items }}" as="t" hint-placeholder-count="2">
+                <div style="padding:16px 18px;border-radius:16px;background:#F4F5F2;display:flex;flex-direction:column;gap:12px">
+                  <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:38px;height:38px">{{ t.rotor }}</div>
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1"><span style="font-size:16px;font-weight:600">{{ t.name }}</span><span style="font-size:12px;color:#5F6762">{{ t.note }}</span></div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;line-height:1.2;flex-shrink:0"><span style="font-size:22px;font-weight:600;white-space:nowrap">{{ t.energy }} <span style="font-size:13px;color:#5F6762">МВт·ч</span></span><span style="font-size:12px;color:#5F6762;white-space:nowrap">средняя загрузка {{ t.mean }}%</span></div>
+                  </div>
+                  <div style="position:relative;height:110px">
+                    <svg sc-camel-view-box="0 0 1000 300" sc-camel-preserve-aspect-ratio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                      <path d="{{ t.other }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:rgba(20,24,22,0.25);stroke-width:1.2"></path>
+                      <path d="{{ t.path }}" vector-effect="non-scaling-stroke" style="fill:none;stroke:{{ t.color }};stroke-width:2.2"></path>
+                    </svg>
+                  </div>
+                  <div style="font-size:12px;color:#5F6762">Серая линия — соседняя турбина</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ТУРБИНЫ ПО ДАННЫМ API</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+              <sc-for list="{{ site.fields }}" as="f" hint-placeholder-count="4">
+                <div style="padding:14px;border-radius:12px;background:#F4F5F2;display:flex;flex-direction:column;gap:6px">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:oklch(0.6 0.16 215)">{{ f.k }}</div>
+                  <div style="font-size:13px">{{ f.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isArch }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:820px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">АРХИТЕКТУРА · РЕПОЗИТОРИЙ · API</div>
+            <h1 style="margin:0;font-size:42px;font-weight:600;letter-spacing:-0.035em;line-height:1.05">Как устроено решение</h1>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:stretch">
+            <sc-for list="{{ arch.layers }}" as="L" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;align-items:center">
+                <div style="width:100%;display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:center;padding:14px;border-radius:14px;background:{{ L.bg }};border:1px solid {{ L.border }}">
+                  <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#5F6762">{{ L.num }}</span><span style="font-size:15px;font-weight:600">{{ L.name }}</span></div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ L.items }}" as="i" hint-placeholder-count="4">
+                      <span style="padding:7px 11px;border-radius:9px;background:rgba(20,24,22,0.05);border:1px solid rgba(20,24,22,0.07);font-size:12.5px">{{ i }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="width:1px;height:{{ L.gap }};background:rgba(20,24,22,0.18)"></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:18px">
+            <div style="background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">СТРУКТУРА РЕПОЗИТОРИЯ</div>
+              <sc-for list="{{ arch.tree }}" as="t" hint-placeholder-count="9">
+                <div style="display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px"><span style="color:oklch(0.6 0.16 215)">{{ t.p }}</span><span style="color:#5F6762">{{ t.d }}</span></div>
+              </sc-for>
+            </div>
+            <div style="background:#F4F5F2;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:12px">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762">ЗАПУСК · README</div>
+              <sc-for list="{{ arch.cmds }}" as="c" hint-placeholder-count="5">
+                <div style="display:flex;flex-direction:column;gap:2px;font-family:'JetBrains Mono',monospace;font-size:12.5px"><span><span style="color:oklch(0.6 0.16 135)">$ </span>{{ c.c }}</span><span style="color:#7A827D;font-size:11.5px"># {{ c.d }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#FFFFFF;border:1px solid rgba(20,24,22,0.07);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#5F6762;margin-bottom:6px">ОТКУДА ДАННЫЕ НА КАЖДОЙ СТРАНИЦЕ</div>
+            <sc-for list="{{ arch.endpoints }}" as="c" hint-placeholder-count="9">
+              <div style="display:grid;grid-template-columns:64px minmax(0,1.6fr) minmax(0,1fr);gap:18px;padding:12px 0;border-top:1px solid rgba(20,24,22,0.06);align-items:center">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:oklch(0.6 0.16 135)">{{ c.p }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;word-break:break-all">{{ c.n }}</span>
+                <span style="font-size:13.5px;color:#4A524D">{{ c.d }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+</div>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overview&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;dispatch&quot;,&quot;agent&quot;,&quot;backtest&quot;,&quot;weather&quot;,&quot;model&quot;,&quot;site&quot;,&quot;arch&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
+// Мост к рантайму: вся логика в app.js, здесь только жизненный цикл.
+class Component extends DCLogic {
+  state = ZHEL.initialState();
+  componentDidMount() { ZHEL.mount(this); }
+  componentWillUnmount() { ZHEL.unmount(this); }
+  renderVals() { return ZHEL.view(this); }
+}
+</script>
+
+
+</body></html>
