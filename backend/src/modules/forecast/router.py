@@ -1,5 +1,9 @@
 """HTTP-слой прогноза. Логики здесь нет, только вызовы сервиса.
 
+Выпуск, журнал решений и заявка приходят из цикла агента (``orchestrator.py``):
+он сам решает, собран выпуск из ответов соседних сервисов или из заглушки.
+Справочные страницы пока наполняет ``service.py``.
+
 Все пути наружу начинаются с ``/api``: приложение живет с ``root_path="/api"``,
 поэтому в роутере этот префикс не пишется.
 
@@ -13,7 +17,7 @@ from fastapi import APIRouter, Depends, Query
 
 from src.core.base_schemas import PaginatedResponse
 from src.modules.auth.dependencies import get_current_user
-from src.modules.forecast import service
+from src.modules.forecast import orchestrator, service
 from src.modules.forecast.schemas import (
     AgentDecision,
     BacktestMetrics,
@@ -53,25 +57,27 @@ async def site() -> SiteInfo:
 @router.get("/backtest", response_model=BacktestMetrics)
 async def backtest() -> BacktestMetrics:
     """Метрики качества прогноза против бейзлайнов."""
-    return service.build_backtest()
+    return await orchestrator.backtest()
 
 
 @router.get("/model", response_model=ModelInfo)
 async def model_info() -> ModelInfo:
     """Чем считаем прогноз: модель, признаки, кривая мощности."""
-    return service.build_model_info()
+    return await orchestrator.model_info()
 
 
 @router.get("/{issue_date}", response_model=ForecastResponse)
 async def forecast(issue_date: date) -> ForecastResponse:
     """Почасовой прогноз на 48 часов по каждой турбине."""
-    return service.build_forecast(issue_date)
+    agent_run = await orchestrator.run(issue_date)
+    return agent_run.forecast
 
 
 @router.get("/{issue_date}/agent-log", response_model=list[AgentDecision])
 async def agent_log(issue_date: date) -> list[AgentDecision]:
     """Журнал решений агента по шагам ТЗ."""
-    return service.build_agent_log(issue_date)
+    agent_run = await orchestrator.run(issue_date)
+    return agent_run.decisions
 
 
 @router.get("/{issue_date}/weather", response_model=WeatherResponse)
@@ -83,14 +89,16 @@ async def weather(issue_date: date) -> WeatherResponse:
 @router.get("/{issue_date}/dispatch", response_model=DispatchResponse)
 async def dispatch(issue_date: date, risk: float = Query(0.2, ge=0.1, le=0.5)) -> DispatchResponse:
     """Почасовая заявка на сутки D при заданном допустимом риске недовыработки."""
-    return service.build_dispatch(issue_date, risk)
+    return await orchestrator.dispatch(issue_date, risk)
 
 
 @router.post("/{issue_date}/recompute", response_model=ForecastResponse)
 async def recompute(issue_date: date) -> ForecastResponse:
-    """Пересчитать выпуск.
+    """Пересчитать выпуск по новому прогону погоды.
 
-    Пока заглушка детерминирована и возвращает тот же прогноз. Когда появятся
-    сервисы погоды и модели, здесь запускается цикл агента с новым ``as_of``.
+    Момент выпуска остается прежним, а знание агента сдвигается до времени
+    публикации нового прогона. Новая версия публикуется, только если прогноз
+    изменился существенно, причина видна в журнале решений.
     """
-    return service.build_forecast(issue_date)
+    agent_run = await orchestrator.run(issue_date, trigger=orchestrator.TRIGGER_RECOMPUTE)
+    return agent_run.forecast
