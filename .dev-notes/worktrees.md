@@ -18,6 +18,7 @@
 | features-dev1-frontend | hackalem-worktrees/features-dev1-frontend | dev1 | ноут Meirzhan | 2 | 3002 | 8002 | 5434 |
 | features-dev1-auth | hackalem-worktrees/features-dev1-auth | dev1 | ноут Meirzhan | 3 | 3003 | 8003 | 5435 |
 | features-dev1-compose | hackalem-worktrees/features-dev1-compose | dev1 | ноут Meirzhan | 4 | 3004 | 8004 | 5436 |
+| features-dev2-extratrees | hackalem-worktrees/features-dev2-extratrees | dev2 | ноут Aibek | — (без контейнеров) | — | — | — |
 
 Основной чекаут на машине dev1 использует сдвинутые порты, потому что 3000 и 8000
 там заняты другими проектами.
