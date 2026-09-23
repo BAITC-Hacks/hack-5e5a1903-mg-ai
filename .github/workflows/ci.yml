@@ -32,6 +32,32 @@ jobs:
       - name: Test
         run: uv run pytest
 
+  ml:
+    name: ML service lint and tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --dev --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Test
+        run: uv run pytest
+
   docker:
     name: Docker build
     runs-on: ubuntu-latest

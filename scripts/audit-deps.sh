@@ -6,15 +6,18 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 status=0
 
-echo "== Python: pip-audit по зафиксированным версиям из uv.lock =="
-if uv export --project "$ROOT/backend" --no-dev --no-emit-project \
-        --format requirements-txt >"$ROOT/.audit-requirements.txt" 2>/dev/null; then
-    uvx pip-audit --requirement "$ROOT/.audit-requirements.txt" --strict || status=1
-    rm -f "$ROOT/.audit-requirements.txt"
-else
-    echo "Не удалось выгрузить зависимости backend" >&2
-    status=1
-fi
+for project in backend ml; do
+    echo "== Python ($project): pip-audit по зафиксированным версиям из uv.lock =="
+    if uv export --project "$ROOT/$project" --no-dev --no-emit-project \
+            --format requirements-txt >"$ROOT/.audit-requirements.txt" 2>/dev/null; then
+        uvx pip-audit --requirement "$ROOT/.audit-requirements.txt" --strict || status=1
+        rm -f "$ROOT/.audit-requirements.txt"
+    else
+        echo "Не удалось выгрузить зависимости $project" >&2
+        status=1
+    fi
+    echo
+done
 
 echo
 echo "== npm: npm audit =="
