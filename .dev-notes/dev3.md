@@ -2,11 +2,11 @@
 
 ## Сейчас делаю
 
-- #8, ветка `features-dev3-prev-runs`: архив Previous Runs для ансамбля из четырех
-  моделей. Подключение к `get_nwp` делает сессия #7, здесь его нет.
+-
 
 ## Сделано
 
+- #9 и #10: `load_scada()`, флаги, `reports/scada_summary.md`, `reports/tz_check.md`.
 - 2026-09-23: #8, загрузчик `src.forecast.weather.fetch_prev_runs`, правило прогонов
   `weather/prev_runs_rule.py`, кэш `data/nwp/{ifs025,gfs,icon,gem}/` (3,4 МБ)
   за 15.02.2024–01.03.2026: до конца горизонта +48 ч последнего выпуска 27.02.
@@ -60,6 +60,13 @@ surface_pressure`. Время ISO с `Z`. Чего у модели нет, то 
 
 ## Нужно от других
 
+- dev1 (#5): когда появится `src/forecast/config.py`, перенести туда пути, паспорт турбины и
+  `SCADA_UTC_OFFSET_H` из `src/forecast/dataset/config.py`.
+- dev2 (#27): `flag` в ScadaHistory — строка, пустая для чистого часа. Для обучения берите часы
+  с `flag == ""`. Когда появится `ml/schema.py`, `load_scada()` перейдет на колонки оттуда.
+- dev2 (#11): в флаге обледенения паспортная кривая между 3 и 10,3 м/с растет как куб скорости
+  (`passport_curve` в `dataset/scada.py`). Если бейзлайн «curve» возьмет другую форму,
+  стоит сойтись на одной.
 - dev1, Makefile: цель для обновления кэша, например в `make fetch` из #6 рядом
   с IFS: `cd backend && uv run python -m src.forecast.weather.fetch_prev_runs`.
   Сеть нужна только ей, обычный запуск читает закоммиченный кэш.
