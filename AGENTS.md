@@ -85,6 +85,8 @@ HackAlem AI — проект команды из трех разработчик
   уязвимости через `pip-audit` и `npm audit`. Есть находки — мерджить нельзя,
   порядок разбора в [docs/dependency-audit.md](docs/dependency-audit.md).
 - Добавил зависимость — прогони `make audit` в том же PR.
+- **Каждый PR привязан к задаче.** В описании `Closes #N`, `Fixes #N` или `Refs #N`.
+  Подходящей задачи нет — сначала заведи ее. Подробно: [docs/git-workflow.md](docs/git-workflow.md).
 
 ## Предложение новых инструментов
 
