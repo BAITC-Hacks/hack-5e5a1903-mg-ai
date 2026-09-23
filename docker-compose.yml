@@ -23,6 +23,13 @@ services:
     image: ${COMPOSE_PROJECT_NAME:-hackalem}-backend
     restart: unless-stopped
     env_file: .env
+    environment:
+      # Кэш прогнозов погоды и история турбин. Запасной источник погоды читает
+      # их прямо из образа, когда сервис погоды недоступен.
+      DATA_DIR: /data
+    volumes:
+      # Только на чтение: данные организаторов мы не меняем.
+      - ./data:/data:ro
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
