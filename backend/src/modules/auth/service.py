@@ -8,12 +8,17 @@ from src.modules.auth.schemas import LoginRequest, TokenResponse
 
 
 async def authenticate(db: AsyncSession, data: LoginRequest) -> TokenResponse:
+    """Проверяет учетные данные и выдает пару токенов.
+
+    ``data.email`` это идентификатор пользователя: значение колонки ``users.email``.
+    У демонстрационного администратора там лежит логин ``admin``, а не почта.
+    """
     stmt = select(User).where(User.email == data.email)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(data.password, user.hashed_password):
-        raise BusinessError(401, "INVALID_CREDENTIALS", "Invalid email or password")
+        raise BusinessError(401, "INVALID_CREDENTIALS", "Invalid login or password")
 
     if not user.is_active:
         raise BusinessError(403, "USER_INACTIVE", "Account is deactivated")

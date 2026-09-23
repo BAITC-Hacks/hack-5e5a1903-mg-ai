@@ -1,8 +1,18 @@
+from pydantic import AliasChoices, Field
+
 from src.core.base_schemas import BaseAppSchema
 
 
 class LoginRequest(BaseAppSchema):
-    email: str
+    """Тело запроса на вход.
+
+    Поле ``email`` это идентификатор пользователя, а не обязательно почта:
+    демонстрационный администратор входит по логину ``admin``. Ключ ``username``
+    принимается как псевдоним, чтобы интерфейс мог слать привычное имя поля,
+    а старый контракт с ключом ``email`` продолжал работать.
+    """
+
+    email: str = Field(validation_alias=AliasChoices("email", "username"))
     password: str
     remember_me: bool = False
 
