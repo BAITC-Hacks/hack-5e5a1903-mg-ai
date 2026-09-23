@@ -669,6 +669,10 @@ window.ZHEL = (function () {
       };
     });
     var kpi = dispatch.kpi;
+    // Недобор приходит из бэктеста модели. Бэктеста нет — поля null, и на экране прочерк.
+    var hasBacktest = kpi.shortfall_hours_share !== null && kpi.shortfall_hours_share !== undefined;
+    var backtestDays = Math.round((kpi.backtest_hours || 0) / 24);
+    var backtestNote = hasBacktest ? "в бэктесте за " + backtestDays + " " + plural(backtestDays, "сутки", "суток", "суток") : "бэктест модели недоступен";
     return {
       day: ddmm(dispatch.hours.length ? dispatch.hours[0].valid_time_local : ""),
       q: s.risk,
@@ -677,8 +681,18 @@ window.ZHEL = (function () {
       kpis: [
         { label: "Заявка на сутки", value: num(kpi.day_bid_mwh), unit: "МВт·ч", sub: "сумма 24 часов при риске " + s.risk + "%" },
         { label: "Ожидаемая выработка", value: num(kpi.expected_mwh), unit: "МВт·ч", sub: "запас " + num(kpi.expected_mwh - kpi.day_bid_mwh) + " МВт·ч" },
-        { label: "Часы недобора", value: Math.round(kpi.shortfall_hours_share * 100), unit: "%", sub: "доля часов, где факт ниже заявки" },
-        { label: "Средний недобор", value: num(kpi.mean_shortfall_mwh, 2), unit: "МВт·ч", sub: "объем под штраф" },
+        {
+          label: "Часы недобора",
+          value: hasBacktest ? num(kpi.shortfall_hours_share * 100, 0) : "—",
+          unit: hasBacktest ? "%" : "",
+          sub: "доля часов, где факт ниже заявки, " + backtestNote,
+        },
+        {
+          label: "Средний недобор",
+          value: num(kpi.mean_shortfall_mwh, 2),
+          unit: hasBacktest ? "МВт·ч/сут" : "",
+          sub: "объем под штраф, " + backtestNote,
+        },
       ],
     };
   }

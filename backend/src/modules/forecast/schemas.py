@@ -157,10 +157,17 @@ class DispatchHour(BaseAppSchema):
 
 
 class DispatchKpi(BaseAppSchema):
+    """Заявка на сутки и то, как такая же заявка недобирала в бэктесте модели.
+
+    Недобор считается только по часам, где факт известен. Бэктеста нет —
+    поля недобора ``None``, а не выдуманное число.
+    """
+
     day_bid_mwh: float
     expected_mwh: float
-    shortfall_hours_share: float
-    mean_shortfall_mwh: float
+    shortfall_hours_share: float | None = Field(description="Доля часов бэктеста, где факт ниже заявки при том же риске")
+    mean_shortfall_mwh: float | None = Field(description="Средний недобор заявки в бэктесте, МВт·ч за сутки")
+    backtest_hours: int = Field(default=0, description="Сколько часов станции бэктеста легло в поля недобора")
 
 
 class DispatchResponse(Sourced):

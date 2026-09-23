@@ -215,7 +215,31 @@ async def run(issue_date: date, *, trigger: str = TRIGGER_SCHEDULED) -> AgentRun
 async def dispatch(issue_date: date, risk: float) -> DispatchResponse:
     """Заявка диспетчера на сутки D по тому же выпуску, что видит «Обзор»."""
     agent_run = await run(issue_date)
-    return service.dispatch_from_forecast(agent_run.forecast, risk)
+    return service.dispatch_from_forecast(agent_run.forecast, risk, await _backtest_points())
+
+
+async def _backtest_points() -> list[service.BacktestPoint]:
+    """Часы бэктеста модели для недобора заявки.
+
+    Метрик нет или ML-сервис не отвечает — заявка все равно строится,
+    а поля недобора остаются пустыми.
+    """
+    try:
+        metrics = await ml_client().metrics()
+    except UpstreamError as error:
+        logger.warning("Недобор заявки без бэктеста: %s", error.code)
+        return []
+    return [
+        service.BacktestPoint(
+            issue_time_utc=point.issue_time_utc,
+            valid_time_utc=point.valid_time_utc,
+            turbine=point.turbine,
+            p10=point.p10,
+            p50=point.p50,
+            actual=point.actual,
+        )
+        for point in metrics.series
+    ]
 
 
 async def model_info() -> ModelInfo:

@@ -40,6 +40,15 @@ def test_trained_model_loads_and_predicts_every_turbine():
     assert (out["p50"].between(0, 1)).all()
 
 
+def test_committed_metrics_carry_the_backtest_hours_of_day_d():
+    """Без series у диспетчера нет недобора, а файл не по схеме сервис молча не загрузит."""
+    model = load_model(ARTIFACTS)
+    series = model.metrics.series
+    assert series
+    assert {point.lead_h for point in series} == set(range(17, 41))
+    assert {point.turbine for point in series} == {"T1", "T2"}
+
+
 def test_prediction_is_deterministic_and_works_with_one_source():
     model = load_model(ARTIFACTS)
     frame = build_frame_from_rows(ISSUE, 48, _rows(["gfs"]))

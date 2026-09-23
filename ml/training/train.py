@@ -43,6 +43,8 @@ CHECK_SHARE = 0.2
 SPLIT_SEED = 42
 LEVEL_EDGES = [0.1, 0.3, 0.6, 0.9]
 LEAD_EDGE = 24
+# Сутки D по местному времени (UTC+5) из выпуска D-1 в 02:00 UTC: 19:00 UTC D-1 … 18:00 UTC D.
+DAY_D_LEADS = (17, 40)
 PARAMS = dict(
     objective="quantile",
     alpha=0.5,
@@ -148,6 +150,27 @@ def nmae(e) -> float:
     return round(float(np.mean(np.abs(e)) * 100), 2)
 
 
+def series_of(check: pd.DataFrame) -> list[dict]:
+    """Прогноз и факт по часам суток D из выпуска D-1, как в официальном файле: по ним диспетчер считает недобор заявки.
+
+    Факт обрезается до 0…1, как и квантили: собственное потребление турбины в штиль дает чуть ниже нуля.
+    """
+    day_d = check[check["lead_h"].between(*DAY_D_LEADS)].sort_values(["issue_time_utc", "valid_time_utc", "turbine"])
+    return [
+        {
+            "issue_time_utc": row.issue_time_utc.isoformat(),
+            "valid_time_utc": row.valid_time_utc.isoformat(),
+            "lead_h": int(row.lead_h),
+            "turbine": row.turbine,
+            "p10": round(float(row.p10), 4),
+            "p50": round(float(row.p50), 4),
+            "p90": round(float(row.p90), 4),
+            "actual": round(float(np.clip(row.actual, 0, 1)), 4),
+        }
+        for row in day_d.itertuples()
+    ]
+
+
 def metrics_json(check: pd.DataFrame, clim) -> dict:
     e = check["p50"] - check["actual"]
     d1, d2 = check["lead_h"] <= 24, check["lead_h"] > 24
@@ -188,7 +211,7 @@ def metrics_json(check: pd.DataFrame, clim) -> dict:
             }
             for turbine, g in check.groupby("turbine")
         ],
-        "series": [],
+        "series": series_of(check),
     }
 
 
