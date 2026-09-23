@@ -37,6 +37,13 @@ def test_centered_hour_takes_records_from_half_hour_before():
     assert hourly.iloc[0] == pytest.approx(3.5)
 
 
+def test_centered_hour_does_not_count_empty_values():
+    times = pd.date_range("2024-01-01 11:30", periods=6, freq="10min")
+    raw = pd.DataFrame({"time_local": times, "wind_ms": [1.0, 2, 3, np.nan, np.nan, np.nan]})
+
+    assert centered_hourly(raw, "wind_ms").empty
+
+
 def test_temperature_check_counts_only_shift_towards_the_wind():
     rows = [{"group": f"Q{i}", "peak": 7.0} for i in range(5)]
     toward = temp_shift_check({"era5": [*rows, {"group": "disputed", "peak": 6.2}]}, {"disputed": -1})

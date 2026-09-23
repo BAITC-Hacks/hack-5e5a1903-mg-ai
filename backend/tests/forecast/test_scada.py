@@ -35,8 +35,11 @@ def records(start: str, n: int = 6, wind=8.0, power=0.5, temp=10.0) -> list[tupl
 
 
 def write_turbine(path: Path, rows: list[tuple]) -> None:
-    # Час без ведущего нуля, как в файлах организаторов: 2023-03-11 0:00:00.
-    lines = [HEADER] + [f"{i},{t:%Y-%m-%d} {t.hour}:{t:%M:%S},{w},{p},{c}" for i, (t, w, p, c) in enumerate(rows, 1)]
+    # Час без ведущего нуля, как в файлах организаторов: 2023-03-11 0:00:00. None — пустая ячейка.
+    def cell(v) -> str:
+        return "" if v is None else str(v)
+
+    lines = [HEADER] + [f"{i},{t:%Y-%m-%d} {t.hour}:{t:%M:%S},{cell(w)},{cell(p)},{cell(c)}" for i, (t, w, p, c) in enumerate(rows, 1)]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -83,6 +86,30 @@ def test_duplicate_timestamps_counted_once(tmp_path):
 
     # После удаления дубликатов в часе 3 записи, этого мало.
     assert history.empty
+
+
+def test_empty_cells_do_not_count_towards_four_records(tmp_path):
+    # 4 записи, но ветер и мощность есть только в одной: час неполный.
+    rows = records("2024-06-10 12:00", n=4, wind=[8, None, None, None], power=[0.5, None, None, None])
+    history = t1(load_scada(write_scada(tmp_path, rows)))
+
+    assert history.empty
+
+
+def test_hour_of_empty_cells_is_not_a_clean_hour_with_nan(tmp_path):
+    rows = records("2024-06-10 12:00", wind=None, power=None, temp=None) + records("2024-06-10 13:00")
+    history = load_scada(write_scada(tmp_path, rows))
+
+    assert list(t1(history).index) == [utc("2024-06-10 07:00")]
+    assert history[["power_norm", "wind_ms", "temp_c"]].notna().all().all()
+
+
+def test_hour_counts_each_measure_separately(tmp_path):
+    # Температуры нет в двух записях из шести: 4 значения, час засчитан, среднее по ним.
+    rows = records("2024-06-10 12:00", temp=[10, None, 12, None, 14, 16])
+    history = t1(load_scada(write_scada(tmp_path, rows)))
+
+    assert history["temp_c"].tolist() == [pytest.approx(13.0)]
 
 
 # ---------------------------------------------------------------- часовой пояс
@@ -218,6 +245,13 @@ def test_unknown_header_is_a_clear_error(tmp_path):
     path.write_text("ID,time,wind,power,temp\n1,2024-06-10 12:00:00,8,0.5,10\n", encoding="utf-8")
 
     with pytest.raises(ScadaFormatError, match="Статистическое время"):
+        load_scada(tmp_path)
+
+
+def test_non_numeric_value_is_a_clear_error(tmp_path):
+    write_scada(tmp_path, records("2024-06-10 12:00", wind=[8, "-", 8, 8, 8, 8]))
+
+    with pytest.raises(ScadaFormatError, match="wind_ms"):
         load_scada(tmp_path)
 
 
