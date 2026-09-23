@@ -1,4 +1,4 @@
-.PHONY: install hooks run demo dev down logs ps migrate makemigrations seed test lint fmt audit check protect-main ml-install ml-test ml-lint ml-fmt ml-openapi
+.PHONY: install hooks run demo dev down logs ps migrate makemigrations seed test lint fmt audit check protect-main ml-install ml-test ml-train ml-lint ml-fmt ml-openapi
 
 COMPOSE     := docker compose
 # пайплайн прогноза выполняется в образе backend разовым контейнером,

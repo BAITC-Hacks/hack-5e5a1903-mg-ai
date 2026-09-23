@@ -5,7 +5,9 @@
 а не только разброс кривой мощности.
 """
 
+import importlib
 import json
+import logging
 from pathlib import Path
 
 import lightgbm as lgb
@@ -17,6 +19,12 @@ from ml_service.frame import Frame
 from ml_service.schemas import ModelInfo, Turbine
 
 CALIBRATION_FILE = "calibration.json"
+# Другие модели ансамбля: ml_service.members.<имя>.load(artifacts_dir) -> объект с predict_p50(features).
+# На проверке Б все три модели дают почти одинаковую ошибку, поэтому P50 — простое среднее.
+# Если модуль или файлы модели не найдены, она просто не участвует.
+MEMBERS = ("extratrees", "mlp")
+
+logger = logging.getLogger(__name__)
 
 
 class Calibration:
@@ -39,14 +47,17 @@ class Calibration:
 
 
 class LgbmPredictor:
-    def __init__(self, info: ModelInfo, boosters: list[lgb.Booster], calibration: Calibration):
+    def __init__(self, info: ModelInfo, boosters: list[lgb.Booster], calibration: Calibration, members: dict | None = None):
         self.info = info
         self.boosters = boosters
         self.calibration = calibration
+        self.members = members or {}
 
     def p50(self, features: pd.DataFrame) -> np.ndarray:
         values = features[FEATURES].to_numpy(dtype=float)
-        return np.clip(np.mean([booster.predict(values) for booster in self.boosters], axis=0), 0.0, 1.0)
+        predictions = [np.mean([booster.predict(values) for booster in self.boosters], axis=0)]
+        predictions += [np.asarray(member.predict_p50(features[FEATURES]), dtype=float) for member in self.members.values()]
+        return np.clip(np.mean(np.clip(predictions, 0.0, 1.0), axis=0), 0.0, 1.0)
 
     def predict(self, frame: Frame, turbines: list[Turbine]) -> pd.DataFrame:
         summary = frame.summary
@@ -71,4 +82,15 @@ def load(artifacts_dir: Path, info: ModelInfo) -> LgbmPredictor:
         raise FileNotFoundError(f"Нет бустеров lgbm_p50_s*.txt в {artifacts_dir}")
     boosters = [lgb.Booster(model_file=str(path)) for path in files]
     calibration = Calibration(json.loads((artifacts_dir / CALIBRATION_FILE).read_text(encoding="utf-8")))
-    return LgbmPredictor(info, boosters, calibration)
+    return LgbmPredictor(info, boosters, calibration, _load_members(artifacts_dir))
+
+
+def _load_members(artifacts_dir: Path) -> dict:
+    members = {}
+    for name in MEMBERS:
+        try:
+            members[name] = importlib.import_module(f"ml_service.members.{name}").load(artifacts_dir)
+        except Exception as exc:  # noqa: BLE001 — отсутствие члена ансамбля не должно ронять сервис
+            logger.warning("Модель ансамбля %s не подключена: %s", name, exc)
+    logger.info("Ансамбль: lightgbm + %s", ", ".join(members) or "без других моделей")
+    return members
