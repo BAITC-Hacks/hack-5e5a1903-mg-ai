@@ -9,6 +9,7 @@ flowchart LR
     BE["backend<br/>FastAPI, root_path=/api"]
     DB[("PostgreSQL 16")]
     PL["pipeline<br/>прогноз, разовый запуск"]
+    ML["ml<br/>FastAPI + LightGBM<br/>P10/P50/P90"]
     VOL[("data/ ro<br/>outputs/ reports/ rw")]
 
     Client --> FE
@@ -16,19 +17,26 @@ flowchart LR
     FE -.-> BE
     BE --> DB
     PL --> VOL
+    BE -- "POST /predict" --> ML
 
     subgraph compose["docker compose"]
         FE
         BE
         DB
         PL
+        ML
     end
 
     style FE stroke-dasharray: 5 5
 ```
 
 Пунктиром обозначен сервис, которого в репозитории еще нет. Сейчас реально работают
-`backend` и `db`, оба описаны в `docker-compose.yml`.
+`backend`, `db` и `ml`, все описаны в `docker-compose.yml`.
+
+`ml` — модель прогноза за HTTP-контрактом `ml/openapi.json`: принимает прогнозы погоды,
+доступные на момент T, и отдает P10/P50/P90. Вызывает ее backend, наружу опубликован
+только порт `ML_PORT` для Swagger. Почему отдельный сервис:
+[adr/0006-ml-service.md](adr/0006-ml-service.md), эндпоинты: [../ml/README.md](../ml/README.md).
 
 `pipeline` — не сервис, а разовая команда в том же образе, что и `backend`. Он лежит
 в профиле `pipeline`, поэтому `docker compose up` его не поднимает, а `docker compose
@@ -63,6 +71,7 @@ flowchart TD
 |------|-----------|-----|
 | Frontend | React, планируется | `frontend/` |
 | Backend | FastAPI, SQLAlchemy 2.0 async, Alembic | `backend/` |
+| ML-сервис | FastAPI, LightGBM, pandas; контракт `ml/openapi.json` | `ml/`, сервис `ml` в compose |
 | БД | PostgreSQL 16 | сервис `db` в compose |
 | Пакеты Python | uv | `backend/pyproject.toml`, `backend/uv.lock` |
 | Линтер и формат | Ruff | конфиг в `backend/pyproject.toml` |
@@ -109,10 +118,15 @@ HACKALEM AI/
 │   ├── adr/                 # записи об архитектурных решениях
 │   └── dev1/ dev2/ dev3/    # зоны ответственности разработчиков
 ├── .dev-notes/              # заметки команды, me.md определяет кто ты
-└── backend/
-    ├── src/core/            # config, database, security, exceptions, logger
-    ├── src/modules/auth/    # образцовый модуль
-    ├── migrations/          # Alembic
+├── backend/
+│   ├── src/core/            # config, database, security, exceptions, logger
+│   ├── src/modules/auth/    # образцовый модуль
+│   ├── migrations/          # Alembic
+│   └── tests/               # pytest
+└── ml/                      # ML-сервис: FastAPI + LightGBM, свой uv.lock
+    ├── src/ml_service/      # схемы контракта, подготовка входа, модели
+    ├── artifacts/           # обученная модель, паспорт, бэктест
+    ├── openapi.json         # контракт, генерируется из схем
     └── tests/               # pytest
 ```
 

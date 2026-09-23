@@ -1,4 +1,4 @@
-.PHONY: install hooks run dev down logs ps migrate makemigrations seed test lint fmt audit check protect-main pipeline
+.PHONY: install hooks run dev down logs ps migrate makemigrations seed test lint fmt audit check protect-main pipeline ml-install ml-test ml-lint ml-fmt ml-openapi
 
 COMPOSE     := docker compose
 # пайплайн прогноза выполняется в образе backend разовым контейнером,
@@ -7,6 +7,8 @@ PIPELINE    := $(COMPOSE) run --rm pipeline
 COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 # pytest и ruff берут настройки из backend/pyproject.toml, поэтому запускаются из backend
 BACKEND     := cd backend && uv
+# ML-сервис — отдельный проект со своим uv.lock
+ML          := cd ml && uv
 
 ## install — поставить зависимости backend вместе с dev-группой
 install:
@@ -72,8 +74,30 @@ fmt:
 audit:
 	bash scripts/audit-deps.sh
 
+## ml-install — поставить зависимости ML-сервиса
+ml-install:
+	$(ML) sync --dev
+
+## ml-test — тесты ML-сервиса
+ml-test:
+	$(ML) run pytest
+
+## ml-lint — стиль и форматирование ML-сервиса
+ml-lint:
+	$(ML) run ruff check .
+	$(ML) run ruff format --check .
+
+## ml-fmt — отформатировать ML-сервис
+ml-fmt:
+	$(ML) run ruff format .
+	$(ML) run ruff check --fix .
+
+## ml-openapi — выгрузить контракт ML-сервиса в ml/openapi.json после изменения схем
+ml-openapi:
+	$(ML) run python scripts/export_openapi.py
+
 ## check — то, что должно проходить перед коммитом и перед мерджем
-check: lint test audit
+check: lint test ml-lint ml-test audit
 
 ## protect-main — один раз включить защиту ветки main на GitHub
 protect-main:
