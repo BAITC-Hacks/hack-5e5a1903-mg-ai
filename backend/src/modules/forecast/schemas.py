@@ -224,3 +224,61 @@ class ModelInfo(Sourced):
     features: list[FeatureImportance]
     power_curve: list[PowerCurvePoint]
     walk_forward: str
+
+
+# --- прогноз по загруженному датасету ------------------------------------
+
+
+class UploadedFile(BaseAppSchema):
+    """Один принятый CSV: сколько строк данных прочитано и чьи это данные."""
+
+    name: str = Field(description="Имя файла, как его прислал пользователь")
+    rows: int = Field(description="Строк данных в файле до отбраковки")
+    turbine: str = Field(description="Турбина, которой приписан файл")
+
+
+class UploadDataset(BaseAppSchema):
+    """Паспорт загруженного комплекта: что именно легло в основу прогноза.
+
+    ``dropped_rows`` и ``drop_reasons`` показываются пользователю, а не
+    проглатываются: он должен видеть, сколько его данных не прошло проверку
+    и почему.
+    """
+
+    files: list[UploadedFile]
+    period_start: datetime = Field(description="Первый час, попавший в выборку")
+    period_end: datetime = Field(description="Последний час, попавший в выборку")
+    hours: int = Field(description="Часовых наблюдений после усреднения, суммарно по файлам")
+    step_minutes: int = Field(description="Шаг исходных строк, определенный по данным")
+    dropped_rows: int = Field(description="Строк отброшено при проверке")
+    drop_reasons: dict[str, int] = Field(default_factory=dict, description="Код причины отбраковки → сколько строк")
+
+
+class PowerCurveBin(BaseAppSchema):
+    """Корзина ветра эмпирической кривой: медиана и наблюденный разброс.
+
+    ``p10`` и ``p90`` это 10-й и 90-й процентили мощности, наблюденной
+    в этой корзине, а не выдуманный коридор вокруг медианы.
+    """
+
+    wind_ms: float = Field(description="Центр корзины ветра, шаг 0,5 м/с")
+    power_norm: float = Field(ge=0.0, le=1.0, description="Медиана нормированной мощности")
+    p10: float = Field(ge=0.0, le=1.0)
+    p90: float = Field(ge=0.0, le=1.0)
+    samples: int = Field(description="Сколько часов наблюдений попало в корзину")
+
+
+class UploadWarning(BaseAppSchema):
+    """Предупреждение, которое не мешает выпуску, но меняет доверие к нему."""
+
+    code: str
+    message: str
+
+
+class UploadForecastResponse(ForecastResponse):
+    """Выпуск, посчитанный по датасету пользователя, а не по нашим данным."""
+
+    data_source: str = Field(default="uploaded", description="Числа посчитаны по загруженному датасету")
+    dataset: UploadDataset
+    power_curve: list[PowerCurveBin]
+    warnings: list[UploadWarning] = Field(default_factory=list)

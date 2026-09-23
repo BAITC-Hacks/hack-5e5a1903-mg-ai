@@ -159,6 +159,31 @@ def horizon(issue_time: datetime) -> list[datetime]:
     return [issue_time + timedelta(hours=lead) for lead in range(1, HORIZON_HOURS + 1)]
 
 
+def newest_rows(rows: list[NwpRow]) -> dict[datetime, NwpRow]:
+    """По одной строке на час: из нескольких источников берется свежий прогон.
+
+    Из нее в ответ уходят ``run_init_utc`` и ``available_at_utc``, то есть
+    ответ на вопрос «откуда этот час и когда он стал известен».
+    """
+    newest: dict[datetime, NwpRow] = {}
+    for row in rows:
+        current = newest.get(row.valid_time_utc)
+        if current is None or row.run_init_utc > current.run_init_utc:
+            newest[row.valid_time_utc] = row
+    return newest
+
+
+async def weather_for_issue(issue_time: datetime, journal: DecisionLog) -> "_Weather":
+    """Погода на момент выпуска отдельно от цикла модели.
+
+    Нужна прогнозу по загруженному датасету: тот же ``WeatherGateway``, тот же
+    ``as_of``, та же отбраковка негодных прогонов. Источники берутся по умолчанию,
+    потому что модель здесь не участвует: кривую мощности дают данные пользователя.
+    """
+    journal.at(STEP_FETCH_WEATHER)
+    return await _fetch_weather(weather_source(), issue_time, issue_time, horizon(issue_time), list(DEFAULT_SOURCES), journal)
+
+
 async def run(issue_date: date, *, trigger: str = TRIGGER_SCHEDULED) -> AgentRun:
     """Выпуск на указанный день.
 
@@ -578,11 +603,7 @@ def _weather_points(rows: list[NwpRow]) -> dict[datetime, analyze.WeatherPoint]:
 def _assemble_hours(issue_time: datetime, collected: _Weather, prediction: PredictResponse) -> list[ForecastHour]:
     """Шаг 4: контракт фронтенда из ответов соседей. Ничего не досчитывается."""
     indexed = _index_predictions(prediction.forecast, collected)
-    meta: dict[datetime, NwpRow] = {}
-    for row in collected.rows:
-        current = meta.get(row.valid_time_utc)
-        if current is None or row.run_init_utc > current.run_init_utc:
-            meta[row.valid_time_utc] = row
+    meta = newest_rows(collected.rows)
 
     hours: list[ForecastHour] = []
     for name in TURBINE_NAMES:

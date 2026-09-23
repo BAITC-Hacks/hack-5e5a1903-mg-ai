@@ -12,12 +12,14 @@
 """
 
 from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 
 from src.core.base_schemas import PaginatedResponse
 from src.modules.auth.dependencies import get_current_user
-from src.modules.forecast import orchestrator, service
+from src.modules.forecast import orchestrator, service, upload
+from src.modules.forecast.config import FIRST_ISSUE
 from src.modules.forecast.schemas import (
     AgentDecision,
     BacktestMetrics,
@@ -26,6 +28,7 @@ from src.modules.forecast.schemas import (
     IssueSummary,
     ModelInfo,
     SiteInfo,
+    UploadForecastResponse,
     WeatherResponse,
 )
 
@@ -64,6 +67,16 @@ async def backtest() -> BacktestMetrics:
 async def model_info() -> ModelInfo:
     """Чем считаем прогноз: модель, признаки, кривая мощности."""
     return await orchestrator.model_info()
+
+
+@router.post("/upload", response_model=UploadForecastResponse)
+async def upload_forecast(
+    files: Annotated[list[UploadFile] | None, File(description="Один или два CSV в формате организаторов")] = None,
+    issue_date: Annotated[date, Form(description="День выпуска, по умолчанию первый день ретро-симуляции")] = FIRST_ISSUE,
+    turbine_names: Annotated[list[str] | None, Form(description="Имена турбин по порядку файлов")] = None,
+) -> UploadForecastResponse:
+    """Прогноз по датасету пользователя: кривая мощности строится из его же данных."""
+    return await upload.build_upload_forecast(files, issue_date=issue_date, turbine_names=turbine_names)
 
 
 @router.get("/{issue_date}", response_model=ForecastResponse)
