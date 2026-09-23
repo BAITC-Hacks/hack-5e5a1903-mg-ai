@@ -86,7 +86,6 @@ AVAILABILITY_COLUMNS = [
     ("col", "Колонка"),
     ("first", "Данные с"),
     ("missing", "Пропусков, %"),
-    ("same", "Совпадает со свежим прогоном, %"),
 ]
 COVERAGE_COLUMNS = [
     ("t", "Турбина"),
@@ -169,13 +168,16 @@ def _year_chunks(start: date, end: date) -> list[tuple[date, date]]:
 
 
 def _cached(name: str, refresh: bool, fetch) -> pd.DataFrame:
+    """Ответ API из кэша, при ``refresh`` или пустом кэше сначала перекачивается.
+
+    Кэш хранит значения с точностью 0.01, и отчет всегда строится по прочитанному
+    кэшу. Иначе запуск с ``--refresh`` и следующий запуск из кэша дали бы разные цифры.
+    """
     path = CACHE_DIR / f"{name}.csv.gz"
-    if path.exists() and not refresh:
-        return pd.read_csv(path, parse_dates=["time"], index_col="time")
-    frame = fetch()
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    frame.sort_index().to_csv(path, compression={"method": "gzip", "mtime": 0}, float_format="%.2f")
-    return frame
+    if refresh or not path.exists():
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        fetch().sort_index().to_csv(path, compression={"method": "gzip", "mtime": 0}, float_format="%.2f")
+    return pd.read_csv(path, parse_dates=["time"], index_col="time")
 
 
 def fetch_era5(refresh: bool, client: httpx.Client) -> pd.DataFrame:
@@ -241,6 +243,11 @@ def prev_day_run_init(valid_time: pd.Timestamp, n: int, cycle_h: int) -> pd.Time
     return valid_time.floor(f"{cycle_h}h") - pd.Timedelta(hours=24 * n)
 
 
+def lead_label(n: int, cycle_h: int) -> str:
+    """Диапазон заблаговременности ``previous_dayN`` по правилу ``prev_day_run_init``."""
+    return f"+{24 * n}…{24 * n + cycle_h - 1} ч"
+
+
 # ---------------------------------------------------------------- метрики
 
 
@@ -283,6 +290,24 @@ def linear_fit(obs: pd.Series, pred: pd.Series) -> tuple[float, float]:
     return float(a), float(b)
 
 
+def model_levels(nwp: dict[str, pd.DataFrame]) -> dict[str, float]:
+    """Средний ветер каждой модели относительно среднего четырех, в процентах.
+
+    Свежий прогон на высоте сравнения, только часы, где есть все модели.
+    """
+    winds = pd.concat({m: frame[f"wind_speed_{SKILL_HEIGHT[m]}m"] for m, frame in nwp.items()}, axis=1, sort=True).dropna()
+    means = winds.mean()
+    return {m: float((means[m] / means.mean() - 1) * 100) for m in nwp}
+
+
+def quarters_with_temp_lag(quarter_lags: list[tuple[int, int]]) -> int:
+    """Сколько кварталов, где лучший сдвиг температуры ровно на час больше, чем у ветра.
+
+    ``quarter_lags``: пары (сдвиг ветра, сдвиг температуры) по кварталам.
+    """
+    return sum(temp == wind + 1 for wind, temp in quarter_lags)
+
+
 def md_table(rows: list[dict], columns: list[tuple[str, str]], floatfmt: str = ".2f") -> str:
     """Markdown-таблица без tabulate. columns: [(ключ, заголовок)]."""
 
@@ -312,8 +337,8 @@ def fresh_ensemble(nwp: dict[str, pd.DataFrame]) -> pd.Series:
 def tz_section(site: pd.DataFrame, era5: pd.DataFrame, nwp: dict[str, pd.DataFrame]) -> tuple[str, int, int]:
     """Пояс времени SCADA решается по ветру.
 
-    Температура для этого не годится: датчик на турбине запаздывает примерно на час
-    относительно воздуха, и ее лучший сдвиг систематически на час больше, чем у ветра.
+    Температура для этого не годится: датчик на турбине запаздывает относительно
+    воздуха, и ее лучший сдвиг в большинстве кварталов на час больше, чем у ветра.
     """
     ensemble = fresh_ensemble(nwp)
     periods = {
@@ -328,13 +353,14 @@ def tz_section(site: pd.DataFrame, era5: pd.DataFrame, nwp: dict[str, pd.DataFra
         for k in range(4, 9):
             rows.append({"period": name, "k": f"UTC+{k}", "wind": wind[k], "temp": temp[k]})
 
-    quarter_rows = []
+    quarter_rows, quarter_lags = [], []
     for (year, quarter), part in site.groupby([site.index.year, site.index.quarter]):
         if len(part) < 500:
             continue
         wind = lag_correlations(part["wind"], era5["wind_speed_100m"])
         ens = lag_correlations(part["wind"], ensemble)
         temp = lag_correlations(part["temp"], era5["temperature_2m"])
+        quarter_lags.append((best_lag(wind), best_lag(temp)))
         quarter_rows.append(
             {
                 "q": f"{year} Q{quarter}",
@@ -343,6 +369,7 @@ def tz_section(site: pd.DataFrame, era5: pd.DataFrame, nwp: dict[str, pd.DataFra
                 "tk": f"UTC+{best_lag(temp)}",
             }
         )
+    temp_later = quarters_with_temp_lag(quarter_lags)
 
     before, after = best["до 01.03.2024"], best["с 01.03.2024"]
     switch_note = (
@@ -362,9 +389,9 @@ def tz_section(site: pd.DataFrame, era5: pd.DataFrame, nwp: dict[str, pd.DataFra
 
 {md_table(quarter_rows, [("q", "Квартал"), ("wk", "ветер, ERA5"), ("ek", "ветер, среднее 4 моделей"), ("tk", "температура, ERA5")])}
 
-Пояс определяется по ветру. Температура каждый квартал показывает сдвиг на час больше:
-датчик на турбине прогревается и остывает с запаздыванием примерно на час, поэтому ее
-суточный ход отстает от воздуха.
+Пояс определяется по ветру. Температура в {temp_later} из {len(quarter_lags)} кварталов
+показывает сдвиг ровно на час больше, чем ветер. Вероятная причина: датчик на турбине
+прогревается и остывает с запаздыванием, поэтому ее суточный ход отстает от воздуха.
 
 **Вывод:** время SCADA — UTC+{before} до 01.03.2024 и UTC+{after} после. {switch_note}
 Перевод в UTC: `time_utc = time_scada − {after} ч`. Ниже везде используется это правило.
@@ -385,6 +412,7 @@ def height_section(site_utc: pd.DataFrame, era5: pd.DataFrame, nwp: dict[str, pd
             rows.append(
                 {"src": MODEL_LABEL[model] + " (свежий прогон)", "h": f"{h} м", **s, "ratio": joined.iloc[:, 0].mean() / joined.iloc[:, 1].mean()}
             )
+    levels = ", ".join(f"{MODEL_LABEL[m]} {pct:+.0f}%" for m, pct in model_levels(nwp).items())
     return f"""## 2. Высота замера ветра
 
 В ТЗ высота не указана, в плане принято 80 м (ступица GW109). Сравниваем средний ветер
@@ -394,17 +422,23 @@ def height_section(site_utc: pd.DataFrame, era5: pd.DataFrame, nwp: dict[str, pd
 {md_table(rows, HEIGHT_COLUMNS)}
 
 Корреляция почти не зависит от высоты: соседние уровни одной модели связаны почти
-линейно. Уровень лучше показывают `bias` и `ratio`. Систематическое смещение моделей
-всё равно убирает поправка (MOS) из раздела 3, поэтому точная высота на качество
-прогноза влияет слабо.
+линейно. Уровень лучше показывают `bias` и `ratio`.
+
+Уровни моделей между собой: средний ветер свежего прогона на высоте сравнения
+относительно среднего четырех моделей, по общим часам: {levels}.
+Насколько смещение моделей снимает поправка (MOS), видно в разделе 3.
 """
 
 
 def skill_section(site_utc: pd.DataFrame, nwp: dict[str, pd.DataFrame]) -> tuple[str, dict[int, dict]]:
     """Ошибка прогноза ветра каждой модели и их среднего на +24 и +48 ч.
 
-    Возвращает текст раздела и сводку для выводов: по каждой заблаговременности
-    лучшая одиночная модель и ансамбль, MAE как есть, в м/с.
+    Возвращает текст раздела и сводку для выводов по каждой заблаговременности:
+    лучшая одиночная модель и ансамбль, MAE в м/с как есть и после поправки.
+
+    Поправка ансамбля обучается на самом среднем четырех моделей. Среднее четырех
+    уже поправленных прогонов не годится: каждая поправка по МНК сжимает прогноз
+    к среднему, и среднее сжатых прогонов сжато сильнее нужного.
     """
     obs = site_utc["wind"]
     common = obs.index
@@ -414,8 +448,10 @@ def skill_section(site_utc: pd.DataFrame, nwp: dict[str, pd.DataFrame]) -> tuple
             common = common.intersection(frame[f"wind_speed_{h}m_previous_day{n}"].dropna().index)
     obs = obs.reindex(common)
     train, test = obs[obs.index < SPLIT], obs[obs.index >= SPLIT]
+    ensemble_cycle = max(MODELS[m][1] for m in nwp)
 
     rows, spread_rows, summary = [], [], {}
+    biases, mos_helps, spread_grows, spread_level_corr = {}, [], {}, {}
     for n in (1, 2):
         raw_preds, mos_preds = {}, {}
         for model, frame in nwp.items():
@@ -424,18 +460,23 @@ def skill_section(site_utc: pd.DataFrame, nwp: dict[str, pd.DataFrame]) -> tuple
             raw_preds[model] = pred
             mos_preds[model] = a + b * pred
         raw_preds["ensemble"] = pd.concat(raw_preds.values(), axis=1).mean(axis=1)
-        mos_preds["ensemble"] = pd.concat(mos_preds.values(), axis=1).mean(axis=1)
+        a, b = linear_fit(train, raw_preds["ensemble"][train.index])
+        mos_preds["ensemble"] = a + b * raw_preds["ensemble"]
         spread = pd.concat([mos_preds[m] for m in nwp], axis=1).std(axis=1)
 
-        raw_mae = {}
+        raw_mae, mos_mae = {}, {}
         for model in [*nwp, "ensemble"]:
             raw = error_stats(test, raw_preds[model][test.index])
             mos = error_stats(test, mos_preds[model][test.index])
-            raw_mae[model] = raw["mae"]
+            raw_mae[model], mos_mae[model] = raw["mae"], mos["mae"]
+            if model != "ensemble":
+                biases.setdefault(model, raw["bias"])
+                mos_helps.append(mos["mae"] < raw["mae"])
             label = "**Ансамбль (среднее 4)**" if model == "ensemble" else f"{MODEL_LABEL[model]} ({SKILL_HEIGHT[model]} м)"
+            cycle_h = ensemble_cycle if model == "ensemble" else MODELS[model][1]
             rows.append(
                 {
-                    "lead": f"+{24 * n}…{24 * n + 5} ч",
+                    "lead": lead_label(n, cycle_h),
                     "model": label,
                     "n": raw["n"],
                     "raw_mae": raw["mae"],
@@ -447,70 +488,108 @@ def skill_section(site_utc: pd.DataFrame, nwp: dict[str, pd.DataFrame]) -> tuple
                 }
             )
         best_single = min(nwp, key=raw_mae.get)
-        summary[n] = {"best": MODEL_LABEL[best_single], "best_mae": raw_mae[best_single], "ens_mae": raw_mae["ensemble"]}
+        best_mos = min(nwp, key=mos_mae.get)
+        summary[n] = {
+            "best": MODEL_LABEL[best_single],
+            "best_mae": raw_mae[best_single],
+            "ens_mae": raw_mae["ensemble"],
+            "best_mos": MODEL_LABEL[best_mos],
+            "best_mos_mae": mos_mae[best_mos],
+            "ens_mos_mae": mos_mae["ensemble"],
+        }
 
         # Разброс моделей как мера неуверенности: при большом разбросе ошибка выше?
         err = (raw_preds["ensemble"][test.index] - test).abs()
         buckets = pd.qcut(spread[test.index], 3, labels=["малый", "средний", "большой"])
-        for k in buckets.cat.categories:
-            spread_rows.append({"lead": f"+{24 * n} ч", "b": str(k), "sp": spread[test.index][buckets == k].mean(), "mae": err[buckets == k].mean()})
+        bucket_mae = [err[buckets == k].mean() for k in buckets.cat.categories]
+        for k, mae in zip(buckets.cat.categories, bucket_mae, strict=True):
+            spread_rows.append({"lead": f"+{24 * n} ч", "b": str(k), "sp": spread[test.index][buckets == k].mean(), "mae": mae})
+        spread_grows[n] = bool(np.all(np.diff(bucket_mae) > 0))
+        spread_level_corr[n] = spread[test.index].corr(raw_preds["ensemble"][test.index])
+        summary[n]["spread_grows"] = spread_grows[n]
 
+    over = [MODEL_LABEL[m] for m, b in biases.items() if b > 0]
+    under = [MODEL_LABEL[m] for m, b in biases.items() if b < 0]
+    bias_note = (
+        f"Смещения моделей на +24 ч разного знака: {' и '.join(over)} завышают, {' и '.join(under)} занижают, поэтому в среднем они частично гасятся."
+        if over and under
+        else "Смещения всех моделей на +24 ч одного знака, в среднем они не гасятся."
+    )
+    mos_note = (
+        "Поправка снижает MAE каждой модели на обеих заблаговременностях."
+        if all(mos_helps)
+        else f"Поправка снижает MAE одиночной модели в {sum(mos_helps)} случаях из {len(mos_helps)}."
+    )
+    compare = "; ".join(f"на +{24 * n} ч {s['ens_mos_mae']:.2f} против {s['best_mos_mae']:.2f} у {s['best_mos']}" for n, s in summary.items())
+    if all(spread_grows.values()):
+        grows = "С ростом разброса ошибка ансамбля растет на обеих заблаговременностях."
+    else:
+        grows = (
+            "С ростом разброса ошибка ансамбля растет не монотонно на " + " и ".join(f"+{24 * n} ч" for n, g in spread_grows.items() if not g) + "."
+        )
     period = f"{common.min():%d.%m.%Y}–{common.max():%d.%m.%Y}"
     text = f"""## 3. Точность прогнозов четырех моделей и ансамбля
 
 Прогнозы из Previous Runs API: `previous_day1` — прогон, выпущенный за 24–29 ч до часа,
-`previous_day2` — за 48–53 ч. Это та заблаговременность, с которой работает наш выпуск.
-Сравнение идет с ветром SCADA, переведенным в UTC по правилу из раздела 1.
+`previous_day2` — за 48–53 ч. У GEM прогоны раз в 12 ч, поэтому по правилу из раздела 4
+его заблаговременность до 35 и 59 ч. Сравнение идет с ветром SCADA, переведенным в UTC
+по правилу из раздела 1.
 
 Общий период, где есть все модели: {period}, часов: {len(common)}.
-Поправка (MOS: `ветер = a + b·прогноз`, отдельно для каждой модели) обучена на данных
-до {SPLIT:%d.%m.%Y}, все метрики ниже посчитаны на отложенном периоде после этой даты.
+Поправка (MOS: `ветер = a + b·прогноз`) обучена на данных до {SPLIT:%d.%m.%Y}, все метрики
+ниже посчитаны на отложенном периоде после этой даты. У одиночной модели поправка
+обучается на ее прогнозе, у ансамбля — на среднем четырех сырых прогнозов.
 
 {md_table(rows, SKILL_COLUMNS)}
 
-Все ошибки в м/с. Колонки без пометки — прогноз как есть. Смещения моделей разного
-знака (одни завышают, другие занижают), поэтому в среднем они взаимно гасятся.
-MOS по одной модели снижает ошибку, но простое среднее четырех моделей точнее
-любой одной модели даже после ее поправки.
+Все ошибки в м/с. Колонки без пометки — прогноз как есть. {bias_note}
+{mos_note} Честное сравнение ансамбля с одной моделью — после поправки у обоих: {compare}.
 
 Разброс четырех моделей и ошибка ансамбля (часы разбиты на три равные группы по разбросу):
 
 {md_table(spread_rows, [("lead", "Заблаговременность"), ("b", "Разброс"), ("sp", "средний разброс, м/с"), ("mae", "MAE ансамбля, м/с")])}
 
-Ошибка растет вместе с разбросом, значит разброс моделей полезен как признак для
-квантильной модели: при большом разбросе интервал P10–P90 должен быть шире.
+{grows} Разброс связан с силой ветра (корреляция с прогнозом ансамбля {spread_level_corr[1]:.2f} на +24 ч
+и {spread_level_corr[2]:.2f} на +48 ч), поэтому это кандидат в признаки неуверенности
+для P10–P90, а пользу от него показывает бэктест квантильной модели.
 """
     return text, summary
 
 
-def availability_section(nwp: dict[str, pd.DataFrame]) -> str:
-    rows = []
+def availability_section(nwp: dict[str, pd.DataFrame]) -> tuple[str, dict]:
+    """Текст раздела и сводка для выводов: самое раннее и самое позднее начало архива, максимум пропусков."""
+    rows, firsts, missing = [], [], []
     for model, frame in nwp.items():
         h = SKILL_HEIGHT[model]
         for n in (1, 2):
-            col = f"wind_speed_{h}m_previous_day{n}"
-            s = frame[col]
+            s = frame[f"wind_speed_{h}m_previous_day{n}"]
             first = s.first_valid_index()
             window = s[s.index >= first] if first is not None else s
-            same = (frame[col] == frame[f"wind_speed_{h}m"]).mean()
+            firsts.append(first)
+            missing.append(window.isna().mean() * 100)
             rows.append(
                 {
                     "model": MODEL_LABEL[model],
                     "col": f"previous_day{n}",
                     "first": f"{first:%d.%m.%Y}" if first is not None else "нет",
-                    "missing": window.isna().mean() * 100,
-                    "same": same * 100,
+                    "missing": missing[-1],
                 }
             )
-    return f"""## 4. Доступность архива и правило прогонов
+    found = [f for f in firsts if f is not None]
+    summary = {
+        "all_present": len(found) == len(firsts),
+        "first_min": min(found) if found else None,
+        "first_max": max(found) if found else None,
+        "missing_max": max(missing),
+    }
+    text = f"""## 4. Доступность архива и правило прогонов
 
 {md_table(rows, AVAILABILITY_COLUMNS, ".1f")}
 
-Высокий процент совпадения `previous_dayN` со свежим прогоном — признак того, что
-архив в эти часы заполнен не настоящим старым прогоном. Такие часы опасны: это утечка.
-
 **Какой прогон стоит за `previous_dayN`.** Проверено сверкой значений с Single Runs API
-(точные прогоны) за 31.07–05.08.2026 для GFS, ICON, ECMWF IFS 0.25° и ECMWF IFS 9 км:
+(точные прогоны) за 31.07–05.08.2026 для GFS, ICON, ECMWF IFS 0.25° и ECMWF IFS 9 км.
+Сверка делалась вручную, этот скрипт ее не повторяет; правило в пайплайне —
+`src/forecast/weather/prev_runs_rule.py`. Результат сверки:
 значение `previous_dayN` в час t совпадает с прогоном init = floor_6h(t) − 24·N ч,
 то есть заблаговременность равна 24·N + (t mod 6) ч. Для GEM точных прогонов в Single
 Runs нет (`modelRunUnavailable`), прогоны у него раз в 12 ч, поэтому для него
@@ -520,6 +599,7 @@ Runs нет (`modelRunUnavailable`), прогоны у него раз в 12 ч,
 init + задержка публикации ≤ T. Брать `previous_day1` вслепую нельзя: для часов
 +25…+48 от T это прогон, опубликованный после T.
 """
+    return text, summary
 
 
 def build_report(refresh: bool) -> str:
@@ -531,22 +611,43 @@ def build_report(refresh: bool) -> str:
     tz_text, before, after = tz_section(site, era5, nwp)
     site_utc = to_utc(site, before, after)
     skill_text, skill = skill_section(site_utc, nwp)
+    availability_text, archive = availability_section(nwp)
+    levels = model_levels(nwp)
 
     gain = {n: (1 - s["ens_mae"] / s["best_mae"]) * 100 for n, s in skill.items()}
+    gain_mos = {n: (1 - s["ens_mos_mae"] / s["best_mos_mae"]) * 100 for n, s in skill.items()}
+    ensemble_wins = all(g > 0 for g in [*gain.values(), *gain_mos.values()])
+    ensemble_head = "Ансамбль четырех моделей точнее любой одной" if ensemble_wins else "Ансамбль четырех моделей не везде точнее лучшей модели"
+    spread_line = (
+        "Ошибка ансамбля растет вместе с разбросом моделей, это кандидат в признаки неуверенности."
+        if all(s["spread_grows"] for s in skill.values())
+        else "Ошибка ансамбля растет с разбросом моделей не на всех заблаговременностях."
+    )
+    archive_gaps = "без пропусков" if archive["missing_max"] == 0 else f"пропусков до {archive['missing_max']:.1f}%"
+    archive_line = (
+        f"**Архив Previous Runs есть у всех четырех моделей, {archive_gaps}.** Начинается "
+        f"с {archive['first_min']:%d.%m.%Y}, у последней колонки с {archive['first_max']:%d.%m.%Y}."
+        if archive["all_present"]
+        else "**Архив Previous Runs есть не у всех моделей.**"
+    )
     tz_line = "весь период, перехода на UTC+5 в марте 2024 в данных нет" if before == after else f"после 01.03.2024, до этой даты UTC+{before}"
     summary = f"""## Главные выводы
 
 1. **Время SCADA записано в UTC+{after}** — {tz_line}. Перевод:
    `time_utc = time_scada − {after} ч`. Раздел 1.
-2. **Высоту замера по данным не определить.** Модели расходятся между собой по уровню
-   ветра от −15% до +30%, это смещение убирает поправка, поэтому для прогноза высота
-   не критична. Раздел 2.
-3. **Ансамбль четырех моделей точнее любой одной.** На +24 ч MAE ветра {skill[1]["ens_mae"]:.2f} м/с
-   против {skill[1]["best_mae"]:.2f} у лучшей модели ({skill[1]["best"]}), это на {gain[1]:.0f}% меньше.
-   На +48 ч {skill[2]["ens_mae"]:.2f} против {skill[2]["best_mae"]:.2f} ({skill[2]["best"]}), на {gain[2]:.0f}% меньше.
-   Разброс моделей растет вместе с ошибкой, это готовый признак неуверенности. Раздел 3.
-4. **Архив Previous Runs есть у всех четырех моделей с февраля–марта 2024 без пропусков.**
-   Какой прогон стоит за `previous_dayN`, проверено по точным прогонам. Раздел 4.
+2. **Высоту замера по данным не определить.** Уровни ветра моделей относительно их общего
+   среднего от {min(levels.values()):+.0f}% до {max(levels.values()):+.0f}%. Раздел 2.
+3. **{ensemble_head}.** MAE ветра, м/с, ансамбль против лучшей модели:
+   - после поправки у обоих: +24 ч {skill[1]["ens_mos_mae"]:.2f} против {skill[1]["best_mos_mae"]:.2f} ({skill[1]["best_mos"]}),
+     на {gain_mos[1]:.0f}% меньше; +48 ч {skill[2]["ens_mos_mae"]:.2f} против {skill[2]["best_mos_mae"]:.2f} ({skill[2]["best_mos"]}),
+     на {gain_mos[2]:.0f}% меньше;
+   - без поправки: +24 ч {skill[1]["ens_mae"]:.2f} против {skill[1]["best_mae"]:.2f} ({skill[1]["best"]}), на {gain[1]:.0f}% меньше;
+     +48 ч {skill[2]["ens_mae"]:.2f} против {skill[2]["best_mae"]:.2f} ({skill[2]["best"]}), на {gain[2]:.0f}% меньше.
+     Поправка улучшает одиночные модели сильнее, чем ансамбль, поэтому для решений берем цифры после поправки.
+
+   {spread_line} Раздел 3.
+4. {archive_line}
+   Какой прогон стоит за `previous_dayN`, проверено вручную по точным прогонам. Раздел 4.
 """
 
     coverage = [
@@ -576,18 +677,22 @@ def build_report(refresh: bool) -> str:
         tz_text,
         height_section(site_utc, era5, nwp),
         skill_text,
-        availability_section(nwp),
+        availability_text,
     ]
     return "\n".join(sections)
+
+
+def write_report(report: str, path: Path) -> None:
+    """Отчет с переводами строк LF на любой ОС, чтобы он побайтно совпадал с закоммиченным."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(report, encoding="utf-8", newline="\n")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--refresh", action="store_true", help="перекачать погоду из API вместо кэша")
     args = parser.parse_args()
-    report = build_report(args.refresh)
-    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORT_PATH.write_text(report, encoding="utf-8")
+    write_report(build_report(args.refresh), REPORT_PATH)
     print(f"report: {REPORT_PATH}")
 
 
