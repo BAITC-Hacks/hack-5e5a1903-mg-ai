@@ -73,7 +73,7 @@ def centered_hourly(raw: pd.DataFrame, column: str) -> pd.Series:
     raw = raw.drop_duplicates("time_local")
     hour = (raw["time_local"] + pd.Timedelta(minutes=30)).dt.floor("h")
     grouped = raw.groupby(hour)[column]
-    series = grouped.mean()[grouped.size() >= config.MIN_POINTS_PER_HOUR]
+    series = grouped.mean()[grouped.count() >= config.MIN_POINTS_PER_HOUR]
     series.index.name = "time_local"
     return series
 

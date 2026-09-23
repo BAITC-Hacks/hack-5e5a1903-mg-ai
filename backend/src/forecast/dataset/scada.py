@@ -48,14 +48,15 @@ STEP = pd.Timedelta(minutes=10)
 
 
 class ScadaFormatError(ValueError):
-    """Файл SCADA не того формата: нет ожидаемой колонки или время не читается."""
+    """Файл SCADA не того формата: нет ожидаемой колонки, время или значение не читается."""
 
 
 def read_turbine_csv(path: Path) -> pd.DataFrame:
     """10-минутные записи одной турбины как есть, отсортированные по времени.
 
     Время остается локальным временем SCADA, без пояса. Дубликаты не удаляются,
-    это делает ``aggregate_hourly``, чтобы сводка могла их посчитать.
+    это делает ``aggregate_hourly``, чтобы сводка могла их посчитать. Пустая ячейка
+    становится NaN, нечисловое значение — ошибкой формата.
     """
     raw = pd.read_csv(path)
     missing = [name for name in CSV_HEADERS if name not in raw.columns]
@@ -66,6 +67,11 @@ def read_turbine_csv(path: Path) -> pd.DataFrame:
         raw["time_local"] = pd.to_datetime(raw["time_local"], format="%Y-%m-%d %H:%M:%S")
     except ValueError as exc:
         raise ScadaFormatError(f"{path.name}: не читается время: {exc}") from exc
+    for column in MEASURES:
+        try:
+            raw[column] = pd.to_numeric(raw[column]).astype(float)
+        except ValueError as exc:
+            raise ScadaFormatError(f"{path.name}: в {column} не число: {exc}") from exc
     return raw.sort_values("time_local", kind="stable").reset_index(drop=True)
 
 
@@ -88,12 +94,16 @@ def aggregate_hourly(raw: pd.DataFrame) -> pd.DataFrame:
     Кроме средних считаются ``n_points`` (сколько записей в часе), ``power_max`` и
     ``wind_max`` по записям часа и ``frozen`` — была ли в часе запись из серии
     замерзшего датчика. Отсев неполных часов делает вызывающий код.
+
+    Пустые ячейки в ``n_points`` не входят: это наименьшее по величинам число
+    заполненных записей. Иначе час из четырех строк, где мощность есть только в одной,
+    прошел бы проверку «4 из 6», а час из пустых строк стал бы чистым часом с NaN.
     """
     raw = raw.drop_duplicates("time_local").reset_index(drop=True)
     raw = raw.assign(frozen=frozen_wind(raw), hour=raw["time_local"].dt.floor("h"))
     grouped = raw.groupby("hour")
     hourly = grouped[MEASURES].mean()
-    hourly["n_points"] = grouped.size()
+    hourly["n_points"] = grouped[MEASURES].count().min(axis=1)
     hourly["power_max"] = grouped["power_norm"].max()
     hourly["wind_max"] = grouped["wind_ms"].max()
     hourly["frozen"] = grouped["frozen"].any()
