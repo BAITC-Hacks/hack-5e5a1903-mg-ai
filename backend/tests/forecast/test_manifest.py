@@ -93,6 +93,29 @@ def test_row_from_the_future_raises_leakage_error(data_dir):
         build_manifest(ISSUE, nwp, data_dir=data_dir)
 
 
+def test_recompute_keeps_issue_time_and_checks_as_of(data_dir):
+    as_of = pd.Timestamp(ISSUE) + pd.Timedelta(hours=6)
+    nwp = _nwp()
+    nwp.loc[:23, "available_at_utc"] = as_of
+
+    manifest = build_manifest(ISSUE, nwp, as_of=as_of, version=2, data_dir=data_dir)
+
+    assert manifest["issue_time_utc"] == "2026-02-01T02:00:00Z"
+    assert manifest["as_of_utc"] == "2026-02-01T08:00:00Z"
+    assert manifest["max_available_at_utc"] == "2026-02-01T08:00:00Z"
+    assert manifest["version"] == 2
+    with pytest.raises(LeakageError, match="на момент 2026-02-01T02:00:00Z"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
+    with pytest.raises(LeakageError):
+        build_manifest(ISSUE, nwp, as_of=as_of - pd.Timedelta(minutes=1), data_dir=data_dir)
+
+
+def test_as_of_defaults_to_issue_time_and_cannot_precede_it(data_dir):
+    assert build_manifest(ISSUE, _nwp(), data_dir=data_dir)["as_of_utc"] == "2026-02-01T02:00:00Z"
+    with pytest.raises(ValueError, match="раньше момента выпуска"):
+        build_manifest(ISSUE, _nwp(), as_of=pd.Timestamp(ISSUE) - pd.Timedelta(hours=1), data_dir=data_dir)
+
+
 def test_row_without_available_at_raises_leakage_error(data_dir):
     nwp = _nwp()
     nwp["available_at_utc"] = nwp["available_at_utc"].astype("datetime64[ns, UTC]")

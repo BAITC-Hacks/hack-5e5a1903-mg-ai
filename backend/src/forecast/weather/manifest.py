@@ -12,11 +12,13 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
 
     {
       "schema_version": 1,
-      "issue_time_utc": "2026-02-01T02:00:00Z",   # момент выпуска T
+      "issue_time_utc": "2026-02-01T02:00:00Z",   # момент выпуска T, одинаковый у всех версий выпуска
+      "as_of_utc": "2026-02-01T02:00:00Z",        # момент, на который взята погода: T для версии 1,
+                                                  # время выхода нового прогона для пересчетов
       "version": 1,                               # версия выпуска, пересчеты 2, 3, ...
       "max_available_at_utc": "...Z" | null,      # максимум available_at_utc по всем строкам погоды;
                                                   # null, если погоды нет (климатология).
-                                                  # Инвариант: max_available_at_utc <= issue_time_utc
+                                                  # Инвариант: max_available_at_utc <= as_of_utc
       "sources": {                                # только источники, реально попавшие в выпуск
         "<source>": {                             # ifs, ifs025, gfs, icon, gem
           "hours": 48,                            # число разных valid_time_utc из этого источника
@@ -51,8 +53,9 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
 Хэши файлов кэша берутся из ``SHA256SUMS``, а не пересчитываются: в паспорт
 идет sha256 самого файла сумм, и по нему однозначно проверяется весь кэш источника.
 
-Строка погоды с ``available_at_utc`` позже ``issue_time_utc`` означает утечку
-будущего, и паспорт такой выпуск не подписывает: ``LeakageError``.
+Строка погоды с ``available_at_utc`` позже ``as_of_utc`` означает утечку
+будущего, и паспорт такой выпуск не подписывает: ``LeakageError``. Проверка
+утечек по готовым паспортам (#20) сравнивает с тем же ``as_of_utc``.
 """
 
 from __future__ import annotations
@@ -98,17 +101,23 @@ def build_manifest(
     issue_time: datetime | pd.Timestamp | str,
     nwp: pd.DataFrame,
     *,
+    as_of: datetime | pd.Timestamp | str | None = None,
     version: int = 1,
     config: Any = None,
     data_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Паспорт выпуска ``issue_time`` по таблице погоды ``nwp`` из ``get_nwp``.
 
+    ``as_of`` задается при пересчете: момент, на который взята погода. По умолчанию
+    совпадает с ``issue_time`` и не может быть раньше него.
     Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в паспорт
     не попадают. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
     ``data/`` в корне репозитория.
     """
     issue = _utc(issue_time)
+    moment = _utc(as_of) if as_of is not None else issue
+    if moment < issue:
+        raise ValueError(f"as_of {_iso(moment)} раньше момента выпуска {_iso(issue)}")
     root = _data_dir(data_dir)
     frame = _prepare(nwp)
 
@@ -118,16 +127,18 @@ def build_manifest(
         raise LeakageError(f"available_at_utc не задан у {int(unknown.sum())} строк погоды, источники {sources}")
 
     max_available = frame["available_at_utc"].max() if not frame.empty else None
-    if max_available is not None and max_available > issue:
-        late = frame.loc[frame["available_at_utc"] > issue]
+    if max_available is not None and max_available > moment:
+        late = frame.loc[frame["available_at_utc"] > moment]
         runs = sorted({_iso(ts) for ts in late["run_init_utc"]})
         raise LeakageError(
-            f"выпуск {_iso(issue)} видит {len(late)} строк погоды, опубликованных позже: max available_at_utc {_iso(max_available)}, прогоны {runs}"
+            f"выпуск {_iso(issue)} на момент {_iso(moment)} видит {len(late)} строк погоды, опубликованных позже: "
+            f"max available_at_utc {_iso(max_available)}, прогоны {runs}"
         )
 
     return {
         "schema_version": SCHEMA_VERSION,
         "issue_time_utc": _iso(issue),
+        "as_of_utc": _iso(moment),
         "version": int(version),
         "max_available_at_utc": _iso(max_available) if max_available is not None else None,
         "sources": {source: _describe_source(rows, issue, root, source) for source, rows in frame.groupby("source", sort=True)},
