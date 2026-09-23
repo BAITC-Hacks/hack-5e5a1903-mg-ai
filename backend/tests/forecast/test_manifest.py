@@ -3,8 +3,10 @@
 import dataclasses
 import hashlib
 import json
+import shutil
 import subprocess
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -166,14 +168,34 @@ def test_manifest_without_git(monkeypatch, data_dir, error):
     monkeypatch.setattr(manifest_module.subprocess, "run", broken_git)
     manifest = build_manifest(ISSUE, _nwp(), data_dir=data_dir)
 
-    assert manifest["git_sha"] is None
+    assert manifest["git_sha"] is None and manifest["git_dirty"] is None
     assert json.loads(manifest_json(manifest))["git_sha"] is None
 
 
 def test_git_sha_in_repository(data_dir):
-    sha = build_manifest(ISSUE, _nwp(), data_dir=data_dir)["git_sha"]
+    # Раньше тест принимал None и не ловил сломанный вызов git внутри репозитория.
+    if shutil.which("git") is None:
+        pytest.skip("git не установлен")
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(manifest_module.__file__).parent, capture_output=True, text=True)
+    if head.returncode != 0:
+        pytest.skip("код лежит не в git-репозитории")
+    manifest = build_manifest(ISSUE, _nwp(), data_dir=data_dir)
 
-    assert sha is None or len(sha) == 40
+    assert manifest["git_sha"] == head.stdout.strip()
+    assert isinstance(manifest["git_dirty"], bool)
+
+
+@pytest.mark.parametrize(("status", "dirty"), [(" M backend/src/forecast/weather/manifest.py\n", True), ("", False)])
+def test_git_dirty_follows_status(monkeypatch, data_dir, status, dirty):
+    def fake_git(args, **kwargs):
+        stdout = "a" * 40 + "\n" if "rev-parse" in args else status
+        return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(manifest_module.subprocess, "run", fake_git)
+    manifest = build_manifest(ISSUE, _nwp(), data_dir=data_dir)
+
+    assert manifest["git_sha"] == "a" * 40
+    assert manifest["git_dirty"] is dirty
 
 
 def test_missing_cache_and_scada_do_not_fail(tmp_path):

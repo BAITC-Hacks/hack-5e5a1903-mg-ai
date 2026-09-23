@@ -48,6 +48,7 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
         "T2": {"file": "Dataset HackAlemAI turbine 2.csv", "sha256": "<hex>" | null}
       },
       "git_sha": "<40 hex>" | null,               # null, если git недоступен (например, в контейнере)
+      "git_dirty": true | false | null,           # есть незакоммиченные изменения: git_sha не описывает код целиком
       "config_sha256": "<hex>" | null,            # sha256 канонического JSON конфига, null без конфига
       "decisions": []                             # журнал решений агента, заполняет dev1
     }
@@ -87,7 +88,6 @@ logger = logging.getLogger(__name__)
 SCHEMA_VERSION = 1
 
 REQUIRED_COLUMNS: tuple[str, ...] = ("valid_time_utc", "source", "run_init_utc", "available_at_utc")
-
 
 NWP_CACHE_DIR = "nwp"
 SUMS_FILE = "SHA256SUMS"
@@ -159,6 +159,7 @@ def build_manifest(
         "sources": {source: _describe_source(rows, issue, root, source) for source, rows in frame.groupby("source", sort=True)},
         "scada": {turbine: {"file": name, "sha256": _file_sha256(root / name)} for turbine, name in SCADA_FILES.items()},
         "git_sha": _git_sha(),
+        "git_dirty": _git_dirty(),
         "config_sha256": _sha256_bytes(_canonical_json(config).encode("utf-8")) if config is not None else None,
         "decisions": [],
     }
@@ -299,9 +300,23 @@ def _sha256_bytes(content: bytes) -> str:
 
 def _git_sha() -> str | None:
     """``git rev-parse HEAD`` или ``None``, если git или репозитория нет."""
+    output = _git("rev-parse", "HEAD")
+    if output is None:
+        logger.info("manifest: git sha недоступен, в паспорт пишется null")
+        return None
+    return output.strip() or None
+
+
+def _git_dirty() -> bool | None:
+    """Есть ли в рабочей копии незакоммиченные изменения; ``None`` без git."""
+    output = _git("--no-optional-locks", "status", "--porcelain")
+    return None if output is None else bool(output.strip())
+
+
+def _git(*args: str) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["git", *args],
             cwd=Path(__file__).resolve().parent,
             capture_output=True,
             text=True,
@@ -309,9 +324,8 @@ def _git_sha() -> str | None:
             check=True,
         )
     except (OSError, subprocess.SubprocessError):
-        logger.info("manifest: git sha недоступен, в паспорт пишется null")
         return None
-    return result.stdout.strip() or None
+    return result.stdout
 
 
 def _data_dir(data_dir: str | Path | None) -> Path:
