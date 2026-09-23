@@ -8,7 +8,9 @@
 
 Previous Runs отдает не прогон целиком, а для каждого часа t значения
 ``X_previous_dayN`` — что предсказывал прогон, запущенный примерно за N суток до t.
-Какой это прогон, считает ``prev_runs_rule.run_init_for``.
+Какой это прогон, считает ``prev_runs_rule.run_init_for``. У моделей с шагом данных
+3 ч промежуточные часы интерполированы по соседним точкам из разных прогонов,
+поэтому ``run_init_utc`` в кэше — самый новый прогон, чьи значения вошли в час.
 
 Кэш: ``<DATA_DIR>/nwp/<source>/<yyyy>.csv.gz`` по году ``valid_time_utc`` и
 ``<DATA_DIR>/nwp/<source>/SHA256SUMS``. Формат длинный, общий для всех источников:
@@ -84,6 +86,8 @@ class PrevRunsModel:
     api_model: str
     cycle_h: int
     variables: tuple[str, ...]
+    # Шаг данных модели у Open-Meteo, ``temporal_resolution_seconds`` в метаданных.
+    data_step_h: int = 1
 
     @property
     def wind_speeds(self) -> tuple[str, ...]:
@@ -100,16 +104,18 @@ _WIND_3 = ("wind_speed_80m", "wind_speed_100m", "wind_speed_120m", "wind_directi
 
 # Проверено пробным запросом: у ecmwf_ifs025 ветер только на 100 м и нет порывов,
 # влажность с 04.03.2024; у gem_global нет ни скорости, ни направления на 100 м.
+# Шаг данных 3 ч у ecmwf_ifs025 и gem_global, 1 ч у gfs_global и icon_global.
 MODELS: dict[str, PrevRunsModel] = {
     "ifs025": PrevRunsModel(
         "ifs025",
         "ecmwf_ifs025",
         6,
         ("wind_speed_100m", "wind_direction_100m", "temperature_2m", "relative_humidity_2m", "surface_pressure"),
+        data_step_h=3,
     ),
     "gfs": PrevRunsModel("gfs", "gfs_global", 6, _WIND_3 + _SURFACE),
     "icon": PrevRunsModel("icon", "icon_global", 6, _WIND_3 + _SURFACE),
-    "gem": PrevRunsModel("gem", "gem_global", 12, ("wind_speed_80m", "wind_speed_120m", "wind_direction_80m", *_SURFACE)),
+    "gem": PrevRunsModel("gem", "gem_global", 12, ("wind_speed_80m", "wind_speed_120m", "wind_direction_80m", *_SURFACE), data_step_h=3),
 }
 
 
@@ -138,7 +144,11 @@ def year_chunks(start: date, end: date) -> list[tuple[date, date]]:
 
 
 def get_json(client: httpx.Client, params: dict, *, attempts: int = ATTEMPTS, sleep: Callable[[float], None] = time.sleep) -> dict:
-    """GET с повторами на сетевых ошибках, 429 и 5xx. Остальные ошибки сразу в ``FetchError``."""
+    """GET с повторами на сетевых ошибках, 429, 5xx и ответе 200 не в JSON. Остальные ошибки сразу в ``FetchError``.
+
+    Ответ 200 не в JSON Open-Meteo отдает, когда сбой случился посреди потока:
+    тело тогда — текст вида ``Unexpected error while streaming data: …``.
+    """
     error = ""
     for attempt in range(attempts):
         pause = BACKOFF_S * 2**attempt
@@ -148,9 +158,16 @@ def get_json(client: httpx.Client, params: dict, *, attempts: int = ATTEMPTS, sl
             error = f"сеть: {exc!r}"
         else:
             if response.status_code == 200:
-                return response.json()
+                try:
+                    payload = response.json()
+                except ValueError:
+                    payload = None
+                if isinstance(payload, dict) and isinstance(payload.get("hourly"), dict):
+                    return payload
             error = f"HTTP {response.status_code}: {response.text[:300]}"
-            if response.status_code == 429:
+            if response.status_code == 200:
+                error = f"ответ без блока hourly, {error}"
+            elif response.status_code == 429:
                 pause = RATE_LIMIT_PAUSE_S
             elif response.status_code < 500:
                 raise FetchError(f"Open-Meteo отклонил запрос, {error}")
@@ -178,7 +195,8 @@ def to_long(payload: dict, model: PrevRunsModel) -> pd.DataFrame:
     valid = _valid_times(payload)
     parts = []
     for n in PREV_DAYS:
-        part = pd.DataFrame({"run_init_utc": run_init_for(valid, n, model.cycle_h), "valid_time_utc": valid, "prev_day": n})
+        run_init = run_init_for(valid, n, model.cycle_h, model.data_step_h)
+        part = pd.DataFrame({"run_init_utc": run_init, "valid_time_utc": valid, "prev_day": n})
         for var in VARIABLES:
             part[var] = _series(hourly, f"{var}_previous_day{n}").to_numpy() if var in model.variables else float("nan")
         parts.append(part)
