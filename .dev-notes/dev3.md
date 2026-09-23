@@ -67,5 +67,9 @@ surface_pressure`. Время ISO с `Z`. Чего у модели нет, то 
   GFS, ICON, GEM, лицензия данных Open-Meteo CC BY 4.0 с атрибуцией.
 - dev1: новая переменная `NWP_HTTP_TIMEOUT_S` добавлена в `.env.example`, нужна
   только загрузчику. Зависимостей не добавлял.
-- #7: задержки публикации по источникам и выбор N через `choose_n` из
-  `prev_runs_rule.py`. Для GEM брать `cycle_h=12`.
+- #7 уже в main, кэш Previous Runs читается `AsOfStore` без изменений. Тест
+  `test_asof_store_on_committed_cache_matches_rule`: на всех 28 выпусках хранилище
+  берет тот же прогон, что и `choose_n`.
+- `asof.CACHE_TO_OUTPUT` не знает `wind_direction_80m`, поэтому у GEM `wd100`
+  пустой. Нужно добавить колонку направления на 80 м или брать `wd_hub` из нее
+  при сборке запроса (#28, #39).

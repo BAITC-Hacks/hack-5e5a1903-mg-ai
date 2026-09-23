@@ -9,7 +9,9 @@ import pandas as pd
 import pytest
 
 from src.forecast.weather import fetch_prev_runs as fpr
-from src.forecast.weather.prev_runs_rule import PREV_DAYS, run_init_for
+from src.forecast.weather.asof import AsOfStore
+from src.forecast.weather.prev_runs_rule import PREV_DAYS, choose_n, run_init_for
+from src.forecast.weather.sources import SOURCES
 
 GEM = fpr.MODELS["gem"]
 
@@ -198,3 +200,18 @@ def test_committed_cache(source):
     assert feb["valid_time_utc"].max() >= pd.Timestamp("2026-03-01 02:00", tz="UTC")
     assert (feb.groupby("prev_day").size() == 29 * 24).all()
     assert feb[model.wind_speeds[0]].notna().all()
+
+
+@pytest.mark.parametrize("source", sorted(fpr.MODELS))
+def test_asof_store_on_committed_cache_matches_rule(source):
+    """На всех 28 выпусках ретро-симуляции AsOfStore берет тот прогон, что дает choose_n."""
+    model, registered = fpr.MODELS[source], SOURCES[source]
+    assert registered.run_step_h == model.cycle_h
+    store = AsOfStore(fpr.nwp_dir())
+    for issue in pd.date_range("2026-01-31 02:00", "2026-02-27 02:00", freq="D", tz="UTC"):
+        valid = pd.date_range(issue + pd.Timedelta(hours=1), periods=48, freq="h")
+        out = store.get_nwp(source, issue, valid)
+        expected = [run_init_for(t, choose_n(t, issue, model.cycle_h, registered.delay), model.cycle_h) for t in valid]
+        assert list(out["valid_time_utc"]) == list(valid)
+        assert list(out["run_init_utc"]) == expected
+        assert (out["available_at_utc"] <= issue).all()
