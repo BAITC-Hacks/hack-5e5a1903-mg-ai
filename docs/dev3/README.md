@@ -22,6 +22,11 @@
   с `SHA256SUMS` и `gaps.csv`. Тесты без сети: `backend/tests/forecast/test_fetch_ifs.py`.
 - `backend/src/forecast/weather/asof.py` — `AsOfStore`: `get_nwp`, `get_nwp_multi`,
   `run_events`, ошибки `LeakageError` и `NoRunAvailable`, проверка `check_no_leakage`.
+- `backend/src/forecast/weather/manifest.py` — паспорт выпуска (#16): `build_manifest`
+  и `write_manifest`, схема в docstring модуля. Подписывает выпуск, только если ни одна
+  строка погоды не вышла позже `as_of` и `available_at_utc` не раньше задержки из
+  `sources.py`; сверяет кэш с `SHA256SUMS`, пишет `missing_sources` для ансамбля (#39).
+  Тесты: `backend/tests/forecast/test_manifest.py`.
 - `backend/src/forecast/dataset/scada.py` — `load_scada()`: ScadaHistory из #2, обе турбины
   в длинном формате, часовой шаг, `time_utc`, флаги очистки (#9).
 - `backend/src/forecast/dataset/config.py` — пути (`DATA_DIR`, `REPORTS_DIR`), правило пояса

@@ -19,6 +19,8 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
       "max_available_at_utc": "...Z" | null,      # максимум available_at_utc по всем строкам погоды;
                                                   # null, если погоды нет (климатология).
                                                   # Инвариант: max_available_at_utc <= as_of_utc
+      "missing_sources": ["ifs"] | null,          # запрошенные источники, которых нет в выпуске
+                                                  # (нет прогона на as_of); null, если запрос не передан
       "sources": {                                # только источники, реально попавшие в выпуск
         "<source>": {                             # ifs, ifs025, gfs, icon, gem
           "hours": 48,                            # число разных valid_time_utc из этого источника
@@ -37,7 +39,7 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
           "cache": {                              # null, если SHA256SUMS источника не найден
             "sums_file": "nwp/<source>/SHA256SUMS",   # путь относительно DATA_DIR
             "sha256": "<hex>",                    # sha256 самого SHA256SUMS: закрепляет все файлы кэша
-            "files": 120                          # сколько файлов перечислено в SHA256SUMS
+            "files": 25                           # сколько файлов перечислено в SHA256SUMS
           }
         }
       },
@@ -46,33 +48,42 @@ ISO 8601 с ``Z`` на конце: ``"2026-02-01T02:00:00Z"``.
         "T2": {"file": "Dataset HackAlemAI turbine 2.csv", "sha256": "<hex>" | null}
       },
       "git_sha": "<40 hex>" | null,               # null, если git недоступен (например, в контейнере)
+      "git_dirty": true | false | null,           # есть незакоммиченные изменения: git_sha не описывает код целиком
       "config_sha256": "<hex>" | null,            # sha256 канонического JSON конфига, null без конфига
       "decisions": []                             # журнал решений агента, заполняет dev1
     }
 
-Хэши файлов кэша берутся из ``SHA256SUMS``, а не пересчитываются: в паспорт
-идет sha256 самого файла сумм, и по нему однозначно проверяется весь кэш источника.
+В паспорт идет sha256 самого ``SHA256SUMS``, а перед этим каждый перечисленный
+в нем файл сверяется со своей суммой. Кэш, который разошелся с ``SHA256SUMS``,
+и ``*.csv.gz``, которого в нем нет (``AsOfStore`` прочитал бы его), дают
+``ValueError``: такой паспорт закрепил бы не те данные, на которых считался выпуск.
 
 Строка погоды с ``available_at_utc`` позже ``as_of_utc`` означает утечку
-будущего, и паспорт такой выпуск не подписывает: ``LeakageError``. Проверка
-утечек по готовым паспортам (#20) сравнивает с тем же ``as_of_utc``.
+будущего, и паспорт такой выпуск не подписывает: ``LeakageError``. У версии 1
+``as_of_utc`` равен ``issue_time_utc``, поэтому для нее ``max_available_at_utc``
+не позже момента выпуска. Пересчет берет прогон, вышедший после выпуска, и его
+паспорт сверяется с ``as_of_utc``, а не с ``issue_time_utc``.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import logging
-import os
 import subprocess
-from datetime import date, datetime
+from collections.abc import Mapping, Sequence
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from src.forecast.weather.asof import LeakageError
+from src.forecast.dataset import config as dataset_config
+from src.forecast.dataset.config import SCADA_FILES
+from src.forecast.weather.asof import VALUE_COLUMNS, LeakageError, to_utc
+from src.forecast.weather.sources import SOURCES, Source
 
 logger = logging.getLogger(__name__)
 
@@ -80,18 +91,12 @@ SCHEMA_VERSION = 1
 
 REQUIRED_COLUMNS: tuple[str, ...] = ("valid_time_utc", "source", "run_init_utc", "available_at_utc")
 
-SCADA_FILES: dict[str, str] = {
-    "T1": "Dataset HackAlemAI turbine 1.csv",
-    "T2": "Dataset HackAlemAI turbine 2.csv",
-}
-
 NWP_CACHE_DIR = "nwp"
 SUMS_FILE = "SHA256SUMS"
 
 GIT_TIMEOUT_S = 5
 
 _HASH_CHUNK = 1 << 20
-_REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def build_manifest(
@@ -100,28 +105,42 @@ def build_manifest(
     *,
     as_of: datetime | pd.Timestamp | str | None = None,
     version: int = 1,
+    requested_sources: Sequence[str] | None = None,
     config: Any = None,
     data_dir: str | Path | None = None,
+    sources: Mapping[str, Source] | None = None,
 ) -> dict[str, Any]:
     """Паспорт выпуска ``issue_time`` по таблице погоды ``nwp`` из ``get_nwp``.
 
-    ``as_of`` задается при пересчете: момент, на который взята погода. По умолчанию
-    совпадает с ``issue_time`` и не может быть раньше него.
-    Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в паспорт
-    не попадают. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
-    ``data/`` в корне репозитория.
+    ``as_of`` задается при пересчете: момент, на который взята погода. Версия 1
+    всегда берет погоду ровно на момент выпуска, поэтому ``as_of`` у нее равен
+    ``issue_time``; пересчет (версия 2 и выше) идет строго позже выпуска. Время без
+    часового пояса отклоняется, как и в ``AsOfStore``: иначе местное время молча
+    станет UTC. Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в
+    паспорт не попадают, если в них нет ни прогона, ни значений погоды; иначе
+    их время публикации не проверить, и это ``LeakageError``.
+
+    ``data_dir`` по умолчанию тот же, что у загрузки SCADA: ``DATA_DIR``
+    из ``dataset/config.py``.
+
+    ``requested_sources`` — источники, которые выпуск запрашивал у ``get_nwp_multi``.
+    Те из них, что пропущены без прогона, попадают в ``missing_sources``.
+
+    ``available_at_utc`` не берется на веру: у источника из реестра ``sources``
+    (по умолчанию ``SOURCES``, как у ``AsOfStore``) он не раньше ``run_init_utc``
+    плюс задержка публикации, у неизвестного источника — не раньше ``run_init_utc``.
     """
-    issue = _utc(issue_time)
-    moment = _utc(as_of) if as_of is not None else issue
-    if moment < issue:
-        raise ValueError(f"as_of {_iso(moment)} раньше момента выпуска {_iso(issue)}")
+    issue = to_utc(issue_time)
+    moment = to_utc(as_of) if as_of is not None else issue
+    _check_version(int(version), issue, moment)
     root = _data_dir(data_dir)
     frame = _prepare(nwp)
 
     unknown = frame["available_at_utc"].isna()
     if unknown.any():
-        sources = sorted(frame.loc[unknown, "source"].astype(str).unique())
-        raise LeakageError(f"available_at_utc не задан у {int(unknown.sum())} строк погоды, источники {sources}")
+        names = sorted(frame.loc[unknown, "source"].astype(str).unique())
+        raise LeakageError(f"available_at_utc не задан у {int(unknown.sum())} строк погоды, источники {names}")
+    _check_publication_delay(frame, SOURCES if sources is None else sources)
 
     max_available = frame["available_at_utc"].max() if not frame.empty else None
     if max_available is not None and max_available > moment:
@@ -138,9 +157,11 @@ def build_manifest(
         "as_of_utc": _iso(moment),
         "version": int(version),
         "max_available_at_utc": _iso(max_available) if max_available is not None else None,
+        "missing_sources": sorted(set(requested_sources) - set(frame["source"])) if requested_sources is not None else None,
         "sources": {source: _describe_source(rows, issue, root, source) for source, rows in frame.groupby("source", sort=True)},
         "scada": {turbine: {"file": name, "sha256": _file_sha256(root / name)} for turbine, name in SCADA_FILES.items()},
         "git_sha": _git_sha(),
+        "git_dirty": _git_dirty(),
         "config_sha256": _sha256_bytes(_canonical_json(config).encode("utf-8")) if config is not None else None,
         "decisions": [],
     }
@@ -159,14 +180,49 @@ def write_manifest(manifest: dict[str, Any], path: str | Path) -> Path:
     return target
 
 
+def _check_version(version: int, issue: pd.Timestamp, moment: pd.Timestamp) -> None:
+    """Версия 1 видит погоду ровно на момент выпуска, пересчет — строго позже него."""
+    if version < 1:
+        raise ValueError(f"версия выпуска {version}, нумерация начинается с 1")
+    if moment < issue:
+        raise ValueError(f"as_of {_iso(moment)} раньше момента выпуска {_iso(issue)}")
+    if version == 1 and moment != issue:
+        raise ValueError(f"версия 1 берет погоду на момент выпуска {_iso(issue)}, а не на {_iso(moment)}")
+    if version > 1 and moment == issue:
+        raise ValueError(f"пересчет (версия {version}) идет по прогону, вышедшему после выпуска {_iso(issue)}, as_of должен быть позже")
+
+
+def _check_publication_delay(frame: pd.DataFrame, sources: Mapping[str, Source]) -> None:
+    """``available_at_utc`` не раньше, чем прогон мог выйти по реестру источников."""
+    delay = frame["source"].map(lambda name: sources[name].delay if name in sources else pd.Timedelta(0))
+    early = frame["available_at_utc"] < frame["run_init_utc"] + pd.to_timedelta(delay)
+    if early.any():
+        first = frame.loc[early].iloc[0]
+        raise LeakageError(
+            f"{int(early.sum())} строк погоды доступны раньше, чем прогон мог выйти: например {first['source']} "
+            f"прогон {_iso(first['run_init_utc'])} с available_at_utc {_iso(first['available_at_utc'])}"
+        )
+
+
 def _prepare(nwp: pd.DataFrame) -> pd.DataFrame:
     missing = [column for column in REQUIRED_COLUMNS if column not in nwp.columns]
     if missing:
         raise ValueError(f"в таблице погоды нет колонок {missing}")
 
-    frame = nwp.loc[nwp["source"].notna(), list(REQUIRED_COLUMNS)].copy()
+    no_source = nwp["source"].isna()
+    provenance = ["run_init_utc", "available_at_utc", *(column for column in VALUE_COLUMNS if column in nwp.columns)]
+    orphan = no_source & nwp[provenance].notna().any(axis=1)
+    if orphan.any():
+        raise LeakageError(f"{int(orphan.sum())} строк погоды без source, но с прогоном или значениями: время их публикации не проверить")
+
+    frame = nwp.loc[~no_source, list(REQUIRED_COLUMNS)].copy()
     for column in ("valid_time_utc", "run_init_utc", "available_at_utc"):
+        if pd.api.types.is_datetime64_dtype(frame[column]) and not isinstance(frame[column].dtype, pd.DatetimeTZDtype):
+            raise ValueError(f"колонка {column} без часового пояса, нужен UTC")
         frame[column] = pd.to_datetime(frame[column], utc=True)
+        # В паспорте время с точностью до секунды: дробь дала бы разные прогоны с одинаковой записью.
+        if (frame[column].notna() & (frame[column] != frame[column].dt.floor("s"))).any():
+            raise ValueError(f"в колонке {column} время с долями секунды, нужна точность до секунды")
 
     for column in ("valid_time_utc", "run_init_utc"):
         if frame[column].isna().any():
@@ -207,8 +263,26 @@ def _cache_digest(root: Path, source: str) -> dict[str, Any] | None:
         logger.warning("manifest: нет %s для источника %s, хэш кэша не записан", sums, source)
         return None
     content = sums.read_bytes()
-    files = sum(1 for line in content.decode("utf-8").splitlines() if line.strip())
-    return {"sums_file": f"{NWP_CACHE_DIR}/{source}/{SUMS_FILE}", "sha256": _sha256_bytes(content), "files": files}
+    listed = _parse_sums(content.decode("utf-8"))
+    folder = sums.parent
+    unlisted = sorted(path.name for path in folder.glob("*.csv.gz") if path.name not in listed)
+    if unlisted:
+        raise ValueError(f"в кэше {source} файлы вне {SUMS_FILE}: {unlisted}")
+    broken = sorted(name for name, digest in listed.items() if _file_sha256(folder / name) != digest)
+    if broken:
+        raise ValueError(f"кэш {source} не совпадает с {SUMS_FILE} или файлов нет: {broken}")
+    return {"sums_file": f"{NWP_CACHE_DIR}/{source}/{SUMS_FILE}", "sha256": _sha256_bytes(content), "files": len(listed)}
+
+
+def _parse_sums(text: str) -> dict[str, str]:
+    """Строки ``sha256sum``: ``<hex>  <имя>`` или ``<hex> *<имя>`` в двоичном режиме."""
+    listed = {}
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        digest, name = line.split(maxsplit=1)
+        listed[name.strip().removeprefix("*")] = digest.lower()
+    return listed
 
 
 def _file_sha256(path: Path) -> str | None:
@@ -228,9 +302,23 @@ def _sha256_bytes(content: bytes) -> str:
 
 def _git_sha() -> str | None:
     """``git rev-parse HEAD`` или ``None``, если git или репозитория нет."""
+    output = _git("rev-parse", "HEAD")
+    if output is None:
+        logger.info("manifest: git sha недоступен, в паспорт пишется null")
+        return None
+    return output.strip() or None
+
+
+def _git_dirty() -> bool | None:
+    """Есть ли в рабочей копии незакоммиченные изменения; ``None`` без git."""
+    output = _git("--no-optional-locks", "status", "--porcelain")
+    return None if output is None else bool(output.strip())
+
+
+def _git(*args: str) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["git", *args],
             cwd=Path(__file__).resolve().parent,
             capture_output=True,
             text=True,
@@ -238,15 +326,14 @@ def _git_sha() -> str | None:
             check=True,
         )
     except (OSError, subprocess.SubprocessError):
-        logger.info("manifest: git sha недоступен, в паспорт пишется null")
         return None
-    return result.stdout.strip() or None
+    return result.stdout
 
 
 def _data_dir(data_dir: str | Path | None) -> Path:
     if data_dir is not None:
         return Path(data_dir)
-    return Path(os.environ.get("DATA_DIR") or _REPO_ROOT / "data")
+    return dataset_config.DATA_DIR
 
 
 def _canonical_json(value: Any) -> str:
@@ -258,6 +345,10 @@ def _json_default(value: Any) -> Any:
         return _iso(_utc(value))
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, timedelta):
+        return pd.Timedelta(value).isoformat()
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return dataclasses.asdict(value)
     if isinstance(value, Path):
         return value.as_posix()
     if isinstance(value, np.generic):
@@ -268,7 +359,7 @@ def _json_default(value: Any) -> Any:
 
 
 def _utc(value: datetime | pd.Timestamp | str) -> pd.Timestamp:
-    """Момент в UTC; время без пояса считается UTC, как в контракте."""
+    """Момент в UTC для сериализации; время без пояса считается UTC."""
     ts = pd.Timestamp(value)
     return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
 
