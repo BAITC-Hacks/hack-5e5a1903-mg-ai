@@ -658,3 +658,25 @@ async def test_switching_to_the_spare_weather_is_written_down(client: AsyncClien
     switch = next(row for row in log if row["decision"] == "use_spare_weather")
     assert switch["reason_code"] == "WEATHER_UNAVAILABLE"
     assert switch["level"] == "WARN"
+
+
+async def test_the_weather_page_shows_the_runs_the_agent_sees(client: AsyncClient, user: User, monkeypatch):
+    monkeypatch.setattr(orchestrator, "weather_source", LocalWeatherSource)
+    monkeypatch.setattr(orchestrator, "ml_client", lambda: MlClient(base_url="http://ml", transport=ml_transport()))
+
+    body = (await client.get(f"/api/forecast/{ISSUE_PATH}/weather", headers=auth(user))).json()
+
+    assert body["data_source"] == "live"
+    assert body["models"] and all(len(model["wind_ms"]) == HORIZON_HOURS for model in body["models"])
+    assert len(body["ensemble_wind_ms"]) == HORIZON_HOURS
+    used = [run for run in body["runs"] if run["status"] == "used"]
+    assert used and all(run["available_at_utc"] <= body["issue_time_utc"] for run in used)
+
+
+async def test_the_weather_page_falls_back_to_the_stub_without_any_run(client: AsyncClient, user: User, tmp_path, monkeypatch):
+    monkeypatch.setattr(orchestrator, "weather_source", lambda: LocalWeatherSource(cache_root=tmp_path))
+    monkeypatch.setattr(orchestrator, "ml_client", lambda: MlClient(base_url="http://ml", transport=ml_transport()))
+
+    body = (await client.get(f"/api/forecast/{ISSUE_PATH}/weather", headers=auth(user))).json()
+
+    assert body["data_source"] == "stub"

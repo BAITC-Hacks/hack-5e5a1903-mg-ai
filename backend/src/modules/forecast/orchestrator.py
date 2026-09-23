@@ -78,6 +78,9 @@ from src.modules.forecast.schemas import (
     IssueSummary,
     ModelInfo,
     PowerCurvePoint,
+    WeatherModel,
+    WeatherResponse,
+    WeatherRun,
 )
 
 logger = logging.getLogger(__name__)
@@ -277,6 +280,92 @@ async def backtest() -> BacktestMetrics:
         by_lead=[BacktestLead(lead_h=lead.lead_h, nmae_pct=lead.nmae_pct) for lead in metrics.by_lead],
         data_source=DATA_SOURCE_LIVE,
     )
+
+
+async def weather(issue_date: date) -> WeatherResponse:
+    """Страница «Погода»: прогоны, доступные на момент выпуска, и ветер по каждой модели.
+
+    Источники и проверки те же, что у шага ``fetch_weather``, поэтому страница
+    показывает ровно ту погоду, по которой агент строит выпуск. Ни один источник
+    не ответил — страница остается демонстрационной и помечена ``stub``.
+    """
+    service.ensure_known_issue(issue_date)
+    issue_time = service.issue_time(issue_date)
+    try:
+        return await _weather_live(issue_time)
+    except UpstreamError as error:
+        logger.warning("Погода за %s собрана заглушкой: %s", issue_date, error.code)
+        return service.build_weather(issue_date)
+
+
+async def _weather_live(issue_time: datetime) -> WeatherResponse:
+    source_api = weather_source()
+    expected = horizon(issue_time)
+    journal = DecisionLog(issue_time_utc=issue_time)
+    journal.at(STEP_FETCH_WEATHER)
+    sources = _without_double_counting(await _model_sources(ml_client(), journal, issue_time), journal, issue_time)
+
+    points: dict[str, dict[datetime, analyze.WeatherPoint]] = {}
+    runs: list[WeatherRun] = []
+    attempts: list[str] = []
+    for source in sources:
+        rows = await _usable_run(source_api, source, issue_time, issue_time, expected, journal, attempts)
+        if rows is None:
+            continue
+        points[source] = _weather_points(rows)
+        runs.extend(_used_runs(rows))
+
+    if not points:
+        raise UpstreamError(
+            status_code=503,
+            code=CODE_NO_RUN,
+            message="Ни один источник погоды не отдал годного прогона на момент выпуска",
+            details={"attempts": attempts, "sources": sources},
+        )
+
+    try:
+        published_later = await source_api.runs(time_from=issue_time, time_to=issue_time + RUN_CYCLE, sources=list(points))
+    except UpstreamError as error:
+        logger.warning("Список прогонов после выпуска не получен: %s", error.code)
+        published_later = []
+    first_lead = issue_time + timedelta(hours=1)
+    for run_row in sorted(published_later, key=lambda row: row.available_at_utc):
+        lead_from = int((first_lead - run_row.run_init_utc).total_seconds() // 3600)
+        runs.append(
+            WeatherRun(
+                source=run_row.source,
+                run_init_utc=run_row.run_init_utc,
+                available_at_utc=run_row.available_at_utc,
+                status="after_issue",
+                lead_from_h=lead_from,
+                lead_to_h=lead_from + HORIZON_HOURS - 1,
+            )
+        )
+
+    ensemble = analyze.ensemble_points(points)
+    weight = round(1 / len(points), 2)
+    return WeatherResponse(
+        issue_time_utc=issue_time,
+        runs=runs,
+        models=[
+            WeatherModel(name=source, weight=weight, wind_mae_ms=None, wind_ms=[round(by_hour[moment].wind_ms, 2) for moment in expected])
+            for source, by_hour in points.items()
+        ],
+        ensemble_wind_ms=[round(ensemble[moment].wind_ms, 2) for moment in expected],
+        spread_ms=round(analyze.source_spread(*points.values()) or 0.0, 2),
+        data_source=DATA_SOURCE_LIVE,
+    )
+
+
+def _used_runs(rows: list[NwpRow]) -> list[WeatherRun]:
+    """Прогоны, из которых собраны строки источника. У Previous Runs их бывает несколько."""
+    groups: dict[tuple[str, datetime, datetime], list[int]] = {}
+    for row in rows:
+        groups.setdefault((row.source, row.run_init_utc, row.available_at_utc), []).append(row.lead_h)
+    return [
+        WeatherRun(source=source, run_init_utc=run_init, available_at_utc=available_at, status="used", lead_from_h=min(leads), lead_to_h=max(leads))
+        for (source, run_init, available_at), leads in sorted(groups.items(), key=lambda item: item[0][1], reverse=True)
+    ]
 
 
 async def _run_live(issue_date: date, issue_time: datetime, trigger: str, journal: DecisionLog) -> AgentRun:

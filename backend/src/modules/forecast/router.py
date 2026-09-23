@@ -96,7 +96,7 @@ async def agent_log(issue_date: date) -> list[AgentDecision]:
 @router.get("/{issue_date}/weather", response_model=WeatherResponse)
 async def weather(issue_date: date) -> WeatherResponse:
     """Какие прогоны были доступны на момент выпуска и что говорят модели."""
-    return service.build_weather(issue_date)
+    return await orchestrator.weather(issue_date)
 
 
 @router.get("/{issue_date}/dispatch", response_model=DispatchResponse)

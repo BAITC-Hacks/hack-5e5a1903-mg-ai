@@ -133,7 +133,7 @@ class WeatherRun(BaseAppSchema):
 class WeatherModel(BaseAppSchema):
     name: str
     weight: float
-    wind_mae_ms: float
+    wind_mae_ms: float | None = Field(default=None, description="Ошибка ветра модели; у живых данных факта нет, поле пустое")
     wind_ms: list[float] = Field(description="Ветер по часам горизонта, 48 значений")
 
 
