@@ -1,0 +1,19 @@
+# Запуск одной командой: docker compose up -d --build, затем http://localhost:8765
+# Ключ OpenAI необязателен: без него анализ идёт по близости текстов, с ним точнее.
+services:
+  orgdiff:
+    build: .
+    image: orgdiff:local
+    ports:
+      - "${ORGDIFF_PORT:-8765}:8765"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ORGDIFF_MODEL: ${ORGDIFF_MODEL:-gpt-4.1-mini}
+      ORGDIFF_LLM_TIMEOUT: ${ORGDIFF_LLM_TIMEOUT:-60}
+    volumes:
+      # результаты анализов и кеш эмбеддингов переживают перезапуск контейнера
+      - orgdiff-cache:/app/.cache
+    restart: unless-stopped
+
+volumes:
+  orgdiff-cache:
