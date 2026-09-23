@@ -96,7 +96,8 @@ _PREDICT_EXAMPLE = {
         _example_row(4, "ecmwf_ifs", ws100=9.1, ws80=None, t2m=-6.4),
         _example_row(4, "gfs_global", ws100=None, ws80=8.3, t2m=-5.9),
     ],
-    "options": {"turbines": ["T1", "T2"], "interval_scale": 1.0, "wind_shift_ms": 0.0},
+    "turbines": ["T1", "T2"],
+    "options": {"interval_scale": 1.0, "wind_shift_ms": 0.0},
 }
 
 
@@ -113,7 +114,17 @@ class PredictRequest(BaseModel):
         max_length=5000,
         description="Строки «час × модель погоды» из `GET /nwp`. На каждый час горизонта нужна хотя бы одна строка со скоростью ветра",
     )
+    turbines: list[Turbine] | None = Field(
+        default=None,
+        min_length=1,
+        description="Какие турбины прогнозировать: `T1`, `T2`, станция целиком `station`. "
+        "Если поле не задано, берется `options.turbines` (по умолчанию обе турбины)",
+    )
     options: PredictOptions = Field(default_factory=PredictOptions)
+
+    @property
+    def selected_turbines(self) -> list[Turbine]:
+        return list(dict.fromkeys(self.turbines or self.options.turbines))
 
 
 class ModelRef(BaseModel):
@@ -188,6 +199,14 @@ class PowerCurvePoint(BaseModel):
     power_norm: float = Field(ge=0, le=1, description="Доля от номинала")
 
 
+class TurbineInfo(BaseModel):
+    id: Turbine
+    name: str
+    lat: float | None = None
+    lon: float | None = None
+    capacity_mw: float
+
+
 class ModelInfo(BaseModel):
     """Паспорт модели: страница «Модель». Поля совпадают с `ModelInfo` backend."""
 
@@ -200,6 +219,7 @@ class ModelInfo(BaseModel):
     train_rows: int | None = Field(default=None, description="Строк в обучающей выборке")
     walk_forward: str | None = Field(default=None, description="Как устроена проверка: на чем учились и на чем проверяли")
     turbines: list[Turbine]
+    turbines_info: list[TurbineInfo] = Field(default_factory=list, description="Турбины, по которым модель дает прогноз: координаты и мощность")
     capacity_mw: dict[Turbine, float]
     inputs: ModelInputs
     features: list[FeatureImportance] = Field(description="Признаки модели с долей важности")
@@ -234,6 +254,13 @@ class MetricsPoint(BaseModel):
     actual: float = Field(ge=0, le=1)
 
 
+class MetricsTurbine(BaseModel):
+    turbine: Turbine
+    nmae_d1_pct: float
+    nmae_d2_pct: float
+    coverage_p10_p90_pct: float
+
+
 class ModelMetrics(BaseModel):
     """Проверка модели на отложенном периоде: страница «Бэктест». Поля совпадают с `BacktestMetrics` backend."""
 
@@ -248,6 +275,7 @@ class ModelMetrics(BaseModel):
     baselines: list[BaselineScore] = Field(description="Те же метрики у простых методов для сравнения")
     by_day: list[MetricsDay] = Field(description="По строке на каждый выпуск: календарь запусков")
     by_lead: list[MetricsLead] = Field(description="Ошибка для каждого часа горизонта 1…48")
+    by_turbine: list[MetricsTurbine] = Field(default_factory=list, description="Те же метрики отдельно по каждой турбине")
     series: list[MetricsPoint] = Field(
         default_factory=list, description="Прогноз и факт по часам: график «прогноз против факта» и доля недобора у диспетчера"
     )

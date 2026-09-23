@@ -176,6 +176,15 @@ def metrics_json(check: pd.DataFrame, clim) -> dict:
         ],
         "by_day": by_day,
         "by_lead": by_lead,
+        "by_turbine": [
+            {
+                "turbine": turbine,
+                "nmae_d1_pct": nmae((g["p50"] - g["actual"])[g["lead_h"] <= 24]),
+                "nmae_d2_pct": nmae((g["p50"] - g["actual"])[g["lead_h"] > 24]),
+                "coverage_p10_p90_pct": round(float(np.mean((g["actual"] >= g["p10"]) & (g["actual"] <= g["p90"])) * 100), 1),
+            }
+            for turbine, g in check.groupby("turbine")
+        ],
         "series": [],
     }
 
@@ -238,6 +247,11 @@ def main() -> None:
             "погода из архива на момент выпуска. Итоговые бустеры обучены на всех днях до 31.01.2026."
         ),
         "turbines": ["T1", "T2", "station"],
+        "turbines_info": [
+            {"id": "T1", "name": "Турбина 1, Goldwind GW109/2500", "lat": 43.645150, "lon": 78.535604, "capacity_mw": 2.5},
+            {"id": "T2", "name": "Турбина 2, Goldwind GW109/2500", "lat": 43.643198, "lon": 78.538828, "capacity_mw": 2.5},
+            {"id": "station", "name": "ВЭС целиком, среднее T1 и T2", "capacity_mw": 5.0},
+        ],
         "capacity_mw": {"T1": 2.5, "T2": 2.5, "station": 5.0},
         "inputs": {
             "sources": [{"name": s, "required": False} for s in SOURCES],

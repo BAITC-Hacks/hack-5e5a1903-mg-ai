@@ -1992,5 +1992,19 @@
       "nmae_pct": 16.28
     }
   ],
+  "by_turbine": [
+    {
+      "turbine": "T1",
+      "nmae_d1_pct": 15.31,
+      "nmae_d2_pct": 17.16,
+      "coverage_p10_p90_pct": 80.3
+    },
+    {
+      "turbine": "T2",
+      "nmae_d1_pct": 15.57,
+      "nmae_d2_pct": 17.29,
+      "coverage_p10_p90_pct": 80.3
+    }
+  ],
   "series": []
 }
