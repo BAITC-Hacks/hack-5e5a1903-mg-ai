@@ -72,7 +72,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from src.forecast.weather.asof import LeakageError, to_utc
+from src.forecast.weather.asof import VALUE_COLUMNS, LeakageError, to_utc
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,8 @@ def build_manifest(
     ``issue_time``; пересчет (версия 2 и выше) идет строго позже выпуска. Время без
     часового пояса отклоняется, как и в ``AsOfStore``: иначе местное время молча
     станет UTC. Строки ``nwp`` без ``source`` считаются заглушкой «погоды нет» и в
-    паспорт не попадают. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
+    паспорт не попадают, если в них нет ни прогона, ни значений погоды; иначе
+    их время публикации не проверить, и это ``LeakageError``. ``data_dir`` по умолчанию берется из ``DATA_DIR``, иначе
     ``data/`` в корне репозитория.
     """
     issue = to_utc(issue_time)
@@ -177,7 +178,13 @@ def _prepare(nwp: pd.DataFrame) -> pd.DataFrame:
     if missing:
         raise ValueError(f"в таблице погоды нет колонок {missing}")
 
-    frame = nwp.loc[nwp["source"].notna(), list(REQUIRED_COLUMNS)].copy()
+    no_source = nwp["source"].isna()
+    provenance = ["run_init_utc", "available_at_utc", *(column for column in VALUE_COLUMNS if column in nwp.columns)]
+    orphan = no_source & nwp[provenance].notna().any(axis=1)
+    if orphan.any():
+        raise LeakageError(f"{int(orphan.sum())} строк погоды без source, но с прогоном или значениями: время их публикации не проверить")
+
+    frame = nwp.loc[~no_source, list(REQUIRED_COLUMNS)].copy()
     for column in ("valid_time_utc", "run_init_utc", "available_at_utc"):
         if pd.api.types.is_datetime64_dtype(frame[column]) and not isinstance(frame[column].dtype, pd.DatetimeTZDtype):
             raise ValueError(f"колонка {column} без часового пояса, нужен UTC")

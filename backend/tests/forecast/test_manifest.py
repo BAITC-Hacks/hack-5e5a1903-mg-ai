@@ -238,3 +238,18 @@ def test_version_is_bound_to_as_of(data_dir, version, as_of_shift_h, message):
 
     with pytest.raises(ValueError, match=message):
         build_manifest(ISSUE, nwp, as_of=as_of, version=version, data_dir=data_dir)
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [("available_at_utc", pd.Timestamp(ISSUE) + pd.Timedelta(days=3)), ("run_init_utc", pd.Timestamp(ISSUE)), ("ws100", 9.0)],
+)
+def test_row_without_source_but_with_weather_is_leakage(data_dir, column, value):
+    # Раньше такая строка молча выбрасывалась из проверки, а во фрейме для модели оставалась.
+    nwp = _nwp().astype({"source": object})
+    nwp["ws100"] = 7.5
+    nwp.loc[5, ["source", "run_init_utc", "available_at_utc", "ws100"]] = [None, pd.NaT, pd.NaT, np.nan]
+    nwp.loc[5, column] = value
+
+    with pytest.raises(LeakageError, match="без source"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
