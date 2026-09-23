@@ -9,6 +9,10 @@
 Кэш источника лежит в ``<cache_root>/<source.cache_dir>/*.csv.gz`` в длинном формате:
 строка на пару (прогон, час), колонки ``run_init_utc``, ``valid_time_utc`` и переменные
 Open-Meteo. Кэш читается один раз на экземпляр хранилища.
+
+Строка прогона без скорости ветра ни на одной высоте считается отсутствующей: на такой
+час берется более старый прогон с ветром. Иначе сбой архива (IFS, 04–09.08.2025) давал
+бы свежий прогон с пустым ветром, а без ветра модель прогноз не строит.
 """
 
 import logging
@@ -35,6 +39,7 @@ CACHE_TO_OUTPUT = {
     "surface_pressure": "psfc",
 }
 VALUE_COLUMNS = list(CACHE_TO_OUTPUT.values())
+WIND_COLUMNS = ["ws80", "ws100", "ws120"]
 OUTPUT_COLUMNS = ["valid_time_utc", "source", "run_init_utc", "available_at_utc", "lead_h", *VALUE_COLUMNS]
 REQUIRED_CACHE_COLUMNS = ("run_init_utc", "valid_time_utc")
 
@@ -157,6 +162,16 @@ def load_source_cache(source: Source, cache_root: Path) -> pd.DataFrame:
         logger.warning("Кэш %s: %d повторов (прогон, час), оставлена последняя запись", source.name, int(duplicated.sum()))
         frame = frame.loc[~duplicated]
 
+    no_wind = frame[WIND_COLUMNS].isna().all(axis=1)
+    if no_wind.any():
+        logger.warning(
+            "Кэш %s: %d строк без скорости ветра отброшены, на эти часы возьмется более старый прогон (%s)",
+            source.name,
+            int(no_wind.sum()),
+            ", ".join(sorted(frame.loc[no_wind, "run_init_utc"].dt.strftime("%Y-%m-%d %Hz").unique())),
+        )
+        frame = frame.loc[~no_wind]
+
     frame["available_at_utc"] = frame["run_init_utc"] + source.delay
     frame["lead_h"] = ((frame["valid_time_utc"] - frame["run_init_utc"]) // HOUR).astype("int64")
     return frame[OUTPUT_COLUMNS].sort_values(["valid_time_utc", "run_init_utc"], kind="stable").reset_index(drop=True)
@@ -183,7 +198,7 @@ class AsOfStore:
         return self._data[name]
 
     def get_nwp(self, source: str, as_of: datetime | pd.Timestamp, valid_times: Iterable[datetime | pd.Timestamp]) -> pd.DataFrame:
-        """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of``.
+        """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of`` и ветром.
 
         Нет прогона хотя бы для одного часа — ``NoRunAvailable``.
         """
