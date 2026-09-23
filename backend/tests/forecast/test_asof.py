@@ -98,9 +98,17 @@ def test_asof_never_returns_future_runs(store, caches, source, as_of):
     assert list(out["run_init_utc"]) == list(expected)
 
 
+def canary_t0(source: str, moment: str) -> pd.Timestamp:
+    """Время выпуска и минута до публикации прогона 00z: во втором случае утечка даже на минуту подмешает мусор."""
+    if moment == "issue":
+        return ts("2026-01-25 02:00")
+    return ts("2026-01-25 00:00") + SOURCES[source].delay - pd.Timedelta(minutes=1)
+
+
 @pytest.mark.parametrize("source", list(SOURCES))
-def test_canary_future_runs_replaced_with_garbage(tmp_path, caches, source):
-    t0 = ts("2026-01-25 02:00")
+@pytest.mark.parametrize("moment", ["issue", "minute_before_publication"])
+def test_canary_future_runs_replaced_with_garbage(tmp_path, caches, source, moment):
+    t0 = canary_t0(source, moment)
     clean = caches[source]
     poisoned = clean.copy()
     future = poisoned["run_init_utc"] + SOURCES[source].delay > t0
@@ -109,7 +117,7 @@ def test_canary_future_runs_replaced_with_garbage(tmp_path, caches, source):
     poisoned.loc[future, value_columns] = rng.uniform(-1e6, 1e6, (int(future.sum()), len(value_columns)))
     write_cache(clean, tmp_path / "clean", SOURCES[source])
     write_cache(poisoned, tmp_path / "poisoned", SOURCES[source])
-    valid_times = pd.date_range(t0 - pd.Timedelta(hours=72), t0 + pd.Timedelta(hours=48), freq="h")
+    valid_times = pd.date_range(t0.floor("h") - pd.Timedelta(hours=72), t0.floor("h") + pd.Timedelta(hours=48), freq="h")
 
     a = AsOfStore(tmp_path / "clean").get_nwp(source, t0, valid_times)
     b = AsOfStore(tmp_path / "poisoned").get_nwp(source, t0, valid_times)
