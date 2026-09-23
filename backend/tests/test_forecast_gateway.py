@@ -322,6 +322,49 @@ async def test_dispatch_follows_the_live_issue(client: AsyncClient, user: User, 
     assert len(body["hours"]) == 24
 
 
+def backtest_series(actual: float) -> list[dict]:
+    """Два часа бэктеста по обеим турбинам: P10 = 0,2, P50 = 0,4 номинала."""
+    return [
+        {
+            "issue_time_utc": "2025-01-10T02:00:00Z",
+            "valid_time_utc": f"2025-01-10T{hour}:00:00Z",
+            "lead_h": hour - 2,
+            "turbine": turbine,
+            "p10": 0.2,
+            "p50": 0.4,
+            "p90": 0.7,
+            "actual": actual,
+        }
+        for hour in (19, 20)
+        for turbine in TURBINE_NAMES
+    ]
+
+
+async def test_dispatch_shortfall_comes_from_the_backtest(client: AsyncClient, user: User, live):
+    live(metrics={**metrics_payload(), "series": backtest_series(actual=0.3)})
+
+    careful = (await client.get(f"/api/forecast/{ISSUE_PATH}/dispatch", params={"risk": 0.1}, headers=auth(user))).json()["kpi"]
+    bold = (await client.get(f"/api/forecast/{ISSUE_PATH}/dispatch", params={"risk": 0.5}, headers=auth(user))).json()["kpi"]
+
+    assert careful["backtest_hours"] == bold["backtest_hours"] == 2
+    assert careful["shortfall_hours_share"] == 0.0
+    assert bold["shortfall_hours_share"] == 1.0
+    assert bold["mean_shortfall_mwh"] == 12.0
+
+
+async def test_dispatch_without_a_backtest_leaves_the_shortfall_empty(client: AsyncClient, user: User, live):
+    live(metrics_status=404)
+
+    response = await client.get(f"/api/forecast/{ISSUE_PATH}/dispatch", params={"risk": 0.2}, headers=auth(user))
+
+    assert response.status_code == 200
+    assert len(response.json()["hours"]) == 24
+    kpi = response.json()["kpi"]
+    assert kpi["shortfall_hours_share"] is None
+    assert kpi["mean_shortfall_mwh"] is None
+    assert kpi["backtest_hours"] == 0
+
+
 # --- пересчет по новому прогону ------------------------------------------
 
 

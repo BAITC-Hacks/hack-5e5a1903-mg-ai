@@ -62,7 +62,11 @@ GET  /api/auth/me        Authorization: Bearer <access_token>
 - `p50_mw` мощность одной турбины в МВт, номинал 2,5 МВт, станция 5 МВт;
 - время в UTC в полях `*_utc`, местное время UTC+5 в полях `*_local`;
 - `lead_h` от 1 до 48;
-- `flags`: `cut_out_risk`, `icing_risk`, `ramp`, `degraded`, `source_spread`.
+- `flags`: `cut_out_risk`, `icing_risk`, `ramp`, `degraded`, `source_spread`;
+- заявка диспетчера `bid_mw = P10 + (risk − 0.1) / 0.4 · (P50 − P10)` по станции;
+  `shortfall_hours_share` и `mean_shortfall_mwh` (МВт·ч за сутки) показывают, как та же
+  заявка недобирала на часах бэктеста модели (`series` из `GET /metrics` ML-сервиса).
+  Бэктеста нет — оба поля `null`, `backtest_hours` равен 0.
 
 ## Прогноз по своему датасету
 

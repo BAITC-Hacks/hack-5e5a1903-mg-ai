@@ -27,3 +27,4 @@
 | features-dev1-auth | hackalem-worktrees/features-dev1-auth | dev1 | ноут Meirzhan | 1 | 3001 | 8001 | 5433 |
 ```
 | features-dev2-ensemble-calibration | hackalem-worktrees/features-dev2-ensemble-calibration | dev2 | ноут Aibek | — | — | — | — |
+| features-dev2-dispatch-kpi | hackalem-worktrees/features-dev2-dispatch-kpi | dev2 | ноут Aibek | — | — | — | — |

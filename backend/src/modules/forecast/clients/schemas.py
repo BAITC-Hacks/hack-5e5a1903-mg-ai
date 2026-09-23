@@ -189,6 +189,17 @@ class MetricsLead(UpstreamSchema):
     nmae_pct: float
 
 
+class MetricsPoint(UpstreamSchema):
+    """Час бэктеста одной турбины: квантили и факт SCADA в долях номинала."""
+
+    issue_time_utc: UtcDatetime
+    valid_time_utc: UtcDatetime
+    turbine: str
+    p10: float = Field(ge=0, le=1)
+    p50: float = Field(ge=0, le=1)
+    actual: float = Field(ge=0, le=1)
+
+
 class MlModelMetrics(UpstreamSchema):
     """Оценка модели на отложенном периоде, ``GET /metrics``."""
 
@@ -202,3 +213,4 @@ class MlModelMetrics(UpstreamSchema):
     baselines: list[MetricsBaseline] = Field(default_factory=list)
     by_day: list[MetricsDay] = Field(default_factory=list)
     by_lead: list[MetricsLead] = Field(default_factory=list)
+    series: list[MetricsPoint] = Field(default_factory=list)

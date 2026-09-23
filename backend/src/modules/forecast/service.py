@@ -12,7 +12,7 @@
 
 Предметные функции, которыми пользуются оба пути, объявлены публично:
 ``power_curve``, ``flags_for``, ``build_kpi``, ``dispatch_from_forecast``,
-``issue_time`` и ``ensure_known_issue``. Синтетика спрятана под подчеркивание.
+``bid_mw``, ``backtest_shortfall``, ``issue_time`` и ``ensure_known_issue``. Синтетика спрятана под подчеркивание.
 
 Состояния в памяти процесса здесь нет: все функции чистые, репликам бэкенда
 нечего делить.
@@ -21,6 +21,8 @@
 import hashlib
 import math
 import random
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from src.core.exceptions import BusinessError
@@ -81,6 +83,7 @@ from src.modules.forecast.schemas import (
 )
 
 DATA_SOURCE_STUB = "stub"
+HOURS_PER_DAY = 24
 
 
 def issue_dates() -> list[date]:
@@ -388,11 +391,64 @@ def build_weather(issue_date: date) -> WeatherResponse:
     )
 
 
-def dispatch_from_forecast(forecast: ForecastResponse, risk: float) -> DispatchResponse:
+def bid_mw(p10_mw: float, p50_mw: float, risk: float) -> float:
+    """Заявка при допустимом риске недобора: 10% — это P10, 50% — P50, между ними линейно."""
+    return p10_mw + (risk - 0.1) / 0.4 * (p50_mw - p10_mw)
+
+
+@dataclass(frozen=True)
+class BacktestPoint:
+    """Час бэктеста одной турбины: квантили и факт SCADA в долях номинала."""
+
+    issue_time_utc: datetime
+    valid_time_utc: datetime
+    turbine: str
+    p10: float
+    p50: float
+    actual: float
+
+
+@dataclass(frozen=True)
+class Shortfall:
+    hours_share: float
+    mwh_per_day: float
+    hours: int
+
+
+def backtest_shortfall(points: Iterable[BacktestPoint], risk: float) -> Shortfall | None:
+    """Как недобирала бы та же заявка на часах бэктеста, где факт известен.
+
+    Час собирается в станцию так же, как заявка: сумма турбин в МВт. Час, где
+    нет одной из турбин, пропускается, иначе недобор станции вышел бы заниженным.
+    """
+    station: dict[tuple[datetime, datetime], dict[str, BacktestPoint]] = {}
+    for point in points:
+        station.setdefault((point.issue_time_utc, point.valid_time_utc), {})[point.turbine] = point
+
+    names = {turbine.name for turbine in TURBINES}
+    gaps: list[float] = []
+    for by_turbine in station.values():
+        if set(by_turbine) != names:
+            continue
+        rows = by_turbine.values()
+        bid = bid_mw(sum(row.p10 * rated_mw(row.turbine) for row in rows), sum(row.p50 * rated_mw(row.turbine) for row in rows), risk)
+        gaps.append(max(0.0, bid - sum(row.actual * rated_mw(row.turbine) for row in rows)))
+
+    if not gaps:
+        return None
+    return Shortfall(
+        hours_share=sum(1 for gap in gaps if gap > 0) / len(gaps),
+        mwh_per_day=sum(gaps) / len(gaps) * HOURS_PER_DAY,
+        hours=len(gaps),
+    )
+
+
+def dispatch_from_forecast(forecast: ForecastResponse, risk: float, backtest: Iterable[BacktestPoint] = ()) -> DispatchResponse:
     """Почасовая заявка: чем выше допустимый риск, тем ближе к P50.
 
     Заявка строится из уже готового прогноза, поэтому живой выпуск и заглушка
-    считаются одинаково, а ``data_source`` наследуется от прогноза.
+    считаются одинаково, а ``data_source`` наследуется от прогноза. Недобор
+    берется из бэктеста модели: нет бэктеста — поля недобора пустые.
     """
     issue_date = forecast.issue.issue_date
     target = forecast.issue.target_date
@@ -408,7 +464,7 @@ def dispatch_from_forecast(forecast: ForecastResponse, risk: float) -> DispatchR
         p10 = sum(row.p10 * rated_mw(row.turbine) for row in rows)
         p50 = sum(row.p50 * rated_mw(row.turbine) for row in rows)
         p90 = sum(row.p90 * rated_mw(row.turbine) for row in rows)
-        bid = p10 + (risk - 0.1) / 0.4 * (p50 - p10)
+        bid = bid_mw(p10, p50, risk)
         hours.append(
             DispatchHour(
                 valid_time_local=local_time,
@@ -421,14 +477,16 @@ def dispatch_from_forecast(forecast: ForecastResponse, risk: float) -> DispatchR
 
     day_bid = sum(hour.bid_mw for hour in hours)
     expected = sum(hour.p50_mw for hour in hours)
+    shortfall = backtest_shortfall(backtest, risk)
     return DispatchResponse(
         issue_date=issue_date,
         risk=risk,
         kpi=DispatchKpi(
             day_bid_mwh=round(day_bid, 2),
             expected_mwh=round(expected, 2),
-            shortfall_hours_share=round(max(0.0, 0.5 - risk), 3),
-            mean_shortfall_mwh=round(max(0.0, expected - day_bid) / max(1, len(hours)), 3),
+            shortfall_hours_share=round(shortfall.hours_share, 3) if shortfall else None,
+            mean_shortfall_mwh=round(shortfall.mwh_per_day, 2) if shortfall else None,
+            backtest_hours=shortfall.hours if shortfall else 0,
         ),
         hours=hours,
         data_source=forecast.data_source,
