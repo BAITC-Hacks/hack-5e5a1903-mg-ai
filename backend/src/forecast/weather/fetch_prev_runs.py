@@ -144,7 +144,11 @@ def year_chunks(start: date, end: date) -> list[tuple[date, date]]:
 
 
 def get_json(client: httpx.Client, params: dict, *, attempts: int = ATTEMPTS, sleep: Callable[[float], None] = time.sleep) -> dict:
-    """GET с повторами на сетевых ошибках, 429 и 5xx. Остальные ошибки сразу в ``FetchError``."""
+    """GET с повторами на сетевых ошибках, 429, 5xx и ответе 200 не в JSON. Остальные ошибки сразу в ``FetchError``.
+
+    Ответ 200 не в JSON Open-Meteo отдает, когда сбой случился посреди потока:
+    тело тогда — текст вида ``Unexpected error while streaming data: …``.
+    """
     error = ""
     for attempt in range(attempts):
         pause = BACKOFF_S * 2**attempt
@@ -154,9 +158,16 @@ def get_json(client: httpx.Client, params: dict, *, attempts: int = ATTEMPTS, sl
             error = f"сеть: {exc!r}"
         else:
             if response.status_code == 200:
-                return response.json()
+                try:
+                    payload = response.json()
+                except ValueError:
+                    payload = None
+                if isinstance(payload, dict) and isinstance(payload.get("hourly"), dict):
+                    return payload
             error = f"HTTP {response.status_code}: {response.text[:300]}"
-            if response.status_code == 429:
+            if response.status_code == 200:
+                error = f"ответ без блока hourly, {error}"
+            elif response.status_code == 429:
                 pause = RATE_LIMIT_PAUSE_S
             elif response.status_code < 500:
                 raise FetchError(f"Open-Meteo отклонил запрос, {error}")

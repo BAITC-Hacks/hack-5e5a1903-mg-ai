@@ -102,8 +102,13 @@ def mock_client(handler) -> httpx.Client:
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
+OK = {"hourly": {"time": []}}
+# Так Open-Meteo отвечает, когда сбой случился посреди потока: статус 200, тело не JSON.
+STREAM_ERROR = b"Unexpected error while streaming data: modelRunUnavailable(model: App.DomainRegistry.cmc_gem_gdps_15km)"
+
+
 def test_get_json_retries_server_errors_and_network():
-    answers = iter([httpx.Response(503), "network", httpx.Response(200, json={"ok": True})])
+    answers = iter([httpx.Response(503), "network", httpx.Response(200, json=OK)])
     sleeps = []
 
     def handler(request):
@@ -113,12 +118,28 @@ def test_get_json_retries_server_errors_and_network():
         return answer
 
     with mock_client(handler) as client:
-        assert fpr.get_json(client, {}, sleep=sleeps.append) == {"ok": True}
+        assert fpr.get_json(client, {}, sleep=sleeps.append) == OK
     assert sleeps == [fpr.BACKOFF_S, fpr.BACKOFF_S * 2]
 
 
+def test_get_json_retries_stream_error_with_status_200():
+    answers = iter([httpx.Response(200, content=STREAM_ERROR), httpx.Response(200, json=OK)])
+    sleeps = []
+    with mock_client(lambda request: next(answers)) as client:
+        assert fpr.get_json(client, {}, sleep=sleeps.append) == OK
+    assert sleeps == [fpr.BACKOFF_S]
+
+
+@pytest.mark.parametrize(
+    "answer", [httpx.Response(200, content=STREAM_ERROR), httpx.Response(200, json={"latitude": 43.6})], ids=["not_json", "no_hourly"]
+)
+def test_get_json_bad_200_ends_in_fetch_error(answer):
+    with mock_client(lambda request: answer) as client, pytest.raises(fpr.FetchError, match="hourly"):
+        fpr.get_json(client, {}, sleep=lambda s: None)
+
+
 def test_get_json_waits_minute_on_rate_limit():
-    answers = iter([httpx.Response(429), httpx.Response(200, json={})])
+    answers = iter([httpx.Response(429), httpx.Response(200, json=OK)])
     sleeps = []
     with mock_client(lambda request: next(answers)) as client:
         fpr.get_json(client, {}, sleep=sleeps.append)
