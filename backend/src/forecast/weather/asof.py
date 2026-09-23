@@ -90,7 +90,11 @@ def _to_utc_index(values: Iterable[datetime | pd.Timestamp | str]) -> pd.Datetim
         raise ValueError("Пустой список часов valid_times")
     if index.tz is None:
         raise ValueError("Часы valid_times без часового пояса, нужен UTC")
-    return index.tz_convert("UTC").as_unit("ns").unique().sort_values()
+    index = index.tz_convert("UTC").as_unit("ns")
+    off_hour = index[index != index.floor("h")]
+    if len(off_hour):
+        raise ValueError(f"Часы valid_times не на целом часе: {', '.join(f'{t:%Y-%m-%d %H:%M}' for t in off_hour[:3])}")
+    return index.unique().sort_values()
 
 
 def _naive_ns(values: pd.Series | pd.DatetimeIndex) -> np.ndarray:
@@ -214,6 +218,7 @@ class AsOfStore:
     ) -> pd.DataFrame:
         """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of`` и ветром.
 
+        Строки идут по возрастанию часа, повторы часов во входе схлопываются в одну строку.
         ``required`` — колонки, без которых строка прогона считается отсутствующей, как строка без ветра:
         на такой час берется более старый прогон. Нет прогона хотя бы для одного часа — ``NoRunAvailable``.
         """
@@ -241,6 +246,8 @@ class AsOfStore:
         """Длинная таблица ``get_nwp`` по нескольким источникам. Источник без прогона пропускается."""
         if not sources:
             raise ValueError("Пустой список источников")
+        if len(set(sources)) != len(sources):
+            raise ValueError(f"Источники повторяются: {', '.join(sources)}")
         as_of = to_utc(as_of)
         wanted = _to_utc_index(valid_times)
         frames = []

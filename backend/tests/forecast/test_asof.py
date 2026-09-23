@@ -347,6 +347,22 @@ def test_naive_times_are_rejected(store):
         store.get_nwp("ifs", ts("2026-01-31 02:00"), pd.date_range("2026-01-31 03:00", periods=3, freq="h"))
 
 
+def test_valid_times_off_the_hour_are_rejected(store):
+    with pytest.raises(ValueError, match="не на целом часе: 2026-01-31 03:30"):
+        store.get_nwp("gfs", ts("2026-01-31 02:00"), [ts("2026-01-31 03:00"), ts("2026-01-31 03:30")])
+
+
+def test_valid_times_are_sorted_and_deduplicated(store):
+    out = store.get_nwp("gfs", ts("2026-01-31 02:00"), [ts("2026-01-31 05:00"), ts("2026-01-31 03:00"), ts("2026-01-31 03:00")])
+    assert list(out["valid_time_utc"]) == [ts("2026-01-31 03:00"), ts("2026-01-31 05:00")]
+
+
+def test_multi_rejects_repeated_sources(store):
+    as_of = ts("2026-01-31 02:00")
+    with pytest.raises(ValueError, match="повторяются"):
+        store.get_nwp_multi(["gfs", "icon", "gfs"], as_of, horizon(as_of))
+
+
 def test_unknown_source(store):
     with pytest.raises(ValueError, match="Неизвестный источник"):
         store.get_nwp("era5", ts("2026-01-31 02:00"), horizon(ts("2026-01-31 02:00")))
