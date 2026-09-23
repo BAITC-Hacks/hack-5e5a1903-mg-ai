@@ -52,6 +52,9 @@ ROW_COLUMNS = [
     "members",
 ]
 EXAMPLES = 5
+# Без температуры строка прогона считается отсутствующей, как строка без ветра: на этот час берется
+# более старый прогон. Backend требует t2m в каждой строке, на ней стоит проверка на обледенение.
+REQUIRED_COLUMNS = ("t2m",)
 
 
 @dataclass(frozen=True)
@@ -194,7 +197,7 @@ def ensemble_rows(members: pd.DataFrame) -> pd.DataFrame:
 
 def _fetch(data: WeatherData, name: str, as_of: pd.Timestamp, hours: pd.DatetimeIndex) -> pd.DataFrame:
     try:
-        return data.store.get_nwp(name, as_of, hours)
+        return data.store.get_nwp(name, as_of, hours, required=REQUIRED_COLUMNS)
     except LeakageError as exc:
         logger.error("Сработала проверка утечки в get_nwp(%s, %s): %s", name, iso(as_of), exc)
         raise errors.leakage_guard(str(exc)) from exc

@@ -232,6 +232,29 @@ def test_no_run_with_wind_is_reported_not_returned_as_nan(tmp_path, caches):
     assert list(exc.value.missing) == list(pd.date_range("2026-02-01 19:00", "2026-02-02 02:00", freq="h", tz=UTC))
 
 
+def test_required_column_falls_back_to_older_run(tmp_path, caches):
+    """Свежий прогон с ветром, но без температуры: по умолчанию он выбирается, с ``required`` — нет."""
+    write_cache(ifs_with_blank_wind(caches, ["2026-01-30 18:00"], ["temperature_2m"]), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+    store = AsOfStore(tmp_path)
+
+    plain = store.get_nwp("ifs", as_of, horizon(as_of))
+    strict = store.get_nwp("ifs", as_of, horizon(as_of), required=("t2m",))
+
+    assert (plain["run_init_utc"] == ts("2026-01-30 18:00")).all() and plain["t2m"].isna().all()
+    assert (strict["run_init_utc"] == ts("2026-01-30 12:00")).all() and strict["t2m"].notna().all()
+
+
+def test_required_column_missing_everywhere_is_no_run(tmp_path, caches):
+    runs = ["2026-01-30 00:00", "2026-01-30 06:00", "2026-01-30 12:00", "2026-01-30 18:00"]
+    write_cache(ifs_with_blank_wind(caches, runs, ["temperature_2m"]), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    with pytest.raises(NoRunAvailable) as exc:
+        AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of), required=("t2m",))
+    assert list(exc.value.missing) == list(pd.date_range("2026-02-01 19:00", "2026-02-02 02:00", freq="h", tz=UTC))
+
+
 def test_multi_skips_source_without_runs(tmp_path, caches, asof_logs):
     for name in ("ifs", "gfs"):
         write_cache(caches[name], tmp_path, SOURCES[name])

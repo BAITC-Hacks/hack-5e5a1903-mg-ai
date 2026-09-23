@@ -205,10 +205,17 @@ class AsOfStore:
         """
         return self._load(name).frame
 
-    def get_nwp(self, source: str, as_of: datetime | pd.Timestamp, valid_times: Iterable[datetime | pd.Timestamp]) -> pd.DataFrame:
+    def get_nwp(
+        self,
+        source: str,
+        as_of: datetime | pd.Timestamp,
+        valid_times: Iterable[datetime | pd.Timestamp],
+        required: Sequence[str] = (),
+    ) -> pd.DataFrame:
         """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of`` и ветром.
 
-        Нет прогона хотя бы для одного часа — ``NoRunAvailable``.
+        ``required`` — колонки, без которых строка прогона считается отсутствующей, как строка без ветра:
+        на такой час берется более старый прогон. Нет прогона хотя бы для одного часа — ``NoRunAvailable``.
         """
         as_of = to_utc(as_of)
         wanted = _to_utc_index(valid_times)
@@ -219,6 +226,8 @@ class AsOfStore:
         lo = np.searchsorted(data.valid_ns, wanted_ns[0], side="left")
         hi = np.searchsorted(data.valid_ns, wanted_ns[-1], side="right")
         mask = (data.available_ns[lo:hi] <= as_of_ns) & np.isin(data.valid_ns[lo:hi], wanted_ns)
+        for column in required:
+            mask &= data.frame[column].iloc[lo:hi].notna().to_numpy()
         # Кадр отсортирован по (час, прогон), поэтому последняя строка часа — самый свежий доступный прогон.
         chosen = data.frame.iloc[lo:hi].loc[mask].drop_duplicates("valid_time_utc", keep="last").reset_index(drop=True)
 
