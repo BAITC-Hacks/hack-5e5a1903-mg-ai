@@ -318,10 +318,15 @@ def save_gaps(cache_dir: Path, refetched: Iterable[datetime], rows: list[dict[st
     _atomic_write(cache_dir / GAPS_FILE, gaps.to_csv(index=False, lineterminator="\n").encode("utf-8"))
 
 
-def unavailable_runs(cache_dir: Path) -> set[datetime]:
+def gap_runs(cache_dir: Path, reason: str | None = None) -> set[datetime]:
+    """Прогоны из gaps.csv: все или только с указанной причиной."""
     gaps = read_gaps(cache_dir)
-    labels = gaps.loc[gaps["reason"] == UNAVAILABLE, "run_init_utc"]
+    labels = gaps["run_init_utc"] if reason is None else gaps.loc[gaps["reason"] == reason, "run_init_utc"]
     return {datetime.strptime(label, TIME_FORMAT).replace(tzinfo=UTC) for label in labels}
+
+
+def unavailable_runs(cache_dir: Path) -> set[datetime]:
+    return gap_runs(cache_dir, UNAVAILABLE)
 
 
 def cached_runs(cache_dir: Path) -> set[datetime]:
@@ -380,10 +385,13 @@ def fetch(
     client: httpx.Client,
     limiter: RateLimiter,
     retries: int = DEFAULT_RETRIES,
-    retry_unavailable: bool = False,
+    retry_gaps: bool = False,
     sleep: Callable[[float], None] = time.sleep,
 ) -> FetchSummary:
     """Докачивает недостающие прогоны за [start, end] в кэш.
+
+    С ``retry_gaps`` заново запрашиваются и прогоны из gaps.csv: недоступные и скачанные
+    с пустыми значениями. Скачанный прогон заменяет в кэше прежнюю версию.
 
     Файл месяца дописывается, как только его прогоны обработаны, а также при любой
     ошибке. Прерванная загрузка теряет не больше одного месяца запросов.
@@ -391,8 +399,12 @@ def fetch(
     cache_dir.mkdir(parents=True, exist_ok=True)
     runs = planned_runs(start, end)
     done = cached_runs(cache_dir)
-    skipped = set() if retry_unavailable else unavailable_runs(cache_dir)
-    todo = [run for run in runs if run not in done and run not in skipped]
+    if retry_gaps:
+        retry = gap_runs(cache_dir)
+        todo = [run for run in runs if run not in done or run in retry]
+    else:
+        skipped = unavailable_runs(cache_dir)
+        todo = [run for run in runs if run not in done and run not in skipped]
     summary = FetchSummary(planned=len(runs), already_cached=len(runs) - len(todo))
     logger.info("прогонов в плане: %d, уже в кэше или известно, что недоступны: %d, скачать: %d", len(runs), summary.already_cached, len(todo))
 
@@ -438,16 +450,29 @@ def _parse_date(value: str) -> date:
         raise argparse.ArgumentTypeError(f"дата в формате YYYY-MM-DD, получено {value!r}") from exc
 
 
+def _parse_timeout(value: str) -> float:
+    try:
+        timeout = float(value)
+    except ValueError:
+        timeout = 0.0
+    if not timeout > 0:
+        raise argparse.ArgumentTypeError(f"таймаут в секундах больше нуля (--timeout или NWP_HTTP_TIMEOUT_S), получено {value!r}")
+    return timeout
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Докачать архивные прогоны ECMWF IFS HRES 9 км из Open-Meteo Single Runs в кэш.")
     parser.add_argument("--start", type=_parse_date, default=ARCHIVE_START, help=f"первый день, по умолчанию {ARCHIVE_START}")
     parser.add_argument("--end", type=_parse_date, default=ARCHIVE_END, help=f"последний день включительно, по умолчанию {ARCHIVE_END}")
     parser.add_argument("--cache-dir", type=Path, default=None, help="каталог кэша, по умолчанию $DATA_DIR/nwp/ifs")
-    timeout_s = float(os.environ.get("NWP_HTTP_TIMEOUT_S") or DEFAULT_TIMEOUT_S)
-    parser.add_argument("--timeout", type=float, default=timeout_s, help="таймаут одного запроса, с, по умолчанию $NWP_HTTP_TIMEOUT_S или 120")
+    # Строковый default argparse пропускает через type, поэтому кривое значение из окружения дает ошибку разбора, а не трейс.
+    timeout_s = os.environ.get("NWP_HTTP_TIMEOUT_S") or str(DEFAULT_TIMEOUT_S)
+    parser.add_argument(
+        "--timeout", type=_parse_timeout, default=timeout_s, help="таймаут одного запроса, с, по умолчанию $NWP_HTTP_TIMEOUT_S или 120"
+    )
     parser.add_argument("--min-interval", type=float, default=DEFAULT_MIN_INTERVAL_S, help="минимальная пауза между запросами, с")
     parser.add_argument("--retries", type=int, default=DEFAULT_RETRIES, help="попыток на один прогон")
-    parser.add_argument("--retry-unavailable", action="store_true", help="еще раз запросить прогоны, которые раньше были недоступны")
+    parser.add_argument("--retry-gaps", action="store_true", help="еще раз запросить прогоны из gaps.csv: недоступные и с пустыми значениями")
     args = parser.parse_args(argv)
     if args.start > args.end:
         parser.error("--start позже --end")
@@ -459,7 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     limiter = RateLimiter(args.min_interval)
     try:
         with httpx.Client(timeout=httpx.Timeout(args.timeout), headers={"User-Agent": "hackalem-wind-forecast"}) as client:
-            summary = fetch(args.start, args.end, cache_dir, client, limiter, retries=args.retries, retry_unavailable=args.retry_unavailable)
+            summary = fetch(args.start, args.end, cache_dir, client, limiter, retries=args.retries, retry_gaps=args.retry_gaps)
     except FetchError as exc:
         logger.error("загрузка остановлена: %s", exc)
         return 1

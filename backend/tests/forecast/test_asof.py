@@ -190,6 +190,48 @@ def test_empty_columns_stay_nan(store):
     assert out["ws80"].notna().all()
 
 
+WIND_CACHE_COLUMNS = ["wind_speed_80m", "wind_speed_100m", "wind_speed_120m"]
+
+
+def ifs_with_blank_wind(caches, runs: list[str], columns: list[str]) -> pd.DataFrame:
+    frame = caches["ifs"].copy()
+    frame.loc[frame["run_init_utc"].isin([ts(run) for run in runs]), columns] = np.nan
+    return frame
+
+
+def test_run_without_wind_falls_back_to_older_run(tmp_path, caches, asof_logs):
+    """Сбой архива, как у IFS 04–09.08.2025: у свежего прогона ветер пуст на всех высотах."""
+    write_cache(ifs_with_blank_wind(caches, ["2026-01-30 18:00"], WIND_CACHE_COLUMNS), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    out = AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of))
+
+    assert (out["run_init_utc"] == ts("2026-01-30 12:00")).all()
+    assert out["ws80"].notna().all()
+    assert "без скорости ветра" in asof_logs.text
+
+
+def test_run_with_wind_at_some_height_is_kept(tmp_path, caches):
+    write_cache(ifs_with_blank_wind(caches, ["2026-01-30 18:00"], ["wind_speed_80m"]), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    out = AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of))
+
+    assert (out["run_init_utc"] == ts("2026-01-30 18:00")).all()
+    assert out["ws80"].isna().all()
+    assert out["ws100"].notna().all()
+
+
+def test_no_run_with_wind_is_reported_not_returned_as_nan(tmp_path, caches):
+    runs = ["2026-01-30 00:00", "2026-01-30 06:00", "2026-01-30 12:00", "2026-01-30 18:00"]
+    write_cache(ifs_with_blank_wind(caches, runs, WIND_CACHE_COLUMNS), tmp_path, SOURCES["ifs"])
+    as_of = ts("2026-01-31 02:00")
+
+    with pytest.raises(NoRunAvailable) as exc:
+        AsOfStore(tmp_path).get_nwp("ifs", as_of, horizon(as_of))
+    assert list(exc.value.missing) == list(pd.date_range("2026-02-01 19:00", "2026-02-02 02:00", freq="h", tz=UTC))
+
+
 def test_multi_skips_source_without_runs(tmp_path, caches, asof_logs):
     for name in ("ifs", "gfs"):
         write_cache(caches[name], tmp_path, SOURCES[name])
