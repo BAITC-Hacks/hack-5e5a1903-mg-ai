@@ -219,6 +219,9 @@ def _prepare(nwp: pd.DataFrame) -> pd.DataFrame:
         if pd.api.types.is_datetime64_dtype(frame[column]) and not isinstance(frame[column].dtype, pd.DatetimeTZDtype):
             raise ValueError(f"колонка {column} без часового пояса, нужен UTC")
         frame[column] = pd.to_datetime(frame[column], utc=True)
+        # В паспорте время с точностью до секунды: дробь дала бы разные прогоны с одинаковой записью.
+        if (frame[column].notna() & (frame[column] != frame[column].dt.floor("s"))).any():
+            raise ValueError(f"в колонке {column} время с долями секунды, нужна точность до секунды")
 
     for column in ("valid_time_utc", "run_init_utc"):
         if frame[column].isna().any():

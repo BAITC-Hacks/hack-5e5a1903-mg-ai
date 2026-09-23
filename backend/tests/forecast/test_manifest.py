@@ -333,3 +333,12 @@ def test_config_with_source_registry_is_hashed(data_dir):
 
     assert len(registry) == 64
     assert build_manifest(ISSUE, _nwp(), data_dir=data_dir, config={"sources": shorter})["config_sha256"] != registry
+
+
+def test_sub_second_times_are_rejected(data_dir):
+    # Иначе 01:00:00.300 и 01:00:00 давали два прогона с одинаковой записью в runs.
+    nwp = _nwp()
+    nwp.loc[:11, "available_at_utc"] += pd.Timedelta(milliseconds=300)
+
+    with pytest.raises(ValueError, match="available_at_utc время с долями секунды"):
+        build_manifest(ISSUE, nwp, data_dir=data_dir)
