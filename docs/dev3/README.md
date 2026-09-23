@@ -13,6 +13,8 @@
 - Загружает архивные прогоны ECMWF IFS HRES 9 км из Open-Meteo Single Runs и хранит их кэш (#6).
 - Отдает погоду строго на момент прогноза, без прогонов, опубликованных позже (#7).
 - Отдает историю турбин по часам в UTC с флагами очистки (#9), пояс SCADA проверен (#10).
+- Отдает всё это backend по HTTP: сервис погоды (#46), контракт в [weather-service.md](weather-service.md)
+  и [weather-openapi.json](weather-openapi.json).
 
 ## Файлы и модули
 
@@ -32,6 +34,8 @@
 - `backend/src/forecast/dataset/config.py` — пути (`DATA_DIR`, `REPORTS_DIR`), правило пояса
   `SCADA_UTC_OFFSET_H`, паспорт GW109 и пороги флагов.
 - `backend/src/forecast/dataset/scada_summary.py` — генерирует `reports/scada_summary.md`.
+- `backend/src/weather_service/` — HTTP-сервис погоды поверх `AsOfStore` и `load_scada()`:
+  `/health`, `/sources`, `/nwp`, `/runs`, `/scada`. Тесты: `backend/tests/weather_service/`.
 - `backend/src/analysis/tz_check.py` — проверка пояса SCADA (#10), генерирует `reports/tz_check.md`.
   Использует ERA5 как дополнительную диагностику, поэтому лежит вне `src/forecast`.
 - Тесты: `backend/tests/forecast/test_asof.py` (синтетический кэш в `synthetic_nwp.py`),

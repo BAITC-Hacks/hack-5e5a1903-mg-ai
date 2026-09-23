@@ -66,23 +66,32 @@ GET  /api/auth/me        Authorization: Bearer <access_token>
 
 ## Погода: сервис dev3
 
-Адрес из `WEATHER_SERVICE_URL`, таймаут из `WEATHER_SERVICE_TIMEOUT`. Полная схема
-и описание приедут вместе с кодом сервиса: `docs/dev3/weather-openapi.json`
-и `docs/dev3/weather-service.md`.
+Адрес из `WEATHER_SERVICE_URL`, таймаут из `WEATHER_SERVICE_TIMEOUT`. Контракт согласован в #37,
+полностью описан в [dev3/weather-openapi.json](dev3/weather-openapi.json), Swagger на `/docs`,
+пояснения в [dev3/weather-service.md](dev3/weather-service.md).
 
-- `GET /nwp?source=...&as_of=...` — строки погоды. Окно по умолчанию это горизонт
-  +1…+48 ч, строк с `available_at_utc` позже `as_of` в ответе не бывает. Эти строки
-  уходят в `POST /predict` ML-сервиса **как есть**, без переименования полей.
-- Источник `ensemble` нельзя отправлять в `/predict` вместе с его участниками:
-  ML-сервис усредняет источники сам.
-- `GET /runs?as_of=...` — статусы прогонов для страницы «Погода». Их `after_as_of`
-  это наш `after_issue`.
-- `NO_RUN_AVAILABLE` (404) — штатная ситуация, а не сбой: агент берет следующий
-  источник и пишет решение в журнал с кодом `FALLBACK`.
+```
+GET /health       -> ok или degraded, прогоны и период кэша по источникам, часов SCADA
+GET /sources      -> реестр: тип API, шаг, задержка публикации, высоты, пустые колонки,
+                     период архива, состав ансамбля, MAE ветра
+GET /nwp?source=gfs,ensemble&as_of=2026-01-31T02:00:00Z[&from=...&to=...]
+    -> {"as_of_utc", "from_utc", "to_utc", "sources", "missing",
+        "rows": [{valid_time_utc, source, run_init_utc, available_at_utc, lead_h,
+                  ws10, ws80, ws100, ws120, wd100, gust10, t2m, rh2m, psfc, ws_spread, members}]}
+    Ни одной строки с available_at_utc > as_of. Окно по умолчанию — as_of+1 ч … as_of+48 ч.
+GET /runs?as_of=...[&issue_time=...&source=...&status=used,stale,after_as_of]
+    -> [{source, run_init_utc, available_at_utc, status, lead_from_h, lead_to_h, hours_used}]
+GET /runs?from=...&to=...  -> события «прогон стал доступен» в (from, to] для пересчета
+GET /scada?from=...&until=...[&turbine=T1]
+    -> [{time_utc, turbine, power_norm, wind_ms, temp_c, flag}]
+```
 
-Внутри сервиса лежит пакет `backend/src/forecast/weather/`: `AsOfStore` отдает только
-прогоны, опубликованные к моменту прогноза, и бросает `LeakageError` на данные
-из будущего. Описание зоны dev3: [dev3/README.md](dev3/README.md).
+Источники: `ifs`, `ifs025`, `gfs`, `icon`, `gem`, `ensemble`. Строки `rows` уходят в `POST /predict`
+как есть, но строки `ensemble` туда не отправляются вместе с участниками: ML-сервис сам
+усредняет источники. Статус `after_as_of` соответствует `after_issue` в `WeatherRun`.
+Ошибки в общем конверте: `NO_RUN_AVAILABLE` (404, штатно, агент берет следующий источник),
+`UNKNOWN_SOURCE` и `VALIDATION_ERROR` (422), `LEAKAGE_GUARD` (500, не должен случаться никогда),
+`DATA_UNAVAILABLE` (503, нет SCADA).
 
 ## Что нужно от dev2: сервис модели
 
