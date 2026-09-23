@@ -197,6 +197,14 @@ class AsOfStore:
             self._data[name] = _SourceData(frame, _naive_ns(frame["valid_time_utc"]), _naive_ns(frame["available_at_utc"]), runs)
         return self._data[name]
 
+    def cache(self, name: str) -> pd.DataFrame:
+        """Весь кэш источника в колонках выхода ``get_nwp``, без отбора по as_of. Только для чтения.
+
+        Нужен для описания архива: какие прогоны покрывают часы, какие колонки пустые.
+        Отдавать эти строки в прогноз нельзя: в них есть прогоны, опубликованные позже любого момента.
+        """
+        return self._load(name).frame
+
     def get_nwp(self, source: str, as_of: datetime | pd.Timestamp, valid_times: Iterable[datetime | pd.Timestamp]) -> pd.DataFrame:
         """Для каждого часа из ``valid_times`` строка самого свежего прогона с ``available_at_utc <= as_of`` и ветром.
 
