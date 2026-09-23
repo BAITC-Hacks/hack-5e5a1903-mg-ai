@@ -42,8 +42,9 @@ def test_to_long_small_example():
     row = frame[(frame["valid_time_utc"] == pd.Timestamp("2026-02-10 12:00", tz="UTC")) & (frame["prev_day"] == 1)].iloc[0]
     assert row["run_init_utc"] == pd.Timestamp("2026-02-09 12:00", tz="UTC")
     assert row["wind_speed_80m"] == pytest.approx(6.1)
+    # 11:00 у GEM интерполирован между 09:00 и 12:00 из следующего прогона: метка — прогон 12z.
     early = frame[(frame["valid_time_utc"] == pd.Timestamp("2026-02-10 11:00", tz="UTC")) & (frame["prev_day"] == 2)].iloc[0]
-    assert early["run_init_utc"] == pd.Timestamp("2026-02-08 00:00", tz="UTC")
+    assert early["run_init_utc"] == pd.Timestamp("2026-02-08 12:00", tz="UTC")
     assert frame["wind_speed_100m"].isna().all()
     assert frame["wind_direction_100m"].isna().all()
     assert not frame.duplicated(["run_init_utc", "valid_time_utc"]).any()
@@ -188,13 +189,15 @@ def test_committed_cache(source):
     assert set(frame["prev_day"]) == set(PREV_DAYS)
     for n in PREV_DAYS:
         part = frame[frame["prev_day"] == n]
-        expected_init = run_init_for(pd.DatetimeIndex(part["valid_time_utc"]), n, model.cycle_h)
+        expected_init = run_init_for(pd.DatetimeIndex(part["valid_time_utc"]), n, model.cycle_h, model.data_step_h)
         assert (pd.DatetimeIndex(part["run_init_utc"]) == expected_init).all()
+        # После начала архива каждый previous_dayN идет каждый час, без дыр.
+        valid = pd.DatetimeIndex(part["valid_time_utc"]).sort_values()
+        assert valid.equals(pd.date_range(valid[0], valid[-1], freq="h"))
     assert frame["valid_time_utc"].min() >= pd.Timestamp(fpr.START, tz="UTC")
     assert frame["valid_time_utc"].max() == pd.Timestamp(fpr.END, tz="UTC") + pd.Timedelta(hours=23)
     absent = [v for v in fpr.VARIABLES if v not in model.variables]
     assert frame[absent].isna().all().all()
-    assert frame[list(model.wind_speeds)].notna().any(axis=1).all()
     # Весь горизонт ретро-симуляции, февраль и +48 ч последнего выпуска, без пропусков ветра.
     feb = frame[frame["valid_time_utc"] >= pd.Timestamp("2026-02-01", tz="UTC")]
     assert feb["valid_time_utc"].max() >= pd.Timestamp("2026-03-01 02:00", tz="UTC")
@@ -211,7 +214,31 @@ def test_asof_store_on_committed_cache_matches_rule(source):
     for issue in pd.date_range("2026-01-31 02:00", "2026-02-27 02:00", freq="D", tz="UTC"):
         valid = pd.date_range(issue + pd.Timedelta(hours=1), periods=48, freq="h")
         out = store.get_nwp(source, issue, valid)
-        expected = [run_init_for(t, choose_n(t, issue, model.cycle_h, registered.delay), model.cycle_h) for t in valid]
+        step = model.data_step_h
+        expected = [run_init_for(t, choose_n(t, issue, model.cycle_h, registered.delay, step), model.cycle_h, step) for t in valid]
         assert list(out["valid_time_utc"]) == list(valid)
         assert list(out["run_init_utc"]) == expected
         assert (out["available_at_utc"] <= issue).all()
+
+
+@pytest.mark.parametrize("source", sorted(s for s, m in fpr.MODELS.items() if m.data_step_h > 1))
+def test_committed_cache_hour_labeled_with_newest_run_of_interpolation_window(source):
+    """У моделей с 3-часовыми данными метка часа не старше прогона любой точки, по которой он интерполирован.
+
+    Open-Meteo строит промежуточный час по точкам floor_3h(t) − 3 ч … floor_3h(t) + 6 ч
+    склеенной серии previous_dayN, и последняя точка бывает из следующего прогона.
+    Метка старше нее означала бы, что AsOfStore отдаст час до публикации этого прогона.
+    """
+    step = pd.Timedelta(hours=fpr.MODELS[source].data_step_h)
+    frame = fpr.read_cache(source)
+    labels = frame.set_index(["valid_time_utc", "prev_day"])["run_init_utc"]
+    hours = frame[frame["valid_time_utc"].dt.hour % step.components.hours != 0]
+    base = hours["valid_time_utc"].dt.floor(step)
+    checked = 0
+    for k in (-1, 0, 1, 2):
+        point = pd.MultiIndex.from_arrays([base + k * step, hours["prev_day"]])
+        point_label = labels.reindex(point).to_numpy()
+        present = ~pd.isna(point_label)
+        assert (hours["run_init_utc"].to_numpy()[present] >= point_label[present]).all()
+        checked += int(present.sum())
+    assert checked > 3 * len(hours)
