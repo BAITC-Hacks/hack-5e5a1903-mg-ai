@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from src.forecast.weather import fetch_ifs as ifs
-from src.forecast.weather.asof import AsOfStore
+from src.forecast.weather.asof import AsOfStore, NoRunAvailable
 
 RUN = datetime(2024, 10, 1, 12, tzinfo=UTC)
 
@@ -79,6 +79,14 @@ def test_parse_run_gives_72_utc_hours_per_run():
     assert frame["valid_time_utc"].iloc[-1] == pd.Timestamp(RUN + timedelta(hours=71))
     assert str(frame["valid_time_utc"].dt.tz) == "UTC"
     assert pd.isna(frame["wind_gusts_10m"].iloc[0])
+
+
+def test_parse_run_keeps_values_in_their_columns():
+    payload = make_payload(RUN)
+    frame = ifs.parse_run(payload, RUN)
+    for name in ifs.VARIABLES:
+        expected = [float("nan") if value is None else value for value in payload["hourly"][name]]
+        assert frame[name].tolist() == pytest.approx(expected, nan_ok=True), name
 
 
 def test_parse_run_fills_missing_hours_with_nan_and_reports_them():
@@ -217,6 +225,22 @@ def test_fetch_retry_unavailable_replaces_gap_record(tmp_path):
     assert ifs.verify_sums(tmp_path) == []
 
 
+def damaged_run_response() -> httpx.Response:
+    """Прогон RUN, у которого ветер на 80 м пуст на часах 3 и 4, как у поврежденных прогонов архива."""
+    payload = make_payload(RUN)
+    payload["hourly"]["wind_speed_80m"][3:5] = [None, None]
+    return httpx.Response(200, json=payload)
+
+
+def test_fetch_lists_null_values_in_gaps(tmp_path):
+    with Api([damaged_run_response()]).client() as client:
+        ifs.fetch(date(2024, 10, 1), date(2024, 10, 1), tmp_path, client, no_wait())
+    assert ifs.read_gaps(tmp_path).to_dict("records") == [
+        {"run_init_utc": "2024-10-01T12:00:00Z", "variable": "wind_speed_80m", "lead_hours": "3;4", "reason": "null"}
+    ]
+    assert ifs.verify_sums(tmp_path) == []
+
+
 def test_fetch_saves_progress_when_stopped(tmp_path):
     api = Api([httpx.Response(200, json=make_payload(datetime(2024, 10, 1, 12, tzinfo=UTC)))] + [httpx.Response(503, text="down")] * 5)
     with api.client() as client, pytest.raises(ifs.FetchError):
@@ -285,3 +309,17 @@ def test_asof_store_serves_every_issue_of_backtest_and_replay():
         nwp = store.get_nwp("ifs", issue, pd.date_range(issue + pd.Timedelta(hours=1), periods=48, freq="h"))
         assert (nwp["run_init_utc"] == issue - pd.Timedelta(hours=8)).all(), issue
         assert nwp[["ws80", "wd100", "t2m"]].notna().all().all(), issue
+
+
+def test_asof_store_never_serves_hours_without_wind():
+    """Вся история выпусков: ветер на всех 48 ч или явный NoRunAvailable там, где архив поврежден (08.2025)."""
+    store = AsOfStore(CACHE.parent)
+    refused = []
+    for issue in pd.date_range("2024-03-16T02:00Z", "2026-02-27T02:00Z", freq="D"):
+        try:
+            nwp = store.get_nwp("ifs", issue, pd.date_range(issue + pd.Timedelta(hours=1), periods=48, freq="h"))
+        except NoRunAvailable:
+            refused.append(f"{issue:%Y-%m-%d}")
+            continue
+        assert nwp["ws80"].notna().all(), issue
+    assert refused == ["2025-08-05", "2025-08-06", "2025-08-08", "2025-08-09"]
