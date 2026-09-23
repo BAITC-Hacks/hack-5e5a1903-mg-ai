@@ -39,6 +39,7 @@ from src.forecast.dataset.scada import load_scada  # noqa: E402
 from src.forecast.weather.asof import AsOfStore, NoRunAvailable  # noqa: E402
 
 from ml_service.errors import MLServiceError  # noqa: E402
+from ml_service.features import build_features  # noqa: E402
 from ml_service.frame import build_frame_from_rows  # noqa: E402
 from ml_service.members.extratrees import FEATURES, MEMBER_DIR, METRICS_FILE, MODEL_FILE, ExtraTreesMember  # noqa: E402
 
@@ -55,20 +56,13 @@ PARAMS = {"n_estimators": 200, "min_samples_leaf": 30, "max_features": 1.0, "ran
 
 
 def make_features(time_utc, ws, t, turbine) -> pd.DataFrame:
-    """Таблица признаков в порядке ``FEATURES``. ``turbine`` — метки ``T1``/``T2``."""
-    time_utc = pd.DatetimeIndex(time_utc)
-    angle = 2 * np.pi * time_utc.dayofyear.to_numpy() / 365.25
-    features = pd.DataFrame(
-        {
-            "ws": np.asarray(ws, dtype=float),
-            "t": np.asarray(t, dtype=float),
-            "hour": time_utc.hour.to_numpy(dtype=float),
-            "doy_sin": np.sin(angle),
-            "doy_cos": np.cos(angle),
-            "turbine": pd.Series(np.asarray(turbine)).map(TURBINE_CODES).to_numpy(dtype=float),
-        }
+    """Таблица признаков в порядке ``FEATURES`` через общую ``ml_service.features.build_features``,
+    ту же, что строит признаки в сервисе. ``turbine`` — метки ``T1``/``T2`` на каждую строку."""
+    rows = pd.DataFrame(
+        {"time_utc": pd.DatetimeIndex(time_utc), "ws": np.asarray(ws, dtype=float), "t": np.asarray(t, dtype=float), "turbine": np.asarray(turbine)}
     )
-    return features[list(FEATURES)]
+    parts = [build_features(g["ws"], g["t"], g["time_utc"], name).set_axis(g.index) for name, g in rows.groupby("turbine", sort=False)]
+    return pd.concat(parts).loc[rows.index].reset_index(drop=True)[list(FEATURES)].astype(float)
 
 
 def check_days(time_utc: pd.Series) -> set[pd.Timestamp]:

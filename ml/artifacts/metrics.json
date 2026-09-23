@@ -1,12 +1,12 @@
 {
-  "model_version": "lgbm-scada-2026-01-31-v1",
+  "model_version": "ensemble-scada-2026-01-31-v2",
   "period_start_utc": "2024-02-23T00:00:00+00:00",
   "period_end_utc": "2026-01-16T23:00:00+00:00",
-  "nmae_d1_pct": 15.45,
-  "nmae_d2_pct": 17.23,
-  "nrmse_48_pct": 24.24,
-  "skill_vs_persistence_pct": 53.1,
-  "coverage_p10_p90_pct": 80.3,
+  "nmae_d1_pct": 15.49,
+  "nmae_d2_pct": 17.27,
+  "nrmse_48_pct": 24.23,
+  "skill_vs_persistence_pct": 53.0,
+  "coverage_p10_p90_pct": 80.4,
   "baselines": [
     {
       "name": "Персистентность (факт в момент выпуска)",
@@ -24,1733 +24,1733 @@
   "by_day": [
     {
       "issue_time_utc": "2024-02-21T02:00:00+00:00",
-      "nmae_pct": 39.61,
-      "bias_pct": -39.61
+      "nmae_pct": 39.4,
+      "bias_pct": -39.4
     },
     {
       "issue_time_utc": "2024-02-22T02:00:00+00:00",
-      "nmae_pct": 32.25,
-      "bias_pct": -22.87
+      "nmae_pct": 32.36,
+      "bias_pct": -22.47
     },
     {
       "issue_time_utc": "2024-02-23T02:00:00+00:00",
-      "nmae_pct": 26.34,
-      "bias_pct": -22.78
+      "nmae_pct": 26.1,
+      "bias_pct": -22.26
     },
     {
       "issue_time_utc": "2024-02-24T02:00:00+00:00",
-      "nmae_pct": 0.01,
-      "bias_pct": 0.01
+      "nmae_pct": 0.21,
+      "bias_pct": -0.13
     },
     {
       "issue_time_utc": "2024-02-25T02:00:00+00:00",
-      "nmae_pct": 5.72,
-      "bias_pct": -5.66
+      "nmae_pct": 5.55,
+      "bias_pct": -5.4
     },
     {
       "issue_time_utc": "2024-02-26T02:00:00+00:00",
-      "nmae_pct": 6.37,
-      "bias_pct": -5.76
+      "nmae_pct": 6.16,
+      "bias_pct": -5.35
     },
     {
       "issue_time_utc": "2024-02-27T02:00:00+00:00",
-      "nmae_pct": 37.14,
-      "bias_pct": 37.14
+      "nmae_pct": 37.0,
+      "bias_pct": 37.0
     },
     {
       "issue_time_utc": "2024-02-28T02:00:00+00:00",
-      "nmae_pct": 20.14,
-      "bias_pct": -15.35
+      "nmae_pct": 20.36,
+      "bias_pct": -15.13
     },
     {
       "issue_time_utc": "2024-02-29T02:00:00+00:00",
-      "nmae_pct": 25.64,
-      "bias_pct": -24.67
+      "nmae_pct": 25.87,
+      "bias_pct": -24.64
     },
     {
       "issue_time_utc": "2024-03-05T02:00:00+00:00",
-      "nmae_pct": 1.82,
-      "bias_pct": -1.78
+      "nmae_pct": 1.64,
+      "bias_pct": -1.61
     },
     {
       "issue_time_utc": "2024-03-06T02:00:00+00:00",
-      "nmae_pct": 20.41,
-      "bias_pct": -20.4
+      "nmae_pct": 20.27,
+      "bias_pct": -20.25
     },
     {
       "issue_time_utc": "2024-03-07T02:00:00+00:00",
-      "nmae_pct": 21.82,
-      "bias_pct": -21.81
+      "nmae_pct": 21.58,
+      "bias_pct": -21.55
     },
     {
       "issue_time_utc": "2024-03-10T02:00:00+00:00",
-      "nmae_pct": 12.99,
-      "bias_pct": -11.92
+      "nmae_pct": 13.23,
+      "bias_pct": -12.55
     },
     {
       "issue_time_utc": "2024-03-11T02:00:00+00:00",
-      "nmae_pct": 24.46,
-      "bias_pct": 1.15
+      "nmae_pct": 24.43,
+      "bias_pct": 0.62
     },
     {
       "issue_time_utc": "2024-03-12T02:00:00+00:00",
-      "nmae_pct": 21.33,
-      "bias_pct": -5.65
+      "nmae_pct": 21.41,
+      "bias_pct": -5.81
     },
     {
       "issue_time_utc": "2024-03-14T02:00:00+00:00",
-      "nmae_pct": 15.39,
-      "bias_pct": -15.39
+      "nmae_pct": 14.87,
+      "bias_pct": -14.87
     },
     {
       "issue_time_utc": "2024-03-15T02:00:00+00:00",
-      "nmae_pct": 9.05,
-      "bias_pct": -8.92
+      "nmae_pct": 9.06,
+      "bias_pct": -8.82
     },
     {
       "issue_time_utc": "2024-03-16T02:00:00+00:00",
-      "nmae_pct": 8.99,
-      "bias_pct": -8.93
+      "nmae_pct": 9.1,
+      "bias_pct": -8.97
     },
     {
       "issue_time_utc": "2024-03-17T02:00:00+00:00",
-      "nmae_pct": 11.59,
-      "bias_pct": -11.56
+      "nmae_pct": 11.66,
+      "bias_pct": -11.58
     },
     {
       "issue_time_utc": "2024-03-18T02:00:00+00:00",
-      "nmae_pct": 11.1,
-      "bias_pct": 7.47
+      "nmae_pct": 11.13,
+      "bias_pct": 7.71
     },
     {
       "issue_time_utc": "2024-03-19T02:00:00+00:00",
-      "nmae_pct": 6.65,
-      "bias_pct": 2.97
+      "nmae_pct": 6.71,
+      "bias_pct": 3.17
     },
     {
       "issue_time_utc": "2024-03-25T02:00:00+00:00",
-      "nmae_pct": 34.58,
-      "bias_pct": 34.58
+      "nmae_pct": 34.46,
+      "bias_pct": 34.46
     },
     {
       "issue_time_utc": "2024-03-26T02:00:00+00:00",
-      "nmae_pct": 16.95,
-      "bias_pct": -5.97
+      "nmae_pct": 17.11,
+      "bias_pct": -5.86
     },
     {
       "issue_time_utc": "2024-03-27T02:00:00+00:00",
-      "nmae_pct": 18.2,
-      "bias_pct": -17.02
+      "nmae_pct": 18.26,
+      "bias_pct": -16.76
     },
     {
       "issue_time_utc": "2024-03-29T02:00:00+00:00",
-      "nmae_pct": 1.11,
-      "bias_pct": -1.11
+      "nmae_pct": 1.44,
+      "bias_pct": -1.44
     },
     {
       "issue_time_utc": "2024-03-30T02:00:00+00:00",
-      "nmae_pct": 9.42,
-      "bias_pct": -4.34
+      "nmae_pct": 9.68,
+      "bias_pct": -4.48
     },
     {
       "issue_time_utc": "2024-03-31T02:00:00+00:00",
-      "nmae_pct": 16.91,
-      "bias_pct": -13.84
+      "nmae_pct": 17.29,
+      "bias_pct": -14.19
     },
     {
       "issue_time_utc": "2024-04-01T02:00:00+00:00",
-      "nmae_pct": 13.78,
-      "bias_pct": -11.74
+      "nmae_pct": 14.13,
+      "bias_pct": -11.8
     },
     {
       "issue_time_utc": "2024-04-02T02:00:00+00:00",
-      "nmae_pct": 8.31,
-      "bias_pct": -7.34
+      "nmae_pct": 8.48,
+      "bias_pct": -7.33
     },
     {
       "issue_time_utc": "2024-04-04T02:00:00+00:00",
-      "nmae_pct": 52.52,
-      "bias_pct": 52.52
+      "nmae_pct": 52.31,
+      "bias_pct": 52.31
     },
     {
       "issue_time_utc": "2024-04-05T02:00:00+00:00",
-      "nmae_pct": 32.31,
-      "bias_pct": 14.91
+      "nmae_pct": 32.18,
+      "bias_pct": 14.61
     },
     {
       "issue_time_utc": "2024-04-06T02:00:00+00:00",
-      "nmae_pct": 21.93,
-      "bias_pct": 3.29
+      "nmae_pct": 21.99,
+      "bias_pct": 3.0
     },
     {
       "issue_time_utc": "2024-04-07T02:00:00+00:00",
-      "nmae_pct": 17.22,
-      "bias_pct": 2.94
+      "nmae_pct": 17.28,
+      "bias_pct": 2.41
     },
     {
       "issue_time_utc": "2024-04-08T02:00:00+00:00",
-      "nmae_pct": 5.03,
-      "bias_pct": 5.03
+      "nmae_pct": 5.23,
+      "bias_pct": 5.23
     },
     {
       "issue_time_utc": "2024-04-09T02:00:00+00:00",
-      "nmae_pct": 3.25,
-      "bias_pct": 1.89
+      "nmae_pct": 3.36,
+      "bias_pct": 1.98
     },
     {
       "issue_time_utc": "2024-04-10T02:00:00+00:00",
-      "nmae_pct": 1.7,
-      "bias_pct": 0.1
+      "nmae_pct": 1.81,
+      "bias_pct": 0.15
     },
     {
       "issue_time_utc": "2024-04-15T02:00:00+00:00",
-      "nmae_pct": 8.07,
-      "bias_pct": 0.21
+      "nmae_pct": 7.88,
+      "bias_pct": -0.18
     },
     {
       "issue_time_utc": "2024-04-16T02:00:00+00:00",
-      "nmae_pct": 6.77,
-      "bias_pct": 4.99
+      "nmae_pct": 6.85,
+      "bias_pct": 5.02
     },
     {
       "issue_time_utc": "2024-04-17T02:00:00+00:00",
-      "nmae_pct": 7.54,
-      "bias_pct": -0.14
+      "nmae_pct": 7.58,
+      "bias_pct": -0.09
     },
     {
       "issue_time_utc": "2024-04-18T02:00:00+00:00",
-      "nmae_pct": 11.21,
-      "bias_pct": 4.43
+      "nmae_pct": 11.07,
+      "bias_pct": 4.27
     },
     {
       "issue_time_utc": "2024-04-19T02:00:00+00:00",
-      "nmae_pct": 32.6,
-      "bias_pct": -19.57
+      "nmae_pct": 32.56,
+      "bias_pct": -19.53
     },
     {
       "issue_time_utc": "2024-04-20T02:00:00+00:00",
-      "nmae_pct": 28.62,
-      "bias_pct": -19.7
+      "nmae_pct": 28.71,
+      "bias_pct": -19.77
     },
     {
       "issue_time_utc": "2024-04-21T02:00:00+00:00",
-      "nmae_pct": 9.63,
-      "bias_pct": -8.66
+      "nmae_pct": 9.69,
+      "bias_pct": -8.83
     },
     {
       "issue_time_utc": "2024-04-22T02:00:00+00:00",
-      "nmae_pct": 13.53,
-      "bias_pct": -10.49
+      "nmae_pct": 13.78,
+      "bias_pct": -10.96
     },
     {
       "issue_time_utc": "2024-04-23T02:00:00+00:00",
-      "nmae_pct": 10.93,
-      "bias_pct": -7.77
+      "nmae_pct": 11.29,
+      "bias_pct": -8.21
     },
     {
       "issue_time_utc": "2024-04-24T02:00:00+00:00",
-      "nmae_pct": 20.02,
-      "bias_pct": -17.64
+      "nmae_pct": 20.16,
+      "bias_pct": -17.87
     },
     {
       "issue_time_utc": "2024-04-25T02:00:00+00:00",
-      "nmae_pct": 30.9,
-      "bias_pct": -15.57
+      "nmae_pct": 30.75,
+      "bias_pct": -15.96
     },
     {
       "issue_time_utc": "2024-04-30T02:00:00+00:00",
-      "nmae_pct": 0.35,
-      "bias_pct": -0.27
+      "nmae_pct": 0.42,
+      "bias_pct": -0.08
     },
     {
       "issue_time_utc": "2024-05-01T02:00:00+00:00",
       "nmae_pct": 31.51,
-      "bias_pct": -30.33
+      "bias_pct": -30.23
     },
     {
       "issue_time_utc": "2024-05-02T02:00:00+00:00",
-      "nmae_pct": 28.28,
-      "bias_pct": -20.4
-    },
-    {
-      "issue_time_utc": "2024-05-03T02:00:00+00:00",
-      "nmae_pct": 3.13,
-      "bias_pct": 3.13
-    },
-    {
-      "issue_time_utc": "2024-05-04T02:00:00+00:00",
-      "nmae_pct": 39.28,
-      "bias_pct": 14.04
-    },
-    {
-      "issue_time_utc": "2024-05-05T02:00:00+00:00",
-      "nmae_pct": 16.95,
-      "bias_pct": 8.27
-    },
-    {
-      "issue_time_utc": "2024-05-06T02:00:00+00:00",
-      "nmae_pct": 8.62,
-      "bias_pct": 0.92
-    },
-    {
-      "issue_time_utc": "2024-05-07T02:00:00+00:00",
-      "nmae_pct": 9.05,
-      "bias_pct": -2.94
-    },
-    {
-      "issue_time_utc": "2024-05-10T02:00:00+00:00",
-      "nmae_pct": 13.22,
-      "bias_pct": 8.68
-    },
-    {
-      "issue_time_utc": "2024-05-11T02:00:00+00:00",
-      "nmae_pct": 22.42,
-      "bias_pct": -11.52
-    },
-    {
-      "issue_time_utc": "2024-05-12T02:00:00+00:00",
-      "nmae_pct": 12.52,
-      "bias_pct": -8.19
-    },
-    {
-      "issue_time_utc": "2024-05-13T02:00:00+00:00",
-      "nmae_pct": 8.59,
-      "bias_pct": -6.67
-    },
-    {
-      "issue_time_utc": "2024-05-14T02:00:00+00:00",
-      "nmae_pct": 14.66,
-      "bias_pct": -14.38
-    },
-    {
-      "issue_time_utc": "2024-05-15T02:00:00+00:00",
-      "nmae_pct": 18.23,
-      "bias_pct": 3.44
-    },
-    {
-      "issue_time_utc": "2024-05-16T02:00:00+00:00",
-      "nmae_pct": 19.99,
-      "bias_pct": 4.66
-    },
-    {
-      "issue_time_utc": "2024-05-17T02:00:00+00:00",
-      "nmae_pct": 14.36,
-      "bias_pct": 3.54
-    },
-    {
-      "issue_time_utc": "2024-05-21T02:00:00+00:00",
-      "nmae_pct": 50.83,
-      "bias_pct": -50.83
-    },
-    {
-      "issue_time_utc": "2024-05-22T02:00:00+00:00",
-      "nmae_pct": 38.32,
-      "bias_pct": -19.41
-    },
-    {
-      "issue_time_utc": "2024-05-23T02:00:00+00:00",
-      "nmae_pct": 33.62,
-      "bias_pct": -16.71
-    },
-    {
-      "issue_time_utc": "2024-05-24T02:00:00+00:00",
-      "nmae_pct": 27.03,
-      "bias_pct": -23.2
-    },
-    {
-      "issue_time_utc": "2024-05-25T02:00:00+00:00",
-      "nmae_pct": 29.47,
-      "bias_pct": -26.68
-    },
-    {
-      "issue_time_utc": "2024-05-26T02:00:00+00:00",
-      "nmae_pct": 20.82,
-      "bias_pct": -17.99
-    },
-    {
-      "issue_time_utc": "2024-05-27T02:00:00+00:00",
-      "nmae_pct": 19.26,
-      "bias_pct": -12.47
-    },
-    {
-      "issue_time_utc": "2024-05-31T02:00:00+00:00",
-      "nmae_pct": 2.56,
-      "bias_pct": 1.61
-    },
-    {
-      "issue_time_utc": "2024-06-01T02:00:00+00:00",
-      "nmae_pct": 16.39,
-      "bias_pct": -5.63
-    },
-    {
-      "issue_time_utc": "2024-06-02T02:00:00+00:00",
-      "nmae_pct": 24.21,
-      "bias_pct": -6.85
-    },
-    {
-      "issue_time_utc": "2024-06-03T02:00:00+00:00",
-      "nmae_pct": 17.96,
-      "bias_pct": -7.88
-    },
-    {
-      "issue_time_utc": "2024-06-04T02:00:00+00:00",
-      "nmae_pct": 6.38,
-      "bias_pct": -0.36
-    },
-    {
-      "issue_time_utc": "2024-06-08T02:00:00+00:00",
-      "nmae_pct": 0.75,
-      "bias_pct": 0.75
-    },
-    {
-      "issue_time_utc": "2024-06-09T02:00:00+00:00",
-      "nmae_pct": 13.31,
-      "bias_pct": 6.45
-    },
-    {
-      "issue_time_utc": "2024-06-10T02:00:00+00:00",
-      "nmae_pct": 14.89,
-      "bias_pct": 4.54
-    },
-    {
-      "issue_time_utc": "2024-06-11T02:00:00+00:00",
-      "nmae_pct": 1.77,
-      "bias_pct": -0.65
-    },
-    {
-      "issue_time_utc": "2024-06-12T02:00:00+00:00",
-      "nmae_pct": 9.5,
-      "bias_pct": -8.63
-    },
-    {
-      "issue_time_utc": "2024-06-13T02:00:00+00:00",
-      "nmae_pct": 13.14,
-      "bias_pct": -7.76
-    },
-    {
-      "issue_time_utc": "2024-06-23T02:00:00+00:00",
-      "nmae_pct": 11.08,
-      "bias_pct": 2.22
-    },
-    {
-      "issue_time_utc": "2024-06-24T02:00:00+00:00",
-      "nmae_pct": 19.34,
-      "bias_pct": -18.78
-    },
-    {
-      "issue_time_utc": "2024-06-25T02:00:00+00:00",
-      "nmae_pct": 15.1,
-      "bias_pct": -14.54
-    },
-    {
-      "issue_time_utc": "2024-06-28T02:00:00+00:00",
-      "nmae_pct": 23.1,
-      "bias_pct": 6.52
-    },
-    {
-      "issue_time_utc": "2024-06-29T02:00:00+00:00",
-      "nmae_pct": 29.47,
-      "bias_pct": -19.47
-    },
-    {
-      "issue_time_utc": "2024-06-30T02:00:00+00:00",
-      "nmae_pct": 25.65,
-      "bias_pct": -23.78
-    },
-    {
-      "issue_time_utc": "2024-07-02T02:00:00+00:00",
-      "nmae_pct": 27.01,
-      "bias_pct": -27.01
-    },
-    {
-      "issue_time_utc": "2024-07-03T02:00:00+00:00",
-      "nmae_pct": 10.29,
-      "bias_pct": -2.83
-    },
-    {
-      "issue_time_utc": "2024-07-04T02:00:00+00:00",
-      "nmae_pct": 17.74,
-      "bias_pct": 10.7
-    },
-    {
-      "issue_time_utc": "2024-07-07T02:00:00+00:00",
-      "nmae_pct": 16.97,
-      "bias_pct": -15.63
-    },
-    {
-      "issue_time_utc": "2024-07-08T02:00:00+00:00",
-      "nmae_pct": 10.25,
-      "bias_pct": -1.13
-    },
-    {
-      "issue_time_utc": "2024-07-09T02:00:00+00:00",
-      "nmae_pct": 11.22,
-      "bias_pct": 1.46
-    },
-    {
-      "issue_time_utc": "2024-07-10T02:00:00+00:00",
-      "nmae_pct": 5.64,
-      "bias_pct": -0.21
-    },
-    {
-      "issue_time_utc": "2024-07-11T02:00:00+00:00",
-      "nmae_pct": 6.64,
-      "bias_pct": -0.9
-    },
-    {
-      "issue_time_utc": "2024-07-15T02:00:00+00:00",
-      "nmae_pct": 42.95,
-      "bias_pct": -42.95
-    },
-    {
-      "issue_time_utc": "2024-07-16T02:00:00+00:00",
-      "nmae_pct": 34.94,
-      "bias_pct": -18.52
-    },
-    {
-      "issue_time_utc": "2024-07-17T02:00:00+00:00",
-      "nmae_pct": 32.49,
-      "bias_pct": -9.56
-    },
-    {
-      "issue_time_utc": "2024-07-29T02:00:00+00:00",
-      "nmae_pct": 14.81,
-      "bias_pct": 14.81
-    },
-    {
-      "issue_time_utc": "2024-07-30T02:00:00+00:00",
-      "nmae_pct": 13.56,
-      "bias_pct": -6.09
-    },
-    {
-      "issue_time_utc": "2024-07-31T02:00:00+00:00",
-      "nmae_pct": 12.47,
-      "bias_pct": -9.47
-    },
-    {
-      "issue_time_utc": "2024-08-01T02:00:00+00:00",
-      "nmae_pct": 34.85,
-      "bias_pct": -34.85
-    },
-    {
-      "issue_time_utc": "2024-08-02T02:00:00+00:00",
-      "nmae_pct": 8.63,
-      "bias_pct": 1.71
-    },
-    {
-      "issue_time_utc": "2024-08-03T02:00:00+00:00",
-      "nmae_pct": 8.0,
-      "bias_pct": 3.04
-    },
-    {
-      "issue_time_utc": "2024-08-04T02:00:00+00:00",
-      "nmae_pct": 9.44,
-      "bias_pct": 1.9
-    },
-    {
-      "issue_time_utc": "2024-08-05T02:00:00+00:00",
-      "nmae_pct": 24.94,
-      "bias_pct": 0.91
-    },
-    {
-      "issue_time_utc": "2024-08-06T02:00:00+00:00",
-      "nmae_pct": 18.33,
-      "bias_pct": 5.73
-    },
-    {
-      "issue_time_utc": "2024-08-09T02:00:00+00:00",
-      "nmae_pct": 8.27,
-      "bias_pct": 1.67
-    },
-    {
-      "issue_time_utc": "2024-08-10T02:00:00+00:00",
-      "nmae_pct": 21.38,
-      "bias_pct": 0.87
-    },
-    {
-      "issue_time_utc": "2024-08-11T02:00:00+00:00",
-      "nmae_pct": 23.97,
-      "bias_pct": 0.29
-    },
-    {
-      "issue_time_utc": "2024-08-12T02:00:00+00:00",
-      "nmae_pct": 14.51,
-      "bias_pct": 10.18
-    },
-    {
-      "issue_time_utc": "2024-08-13T02:00:00+00:00",
-      "nmae_pct": 13.94,
-      "bias_pct": 3.71
-    },
-    {
-      "issue_time_utc": "2024-08-14T02:00:00+00:00",
-      "nmae_pct": 9.71,
-      "bias_pct": -1.24
-    },
-    {
-      "issue_time_utc": "2024-08-23T02:00:00+00:00",
-      "nmae_pct": 16.03,
-      "bias_pct": -15.29
-    },
-    {
-      "issue_time_utc": "2024-08-24T02:00:00+00:00",
-      "nmae_pct": 14.2,
-      "bias_pct": -12.23
-    },
-    {
-      "issue_time_utc": "2024-08-25T02:00:00+00:00",
-      "nmae_pct": 11.4,
-      "bias_pct": -8.43
-    },
-    {
-      "issue_time_utc": "2024-08-31T02:00:00+00:00",
-      "nmae_pct": 67.94,
-      "bias_pct": -67.94
-    },
-    {
-      "issue_time_utc": "2024-09-01T02:00:00+00:00",
-      "nmae_pct": 21.55,
-      "bias_pct": -21.17
-    },
-    {
-      "issue_time_utc": "2024-09-02T02:00:00+00:00",
-      "nmae_pct": 17.21,
-      "bias_pct": -16.7
-    },
-    {
-      "issue_time_utc": "2024-09-06T02:00:00+00:00",
-      "nmae_pct": 27.8,
-      "bias_pct": -27.8
-    },
-    {
-      "issue_time_utc": "2024-09-07T02:00:00+00:00",
-      "nmae_pct": 13.24,
-      "bias_pct": -7.48
-    },
-    {
-      "issue_time_utc": "2024-09-08T02:00:00+00:00",
-      "nmae_pct": 12.98,
-      "bias_pct": -9.48
-    },
-    {
-      "issue_time_utc": "2024-09-09T02:00:00+00:00",
-      "nmae_pct": 12.64,
-      "bias_pct": 1.45
-    },
-    {
-      "issue_time_utc": "2024-09-10T02:00:00+00:00",
-      "nmae_pct": 10.75,
-      "bias_pct": 9.89
-    },
-    {
-      "issue_time_utc": "2024-09-11T02:00:00+00:00",
-      "nmae_pct": 12.21,
-      "bias_pct": -10.32
-    },
-    {
-      "issue_time_utc": "2024-09-12T02:00:00+00:00",
-      "nmae_pct": 9.33,
-      "bias_pct": -5.46
-    },
-    {
-      "issue_time_utc": "2024-09-13T02:00:00+00:00",
-      "nmae_pct": 10.27,
-      "bias_pct": -7.04
-    },
-    {
-      "issue_time_utc": "2024-09-15T02:00:00+00:00",
-      "nmae_pct": 11.96,
-      "bias_pct": -11.96
-    },
-    {
-      "issue_time_utc": "2024-09-16T02:00:00+00:00",
-      "nmae_pct": 8.24,
-      "bias_pct": -5.74
-    },
-    {
-      "issue_time_utc": "2024-09-17T02:00:00+00:00",
-      "nmae_pct": 8.5,
-      "bias_pct": 8.27
-    },
-    {
-      "issue_time_utc": "2024-09-18T02:00:00+00:00",
-      "nmae_pct": 3.87,
-      "bias_pct": -3.18
-    },
-    {
-      "issue_time_utc": "2024-09-19T02:00:00+00:00",
-      "nmae_pct": 22.97,
-      "bias_pct": -15.32
-    },
-    {
-      "issue_time_utc": "2024-09-20T02:00:00+00:00",
-      "nmae_pct": 17.47,
-      "bias_pct": -6.87
-    },
-    {
-      "issue_time_utc": "2024-09-21T02:00:00+00:00",
-      "nmae_pct": 14.77,
-      "bias_pct": -8.52
-    },
-    {
-      "issue_time_utc": "2024-09-22T02:00:00+00:00",
-      "nmae_pct": 19.87,
-      "bias_pct": -18.2
-    },
-    {
-      "issue_time_utc": "2024-10-15T02:00:00+00:00",
-      "nmae_pct": 83.81,
-      "bias_pct": -83.81
-    },
-    {
-      "issue_time_utc": "2024-10-16T02:00:00+00:00",
-      "nmae_pct": 20.6,
-      "bias_pct": -18.47
-    },
-    {
-      "issue_time_utc": "2024-10-17T02:00:00+00:00",
-      "nmae_pct": 17.06,
-      "bias_pct": -7.95
-    },
-    {
-      "issue_time_utc": "2024-10-21T02:00:00+00:00",
-      "nmae_pct": 11.78,
-      "bias_pct": -11.78
-    },
-    {
-      "issue_time_utc": "2024-10-22T02:00:00+00:00",
-      "nmae_pct": 15.46,
-      "bias_pct": 5.74
-    },
-    {
-      "issue_time_utc": "2024-10-23T02:00:00+00:00",
-      "nmae_pct": 21.8,
-      "bias_pct": -3.97
-    },
-    {
-      "issue_time_utc": "2024-10-24T02:00:00+00:00",
-      "nmae_pct": 15.88,
-      "bias_pct": 4.14
-    },
-    {
-      "issue_time_utc": "2024-10-25T02:00:00+00:00",
-      "nmae_pct": 11.83,
-      "bias_pct": 1.93
-    },
-    {
-      "issue_time_utc": "2024-10-26T02:00:00+00:00",
-      "nmae_pct": 12.86,
-      "bias_pct": 6.66
-    },
-    {
-      "issue_time_utc": "2024-10-31T02:00:00+00:00",
-      "nmae_pct": 13.0,
-      "bias_pct": 13.0
-    },
-    {
-      "issue_time_utc": "2024-11-01T02:00:00+00:00",
-      "nmae_pct": 22.03,
-      "bias_pct": 1.06
-    },
-    {
-      "issue_time_utc": "2024-11-02T02:00:00+00:00",
-      "nmae_pct": 19.9,
-      "bias_pct": -4.45
-    },
-    {
-      "issue_time_utc": "2024-11-05T02:00:00+00:00",
-      "nmae_pct": 0.27,
-      "bias_pct": 0.03
-    },
-    {
-      "issue_time_utc": "2024-11-06T02:00:00+00:00",
-      "nmae_pct": 18.36,
-      "bias_pct": 12.77
-    },
-    {
-      "issue_time_utc": "2024-11-07T02:00:00+00:00",
-      "nmae_pct": 15.05,
-      "bias_pct": 8.89
-    },
-    {
-      "issue_time_utc": "2024-11-16T02:00:00+00:00",
-      "nmae_pct": 9.79,
-      "bias_pct": 9.29
-    },
-    {
-      "issue_time_utc": "2024-11-17T02:00:00+00:00",
-      "nmae_pct": 31.46,
-      "bias_pct": -24.51
-    },
-    {
-      "issue_time_utc": "2024-11-18T02:00:00+00:00",
-      "nmae_pct": 26.97,
+      "nmae_pct": 28.25,
       "bias_pct": -20.44
     },
     {
-      "issue_time_utc": "2024-11-19T02:00:00+00:00",
-      "nmae_pct": 22.47,
-      "bias_pct": -17.96
-    },
-    {
-      "issue_time_utc": "2024-11-20T02:00:00+00:00",
-      "nmae_pct": 18.81,
-      "bias_pct": -8.83
-    },
-    {
-      "issue_time_utc": "2024-11-21T02:00:00+00:00",
-      "nmae_pct": 41.13,
-      "bias_pct": -41.13
-    },
-    {
-      "issue_time_utc": "2024-11-22T02:00:00+00:00",
-      "nmae_pct": 18.67,
-      "bias_pct": -17.42
-    },
-    {
-      "issue_time_utc": "2024-11-23T02:00:00+00:00",
-      "nmae_pct": 14.24,
-      "bias_pct": -12.62
-    },
-    {
-      "issue_time_utc": "2024-11-29T02:00:00+00:00",
-      "nmae_pct": 7.31,
-      "bias_pct": -7.31
-    },
-    {
-      "issue_time_utc": "2024-11-30T02:00:00+00:00",
-      "nmae_pct": 25.05,
-      "bias_pct": -24.63
-    },
-    {
-      "issue_time_utc": "2024-12-01T02:00:00+00:00",
-      "nmae_pct": 22.31,
-      "bias_pct": -22.23
-    },
-    {
-      "issue_time_utc": "2024-12-02T02:00:00+00:00",
-      "nmae_pct": 20.97,
-      "bias_pct": -20.97
-    },
-    {
-      "issue_time_utc": "2024-12-03T02:00:00+00:00",
-      "nmae_pct": 24.42,
-      "bias_pct": -20.8
-    },
-    {
-      "issue_time_utc": "2024-12-04T02:00:00+00:00",
-      "nmae_pct": 26.0,
-      "bias_pct": -23.58
-    },
-    {
-      "issue_time_utc": "2024-12-12T02:00:00+00:00",
-      "nmae_pct": 1.45,
-      "bias_pct": -1.45
-    },
-    {
-      "issue_time_utc": "2024-12-13T02:00:00+00:00",
-      "nmae_pct": 7.72,
-      "bias_pct": -1.4
-    },
-    {
-      "issue_time_utc": "2024-12-14T02:00:00+00:00",
-      "nmae_pct": 13.87,
-      "bias_pct": -3.69
-    },
-    {
-      "issue_time_utc": "2024-12-15T02:00:00+00:00",
-      "nmae_pct": 5.38,
-      "bias_pct": -4.33
-    },
-    {
-      "issue_time_utc": "2024-12-16T02:00:00+00:00",
-      "nmae_pct": 23.19,
-      "bias_pct": -14.87
-    },
-    {
-      "issue_time_utc": "2024-12-17T02:00:00+00:00",
-      "nmae_pct": 25.23,
-      "bias_pct": -16.37
-    },
-    {
-      "issue_time_utc": "2024-12-20T02:00:00+00:00",
-      "nmae_pct": 30.68,
-      "bias_pct": -30.68
-    },
-    {
-      "issue_time_utc": "2024-12-21T02:00:00+00:00",
-      "nmae_pct": 25.79,
-      "bias_pct": -23.5
-    },
-    {
-      "issue_time_utc": "2024-12-22T02:00:00+00:00",
-      "nmae_pct": 20.63,
-      "bias_pct": -20.6
-    },
-    {
-      "issue_time_utc": "2024-12-23T02:00:00+00:00",
-      "nmae_pct": 3.82,
-      "bias_pct": -2.36
-    },
-    {
-      "issue_time_utc": "2024-12-24T02:00:00+00:00",
-      "nmae_pct": 5.09,
-      "bias_pct": 4.02
-    },
-    {
-      "issue_time_utc": "2024-12-25T02:00:00+00:00",
-      "nmae_pct": 13.88,
-      "bias_pct": -7.62
-    },
-    {
-      "issue_time_utc": "2024-12-26T02:00:00+00:00",
-      "nmae_pct": 13.97,
-      "bias_pct": -9.5
-    },
-    {
-      "issue_time_utc": "2024-12-31T02:00:00+00:00",
-      "nmae_pct": 0.96,
-      "bias_pct": 0.96
-    },
-    {
-      "issue_time_utc": "2025-01-01T02:00:00+00:00",
-      "nmae_pct": 1.97,
-      "bias_pct": -0.84
-    },
-    {
-      "issue_time_utc": "2025-01-02T02:00:00+00:00",
-      "nmae_pct": 1.86,
-      "bias_pct": -1.54
-    },
-    {
-      "issue_time_utc": "2025-01-06T02:00:00+00:00",
-      "nmae_pct": 53.01,
-      "bias_pct": -53.01
-    },
-    {
-      "issue_time_utc": "2025-01-07T02:00:00+00:00",
-      "nmae_pct": 21.11,
-      "bias_pct": -1.69
-    },
-    {
-      "issue_time_utc": "2025-01-08T02:00:00+00:00",
-      "nmae_pct": 18.63,
-      "bias_pct": -4.15
-    },
-    {
-      "issue_time_utc": "2025-01-10T02:00:00+00:00",
-      "nmae_pct": 17.4,
-      "bias_pct": 17.4
-    },
-    {
-      "issue_time_utc": "2025-01-11T02:00:00+00:00",
-      "nmae_pct": 3.8,
-      "bias_pct": 1.7
-    },
-    {
-      "issue_time_utc": "2025-01-12T02:00:00+00:00",
-      "nmae_pct": 2.6,
-      "bias_pct": 1.57
-    },
-    {
-      "issue_time_utc": "2025-01-13T02:00:00+00:00",
-      "nmae_pct": 4.17,
-      "bias_pct": 4.17
-    },
-    {
-      "issue_time_utc": "2025-01-14T02:00:00+00:00",
-      "nmae_pct": 17.55,
-      "bias_pct": -12.54
-    },
-    {
-      "issue_time_utc": "2025-01-15T02:00:00+00:00",
-      "nmae_pct": 13.51,
-      "bias_pct": -11.58
-    },
-    {
-      "issue_time_utc": "2025-01-16T02:00:00+00:00",
-      "nmae_pct": 10.39,
-      "bias_pct": -5.37
-    },
-    {
-      "issue_time_utc": "2025-01-17T02:00:00+00:00",
-      "nmae_pct": 1.97,
-      "bias_pct": 1.97
-    },
-    {
-      "issue_time_utc": "2025-01-18T02:00:00+00:00",
-      "nmae_pct": 5.82,
-      "bias_pct": 5.39
-    },
-    {
-      "issue_time_utc": "2025-01-19T02:00:00+00:00",
-      "nmae_pct": 11.63,
-      "bias_pct": -2.92
-    },
-    {
-      "issue_time_utc": "2025-01-20T02:00:00+00:00",
-      "nmae_pct": 13.19,
-      "bias_pct": -9.17
-    },
-    {
-      "issue_time_utc": "2025-02-03T02:00:00+00:00",
-      "nmae_pct": 0.85,
-      "bias_pct": -0.65
-    },
-    {
-      "issue_time_utc": "2025-02-04T02:00:00+00:00",
-      "nmae_pct": 2.75,
-      "bias_pct": -1.81
-    },
-    {
-      "issue_time_utc": "2025-02-05T02:00:00+00:00",
-      "nmae_pct": 5.95,
-      "bias_pct": 1.16
-    },
-    {
-      "issue_time_utc": "2025-02-15T02:00:00+00:00",
-      "nmae_pct": 3.6,
-      "bias_pct": -3.6
-    },
-    {
-      "issue_time_utc": "2025-02-16T02:00:00+00:00",
-      "nmae_pct": 5.29,
-      "bias_pct": -0.22
-    },
-    {
-      "issue_time_utc": "2025-02-17T02:00:00+00:00",
-      "nmae_pct": 6.07,
-      "bias_pct": 0.38
-    },
-    {
-      "issue_time_utc": "2025-02-18T02:00:00+00:00",
-      "nmae_pct": 5.84,
-      "bias_pct": 4.54
-    },
-    {
-      "issue_time_utc": "2025-02-19T02:00:00+00:00",
-      "nmae_pct": 3.35,
-      "bias_pct": 2.55
-    },
-    {
-      "issue_time_utc": "2025-02-23T02:00:00+00:00",
-      "nmae_pct": 10.61,
-      "bias_pct": -10.26
-    },
-    {
-      "issue_time_utc": "2025-02-24T02:00:00+00:00",
-      "nmae_pct": 30.42,
-      "bias_pct": -21.37
-    },
-    {
-      "issue_time_utc": "2025-02-25T02:00:00+00:00",
-      "nmae_pct": 17.39,
-      "bias_pct": -8.76
-    },
-    {
-      "issue_time_utc": "2025-02-26T02:00:00+00:00",
-      "nmae_pct": 5.87,
-      "bias_pct": -3.75
-    },
-    {
-      "issue_time_utc": "2025-02-27T02:00:00+00:00",
-      "nmae_pct": 6.31,
-      "bias_pct": -5.44
-    },
-    {
-      "issue_time_utc": "2025-03-04T02:00:00+00:00",
-      "nmae_pct": 20.46,
-      "bias_pct": -20.46
-    },
-    {
-      "issue_time_utc": "2025-03-05T02:00:00+00:00",
-      "nmae_pct": 20.19,
-      "bias_pct": -19.72
-    },
-    {
-      "issue_time_utc": "2025-03-06T02:00:00+00:00",
-      "nmae_pct": 21.1,
-      "bias_pct": -19.92
-    },
-    {
-      "issue_time_utc": "2025-03-07T02:00:00+00:00",
-      "nmae_pct": 34.97,
-      "bias_pct": -34.97
-    },
-    {
-      "issue_time_utc": "2025-03-08T02:00:00+00:00",
-      "nmae_pct": 16.86,
-      "bias_pct": -11.05
-    },
-    {
-      "issue_time_utc": "2025-03-09T02:00:00+00:00",
-      "nmae_pct": 14.07,
-      "bias_pct": -6.76
-    },
-    {
-      "issue_time_utc": "2025-03-10T02:00:00+00:00",
-      "nmae_pct": 22.89,
-      "bias_pct": -20.3
-    },
-    {
-      "issue_time_utc": "2025-03-11T02:00:00+00:00",
-      "nmae_pct": 22.24,
-      "bias_pct": -21.95
-    },
-    {
-      "issue_time_utc": "2025-03-12T02:00:00+00:00",
-      "nmae_pct": 23.32,
-      "bias_pct": -23.03
-    },
-    {
-      "issue_time_utc": "2025-03-13T02:00:00+00:00",
-      "nmae_pct": 20.76,
-      "bias_pct": -19.33
-    },
-    {
-      "issue_time_utc": "2025-03-14T02:00:00+00:00",
-      "nmae_pct": 21.26,
-      "bias_pct": -21.26
-    },
-    {
-      "issue_time_utc": "2025-03-15T02:00:00+00:00",
-      "nmae_pct": 33.0,
-      "bias_pct": -33.0
-    },
-    {
-      "issue_time_utc": "2025-03-16T02:00:00+00:00",
-      "nmae_pct": 21.39,
-      "bias_pct": -17.32
-    },
-    {
-      "issue_time_utc": "2025-03-17T02:00:00+00:00",
-      "nmae_pct": 20.04,
-      "bias_pct": -14.6
-    },
-    {
-      "issue_time_utc": "2025-03-21T02:00:00+00:00",
-      "nmae_pct": 6.16,
-      "bias_pct": -4.09
-    },
-    {
-      "issue_time_utc": "2025-03-22T02:00:00+00:00",
-      "nmae_pct": 18.53,
-      "bias_pct": -10.52
-    },
-    {
-      "issue_time_utc": "2025-03-23T02:00:00+00:00",
-      "nmae_pct": 15.53,
-      "bias_pct": -7.42
-    },
-    {
-      "issue_time_utc": "2025-03-24T02:00:00+00:00",
-      "nmae_pct": 1.04,
-      "bias_pct": 0.91
-    },
-    {
-      "issue_time_utc": "2025-03-25T02:00:00+00:00",
-      "nmae_pct": 1.13,
-      "bias_pct": 1.12
-    },
-    {
-      "issue_time_utc": "2025-03-26T02:00:00+00:00",
-      "nmae_pct": 23.39,
-      "bias_pct": -23.39
-    },
-    {
-      "issue_time_utc": "2025-03-27T02:00:00+00:00",
-      "nmae_pct": 21.03,
-      "bias_pct": 11.59
-    },
-    {
-      "issue_time_utc": "2025-03-28T02:00:00+00:00",
-      "nmae_pct": 9.88,
-      "bias_pct": 7.2
-    },
-    {
-      "issue_time_utc": "2025-03-29T02:00:00+00:00",
-      "nmae_pct": 2.37,
-      "bias_pct": -2.02
-    },
-    {
-      "issue_time_utc": "2025-04-02T02:00:00+00:00",
-      "nmae_pct": 29.83,
-      "bias_pct": -29.83
-    },
-    {
-      "issue_time_utc": "2025-04-03T02:00:00+00:00",
-      "nmae_pct": 17.02,
-      "bias_pct": -9.62
-    },
-    {
-      "issue_time_utc": "2025-04-04T02:00:00+00:00",
-      "nmae_pct": 11.64,
-      "bias_pct": -5.45
-    },
-    {
-      "issue_time_utc": "2025-04-05T02:00:00+00:00",
-      "nmae_pct": 17.61,
-      "bias_pct": -2.09
-    },
-    {
-      "issue_time_utc": "2025-04-06T02:00:00+00:00",
-      "nmae_pct": 17.98,
-      "bias_pct": -14.84
-    },
-    {
-      "issue_time_utc": "2025-04-07T02:00:00+00:00",
-      "nmae_pct": 20.28,
-      "bias_pct": -19.68
-    },
-    {
-      "issue_time_utc": "2025-04-11T02:00:00+00:00",
-      "nmae_pct": 24.48,
-      "bias_pct": 24.48
-    },
-    {
-      "issue_time_utc": "2025-04-12T02:00:00+00:00",
-      "nmae_pct": 28.4,
-      "bias_pct": 12.67
-    },
-    {
-      "issue_time_utc": "2025-04-13T02:00:00+00:00",
-      "nmae_pct": 24.44,
-      "bias_pct": 10.25
-    },
-    {
-      "issue_time_utc": "2025-04-21T02:00:00+00:00",
-      "nmae_pct": 39.09,
-      "bias_pct": -39.09
-    },
-    {
-      "issue_time_utc": "2025-04-22T02:00:00+00:00",
-      "nmae_pct": 23.37,
-      "bias_pct": 14.62
-    },
-    {
-      "issue_time_utc": "2025-04-23T02:00:00+00:00",
-      "nmae_pct": 27.21,
-      "bias_pct": 25.13
-    },
-    {
-      "issue_time_utc": "2025-04-26T02:00:00+00:00",
-      "nmae_pct": 29.84,
-      "bias_pct": -26.4
-    },
-    {
-      "issue_time_utc": "2025-04-27T02:00:00+00:00",
-      "nmae_pct": 18.92,
-      "bias_pct": -14.97
-    },
-    {
-      "issue_time_utc": "2025-04-28T02:00:00+00:00",
-      "nmae_pct": 14.64,
-      "bias_pct": -10.28
-    },
-    {
-      "issue_time_utc": "2025-04-29T02:00:00+00:00",
-      "nmae_pct": 10.94,
-      "bias_pct": 3.95
-    },
-    {
-      "issue_time_utc": "2025-04-30T02:00:00+00:00",
-      "nmae_pct": 19.98,
-      "bias_pct": 12.74
-    },
-    {
-      "issue_time_utc": "2025-05-01T02:00:00+00:00",
-      "nmae_pct": 17.64,
-      "bias_pct": 16.43
-    },
-    {
-      "issue_time_utc": "2025-05-03T02:00:00+00:00",
-      "nmae_pct": 1.21,
-      "bias_pct": 1.21
-    },
-    {
-      "issue_time_utc": "2025-05-04T02:00:00+00:00",
-      "nmae_pct": 34.43,
-      "bias_pct": -21.86
-    },
-    {
-      "issue_time_utc": "2025-05-05T02:00:00+00:00",
-      "nmae_pct": 29.97,
-      "bias_pct": -19.3
-    },
-    {
-      "issue_time_utc": "2025-05-06T02:00:00+00:00",
-      "nmae_pct": 28.25,
-      "bias_pct": -24.96
-    },
-    {
-      "issue_time_utc": "2025-05-07T02:00:00+00:00",
-      "nmae_pct": 15.81,
-      "bias_pct": -2.96
-    },
-    {
-      "issue_time_utc": "2025-05-08T02:00:00+00:00",
-      "nmae_pct": 34.81,
-      "bias_pct": 19.87
-    },
-    {
-      "issue_time_utc": "2025-05-09T02:00:00+00:00",
-      "nmae_pct": 39.07,
-      "bias_pct": 21.21
-    },
-    {
-      "issue_time_utc": "2025-05-15T02:00:00+00:00",
-      "nmae_pct": 26.8,
-      "bias_pct": -11.29
-    },
-    {
-      "issue_time_utc": "2025-05-16T02:00:00+00:00",
-      "nmae_pct": 21.34,
-      "bias_pct": -1.97
-    },
-    {
-      "issue_time_utc": "2025-05-17T02:00:00+00:00",
-      "nmae_pct": 20.86,
-      "bias_pct": 0.06
-    },
-    {
-      "issue_time_utc": "2025-05-21T02:00:00+00:00",
-      "nmae_pct": 5.78,
-      "bias_pct": 5.78
-    },
-    {
-      "issue_time_utc": "2025-05-22T02:00:00+00:00",
-      "nmae_pct": 38.26,
-      "bias_pct": -18.94
-    },
-    {
-      "issue_time_utc": "2025-05-23T02:00:00+00:00",
-      "nmae_pct": 37.1,
-      "bias_pct": -28.26
-    },
-    {
-      "issue_time_utc": "2025-05-24T02:00:00+00:00",
-      "nmae_pct": 27.25,
-      "bias_pct": -11.64
-    },
-    {
-      "issue_time_utc": "2025-05-25T02:00:00+00:00",
-      "nmae_pct": 25.61,
-      "bias_pct": -13.01
-    },
-    {
-      "issue_time_utc": "2025-06-03T02:00:00+00:00",
-      "nmae_pct": 18.95,
-      "bias_pct": 18.95
-    },
-    {
-      "issue_time_utc": "2025-06-04T02:00:00+00:00",
-      "nmae_pct": 10.52,
-      "bias_pct": 1.99
-    },
-    {
-      "issue_time_utc": "2025-06-05T02:00:00+00:00",
-      "nmae_pct": 10.03,
-      "bias_pct": -1.73
-    },
-    {
-      "issue_time_utc": "2025-06-08T02:00:00+00:00",
-      "nmae_pct": 2.69,
-      "bias_pct": 2.69
-    },
-    {
-      "issue_time_utc": "2025-06-09T02:00:00+00:00",
-      "nmae_pct": 21.7,
-      "bias_pct": -18.17
-    },
-    {
-      "issue_time_utc": "2025-06-10T02:00:00+00:00",
-      "nmae_pct": 29.7,
-      "bias_pct": -21.05
-    },
-    {
-      "issue_time_utc": "2025-06-11T02:00:00+00:00",
-      "nmae_pct": 28.29,
-      "bias_pct": -19.97
-    },
-    {
-      "issue_time_utc": "2025-06-12T02:00:00+00:00",
-      "nmae_pct": 6.14,
-      "bias_pct": 0.58
-    },
-    {
-      "issue_time_utc": "2025-06-13T02:00:00+00:00",
-      "nmae_pct": 20.65,
-      "bias_pct": -19.69
-    },
-    {
-      "issue_time_utc": "2025-06-14T02:00:00+00:00",
-      "nmae_pct": 20.6,
-      "bias_pct": -19.79
-    },
-    {
-      "issue_time_utc": "2025-06-16T02:00:00+00:00",
-      "nmae_pct": 7.22,
-      "bias_pct": -5.59
-    },
-    {
-      "issue_time_utc": "2025-06-17T02:00:00+00:00",
-      "nmae_pct": 15.17,
-      "bias_pct": -10.4
-    },
-    {
-      "issue_time_utc": "2025-06-18T02:00:00+00:00",
-      "nmae_pct": 14.91,
-      "bias_pct": -11.62
-    },
-    {
-      "issue_time_utc": "2025-06-22T02:00:00+00:00",
-      "nmae_pct": 23.14,
-      "bias_pct": -12.06
-    },
-    {
-      "issue_time_utc": "2025-06-23T02:00:00+00:00",
-      "nmae_pct": 27.82,
-      "bias_pct": -21.62
-    },
-    {
-      "issue_time_utc": "2025-06-24T02:00:00+00:00",
-      "nmae_pct": 28.07,
-      "bias_pct": -26.46
-    },
-    {
-      "issue_time_utc": "2025-06-25T02:00:00+00:00",
-      "nmae_pct": 27.39,
-      "bias_pct": -22.85
-    },
-    {
-      "issue_time_utc": "2025-07-01T02:00:00+00:00",
-      "nmae_pct": 2.93,
-      "bias_pct": 2.93
-    },
-    {
-      "issue_time_utc": "2025-07-02T02:00:00+00:00",
-      "nmae_pct": 8.61,
-      "bias_pct": -0.05
-    },
-    {
-      "issue_time_utc": "2025-07-03T02:00:00+00:00",
-      "nmae_pct": 12.26,
-      "bias_pct": -8.93
-    },
-    {
-      "issue_time_utc": "2025-07-04T02:00:00+00:00",
-      "nmae_pct": 13.57,
-      "bias_pct": -12.49
-    },
-    {
-      "issue_time_utc": "2025-07-09T02:00:00+00:00",
-      "nmae_pct": 5.5,
-      "bias_pct": 3.16
-    },
-    {
-      "issue_time_utc": "2025-07-10T02:00:00+00:00",
-      "nmae_pct": 14.74,
-      "bias_pct": 6.61
-    },
-    {
-      "issue_time_utc": "2025-07-11T02:00:00+00:00",
-      "nmae_pct": 10.63,
-      "bias_pct": 0.37
-    },
-    {
-      "issue_time_utc": "2025-07-21T02:00:00+00:00",
-      "nmae_pct": 1.2,
-      "bias_pct": -0.88
-    },
-    {
-      "issue_time_utc": "2025-07-22T02:00:00+00:00",
-      "nmae_pct": 11.01,
-      "bias_pct": -4.97
-    },
-    {
-      "issue_time_utc": "2025-07-23T02:00:00+00:00",
-      "nmae_pct": 9.97,
-      "bias_pct": -2.14
-    },
-    {
-      "issue_time_utc": "2025-07-27T02:00:00+00:00",
-      "nmae_pct": 23.15,
-      "bias_pct": -23.15
-    },
-    {
-      "issue_time_utc": "2025-07-28T02:00:00+00:00",
-      "nmae_pct": 15.71,
-      "bias_pct": 8.44
-    },
-    {
-      "issue_time_utc": "2025-07-29T02:00:00+00:00",
-      "nmae_pct": 10.84,
-      "bias_pct": 10.22
-    },
-    {
-      "issue_time_utc": "2025-08-03T02:00:00+00:00",
-      "nmae_pct": 5.36,
-      "bias_pct": 5.36
-    },
-    {
-      "issue_time_utc": "2025-08-04T02:00:00+00:00",
-      "nmae_pct": 12.02,
-      "bias_pct": 3.48
-    },
-    {
-      "issue_time_utc": "2025-08-05T02:00:00+00:00",
-      "nmae_pct": 11.39,
-      "bias_pct": -0.89
-    },
-    {
-      "issue_time_utc": "2025-08-06T02:00:00+00:00",
-      "nmae_pct": 17.2,
-      "bias_pct": 4.17
-    },
-    {
-      "issue_time_utc": "2025-08-07T02:00:00+00:00",
-      "nmae_pct": 15.89,
-      "bias_pct": 7.13
-    },
-    {
-      "issue_time_utc": "2025-08-08T02:00:00+00:00",
+      "issue_time_utc": "2024-05-03T02:00:00+00:00",
       "nmae_pct": 3.3,
       "bias_pct": 3.3
     },
     {
-      "issue_time_utc": "2025-08-09T02:00:00+00:00",
-      "nmae_pct": 24.87,
-      "bias_pct": -24.85
+      "issue_time_utc": "2024-05-04T02:00:00+00:00",
+      "nmae_pct": 39.32,
+      "bias_pct": 14.1
     },
     {
-      "issue_time_utc": "2025-08-10T02:00:00+00:00",
-      "nmae_pct": 17.17,
-      "bias_pct": -16.44
+      "issue_time_utc": "2024-05-05T02:00:00+00:00",
+      "nmae_pct": 16.94,
+      "bias_pct": 8.21
     },
     {
-      "issue_time_utc": "2025-08-29T02:00:00+00:00",
-      "nmae_pct": 3.98,
-      "bias_pct": 3.42
+      "issue_time_utc": "2024-05-06T02:00:00+00:00",
+      "nmae_pct": 8.61,
+      "bias_pct": 0.95
     },
     {
-      "issue_time_utc": "2025-08-30T02:00:00+00:00",
-      "nmae_pct": 8.01,
-      "bias_pct": 3.05
+      "issue_time_utc": "2024-05-07T02:00:00+00:00",
+      "nmae_pct": 9.06,
+      "bias_pct": -2.85
     },
     {
-      "issue_time_utc": "2025-08-31T02:00:00+00:00",
-      "nmae_pct": 8.65,
-      "bias_pct": 3.65
+      "issue_time_utc": "2024-05-10T02:00:00+00:00",
+      "nmae_pct": 13.36,
+      "bias_pct": 8.37
     },
     {
-      "issue_time_utc": "2025-09-10T02:00:00+00:00",
-      "nmae_pct": 13.04,
-      "bias_pct": 13.04
+      "issue_time_utc": "2024-05-11T02:00:00+00:00",
+      "nmae_pct": 22.52,
+      "bias_pct": -11.83
     },
     {
-      "issue_time_utc": "2025-09-11T02:00:00+00:00",
-      "nmae_pct": 5.56,
-      "bias_pct": 0.65
+      "issue_time_utc": "2024-05-12T02:00:00+00:00",
+      "nmae_pct": 12.49,
+      "bias_pct": -8.33
     },
     {
-      "issue_time_utc": "2025-09-12T02:00:00+00:00",
-      "nmae_pct": 5.45,
-      "bias_pct": -3.55
+      "issue_time_utc": "2024-05-13T02:00:00+00:00",
+      "nmae_pct": 8.46,
+      "bias_pct": -6.58
     },
     {
-      "issue_time_utc": "2025-09-14T02:00:00+00:00",
-      "nmae_pct": 4.69,
-      "bias_pct": 4.07
+      "issue_time_utc": "2024-05-14T02:00:00+00:00",
+      "nmae_pct": 14.9,
+      "bias_pct": -14.62
     },
     {
-      "issue_time_utc": "2025-09-15T02:00:00+00:00",
-      "nmae_pct": 17.87,
-      "bias_pct": -2.39
+      "issue_time_utc": "2024-05-15T02:00:00+00:00",
+      "nmae_pct": 18.43,
+      "bias_pct": 2.88
     },
     {
-      "issue_time_utc": "2025-09-16T02:00:00+00:00",
-      "nmae_pct": 22.34,
-      "bias_pct": 0.15
+      "issue_time_utc": "2024-05-16T02:00:00+00:00",
+      "nmae_pct": 20.16,
+      "bias_pct": 4.16
     },
     {
-      "issue_time_utc": "2025-09-17T02:00:00+00:00",
-      "nmae_pct": 37.17,
-      "bias_pct": 37.17
+      "issue_time_utc": "2024-05-17T02:00:00+00:00",
+      "nmae_pct": 14.35,
+      "bias_pct": 3.47
     },
     {
-      "issue_time_utc": "2025-09-18T02:00:00+00:00",
-      "nmae_pct": 16.93,
-      "bias_pct": 2.29
+      "issue_time_utc": "2024-05-21T02:00:00+00:00",
+      "nmae_pct": 51.07,
+      "bias_pct": -51.07
     },
     {
-      "issue_time_utc": "2025-09-19T02:00:00+00:00",
-      "nmae_pct": 11.53,
-      "bias_pct": -3.57
+      "issue_time_utc": "2024-05-22T02:00:00+00:00",
+      "nmae_pct": 38.29,
+      "bias_pct": -19.54
     },
     {
-      "issue_time_utc": "2025-10-15T02:00:00+00:00",
-      "nmae_pct": 20.88,
-      "bias_pct": 20.88
+      "issue_time_utc": "2024-05-23T02:00:00+00:00",
+      "nmae_pct": 33.53,
+      "bias_pct": -16.54
     },
     {
-      "issue_time_utc": "2025-10-16T02:00:00+00:00",
-      "nmae_pct": 6.51,
-      "bias_pct": 6.47
+      "issue_time_utc": "2024-05-24T02:00:00+00:00",
+      "nmae_pct": 27.09,
+      "bias_pct": -23.2
     },
     {
-      "issue_time_utc": "2025-10-17T02:00:00+00:00",
-      "nmae_pct": 4.52,
-      "bias_pct": 4.51
+      "issue_time_utc": "2024-05-25T02:00:00+00:00",
+      "nmae_pct": 29.6,
+      "bias_pct": -26.79
     },
     {
-      "issue_time_utc": "2025-10-18T02:00:00+00:00",
-      "nmae_pct": 16.46,
-      "bias_pct": -13.26
-    },
-    {
-      "issue_time_utc": "2025-10-19T02:00:00+00:00",
-      "nmae_pct": 17.29,
-      "bias_pct": -15.37
-    },
-    {
-      "issue_time_utc": "2025-10-28T02:00:00+00:00",
-      "nmae_pct": 3.32,
-      "bias_pct": 3.32
-    },
-    {
-      "issue_time_utc": "2025-10-29T02:00:00+00:00",
-      "nmae_pct": 10.69,
-      "bias_pct": 0.96
-    },
-    {
-      "issue_time_utc": "2025-10-30T02:00:00+00:00",
-      "nmae_pct": 7.91,
-      "bias_pct": 1.19
-    },
-    {
-      "issue_time_utc": "2025-10-31T02:00:00+00:00",
-      "nmae_pct": 17.95,
-      "bias_pct": -17.78
-    },
-    {
-      "issue_time_utc": "2025-11-01T02:00:00+00:00",
-      "nmae_pct": 14.32,
-      "bias_pct": -9.81
-    },
-    {
-      "issue_time_utc": "2025-11-02T02:00:00+00:00",
-      "nmae_pct": 13.22,
-      "bias_pct": -6.56
-    },
-    {
-      "issue_time_utc": "2025-11-03T02:00:00+00:00",
-      "nmae_pct": 8.82,
-      "bias_pct": 2.4
-    },
-    {
-      "issue_time_utc": "2025-11-04T02:00:00+00:00",
-      "nmae_pct": 10.09,
-      "bias_pct": 9.46
-    },
-    {
-      "issue_time_utc": "2025-11-05T02:00:00+00:00",
-      "nmae_pct": 9.04,
-      "bias_pct": 6.46
-    },
-    {
-      "issue_time_utc": "2025-11-08T02:00:00+00:00",
-      "nmae_pct": 2.51,
-      "bias_pct": -2.51
-    },
-    {
-      "issue_time_utc": "2025-11-09T02:00:00+00:00",
-      "nmae_pct": 13.95,
-      "bias_pct": -8.93
-    },
-    {
-      "issue_time_utc": "2025-11-10T02:00:00+00:00",
-      "nmae_pct": 21.54,
+      "issue_time_utc": "2024-05-26T02:00:00+00:00",
+      "nmae_pct": 21.3,
       "bias_pct": -18.41
     },
     {
-      "issue_time_utc": "2025-11-11T02:00:00+00:00",
-      "nmae_pct": 31.08,
-      "bias_pct": -29.68
+      "issue_time_utc": "2024-05-27T02:00:00+00:00",
+      "nmae_pct": 19.6,
+      "bias_pct": -12.86
     },
     {
-      "issue_time_utc": "2025-11-17T02:00:00+00:00",
-      "nmae_pct": 11.24,
-      "bias_pct": -11.24
+      "issue_time_utc": "2024-05-31T02:00:00+00:00",
+      "nmae_pct": 2.45,
+      "bias_pct": 1.99
     },
     {
-      "issue_time_utc": "2025-11-18T02:00:00+00:00",
-      "nmae_pct": 6.04,
+      "issue_time_utc": "2024-06-01T02:00:00+00:00",
+      "nmae_pct": 16.43,
+      "bias_pct": -5.55
+    },
+    {
+      "issue_time_utc": "2024-06-02T02:00:00+00:00",
+      "nmae_pct": 24.19,
+      "bias_pct": -6.77
+    },
+    {
+      "issue_time_utc": "2024-06-03T02:00:00+00:00",
+      "nmae_pct": 17.92,
+      "bias_pct": -7.99
+    },
+    {
+      "issue_time_utc": "2024-06-04T02:00:00+00:00",
+      "nmae_pct": 6.25,
+      "bias_pct": -0.41
+    },
+    {
+      "issue_time_utc": "2024-06-08T02:00:00+00:00",
+      "nmae_pct": 0.97,
+      "bias_pct": 0.97
+    },
+    {
+      "issue_time_utc": "2024-06-09T02:00:00+00:00",
+      "nmae_pct": 13.31,
+      "bias_pct": 6.12
+    },
+    {
+      "issue_time_utc": "2024-06-10T02:00:00+00:00",
+      "nmae_pct": 14.93,
+      "bias_pct": 4.21
+    },
+    {
+      "issue_time_utc": "2024-06-11T02:00:00+00:00",
+      "nmae_pct": 1.84,
+      "bias_pct": -0.52
+    },
+    {
+      "issue_time_utc": "2024-06-12T02:00:00+00:00",
+      "nmae_pct": 9.54,
+      "bias_pct": -8.7
+    },
+    {
+      "issue_time_utc": "2024-06-13T02:00:00+00:00",
+      "nmae_pct": 13.11,
+      "bias_pct": -7.74
+    },
+    {
+      "issue_time_utc": "2024-06-23T02:00:00+00:00",
+      "nmae_pct": 10.75,
+      "bias_pct": 2.2
+    },
+    {
+      "issue_time_utc": "2024-06-24T02:00:00+00:00",
+      "nmae_pct": 19.4,
+      "bias_pct": -18.81
+    },
+    {
+      "issue_time_utc": "2024-06-25T02:00:00+00:00",
+      "nmae_pct": 15.18,
+      "bias_pct": -14.61
+    },
+    {
+      "issue_time_utc": "2024-06-28T02:00:00+00:00",
+      "nmae_pct": 23.25,
+      "bias_pct": 5.66
+    },
+    {
+      "issue_time_utc": "2024-06-29T02:00:00+00:00",
+      "nmae_pct": 29.55,
+      "bias_pct": -19.71
+    },
+    {
+      "issue_time_utc": "2024-06-30T02:00:00+00:00",
+      "nmae_pct": 25.79,
+      "bias_pct": -24.15
+    },
+    {
+      "issue_time_utc": "2024-07-02T02:00:00+00:00",
+      "nmae_pct": 26.49,
+      "bias_pct": -26.49
+    },
+    {
+      "issue_time_utc": "2024-07-03T02:00:00+00:00",
+      "nmae_pct": 10.14,
+      "bias_pct": -2.66
+    },
+    {
+      "issue_time_utc": "2024-07-04T02:00:00+00:00",
+      "nmae_pct": 17.58,
+      "bias_pct": 10.71
+    },
+    {
+      "issue_time_utc": "2024-07-07T02:00:00+00:00",
+      "nmae_pct": 16.78,
+      "bias_pct": -15.26
+    },
+    {
+      "issue_time_utc": "2024-07-08T02:00:00+00:00",
+      "nmae_pct": 10.18,
+      "bias_pct": -1.03
+    },
+    {
+      "issue_time_utc": "2024-07-09T02:00:00+00:00",
+      "nmae_pct": 11.16,
+      "bias_pct": 1.53
+    },
+    {
+      "issue_time_utc": "2024-07-10T02:00:00+00:00",
+      "nmae_pct": 5.62,
+      "bias_pct": -0.09
+    },
+    {
+      "issue_time_utc": "2024-07-11T02:00:00+00:00",
+      "nmae_pct": 6.62,
+      "bias_pct": -0.76
+    },
+    {
+      "issue_time_utc": "2024-07-15T02:00:00+00:00",
+      "nmae_pct": 42.86,
+      "bias_pct": -42.86
+    },
+    {
+      "issue_time_utc": "2024-07-16T02:00:00+00:00",
+      "nmae_pct": 34.93,
+      "bias_pct": -18.49
+    },
+    {
+      "issue_time_utc": "2024-07-17T02:00:00+00:00",
+      "nmae_pct": 32.29,
+      "bias_pct": -9.5
+    },
+    {
+      "issue_time_utc": "2024-07-29T02:00:00+00:00",
+      "nmae_pct": 14.42,
+      "bias_pct": 14.42
+    },
+    {
+      "issue_time_utc": "2024-07-30T02:00:00+00:00",
+      "nmae_pct": 13.53,
+      "bias_pct": -6.1
+    },
+    {
+      "issue_time_utc": "2024-07-31T02:00:00+00:00",
+      "nmae_pct": 12.47,
+      "bias_pct": -9.43
+    },
+    {
+      "issue_time_utc": "2024-08-01T02:00:00+00:00",
+      "nmae_pct": 34.86,
+      "bias_pct": -34.86
+    },
+    {
+      "issue_time_utc": "2024-08-02T02:00:00+00:00",
+      "nmae_pct": 8.58,
+      "bias_pct": 1.58
+    },
+    {
+      "issue_time_utc": "2024-08-03T02:00:00+00:00",
+      "nmae_pct": 7.88,
+      "bias_pct": 2.92
+    },
+    {
+      "issue_time_utc": "2024-08-04T02:00:00+00:00",
+      "nmae_pct": 9.29,
+      "bias_pct": 1.85
+    },
+    {
+      "issue_time_utc": "2024-08-05T02:00:00+00:00",
+      "nmae_pct": 24.78,
+      "bias_pct": 0.85
+    },
+    {
+      "issue_time_utc": "2024-08-06T02:00:00+00:00",
+      "nmae_pct": 18.18,
+      "bias_pct": 5.57
+    },
+    {
+      "issue_time_utc": "2024-08-09T02:00:00+00:00",
+      "nmae_pct": 8.15,
+      "bias_pct": 1.43
+    },
+    {
+      "issue_time_utc": "2024-08-10T02:00:00+00:00",
+      "nmae_pct": 21.5,
+      "bias_pct": 0.96
+    },
+    {
+      "issue_time_utc": "2024-08-11T02:00:00+00:00",
+      "nmae_pct": 24.05,
+      "bias_pct": 0.49
+    },
+    {
+      "issue_time_utc": "2024-08-12T02:00:00+00:00",
+      "nmae_pct": 14.54,
+      "bias_pct": 10.23
+    },
+    {
+      "issue_time_utc": "2024-08-13T02:00:00+00:00",
+      "nmae_pct": 13.91,
+      "bias_pct": 3.69
+    },
+    {
+      "issue_time_utc": "2024-08-14T02:00:00+00:00",
+      "nmae_pct": 9.65,
+      "bias_pct": -1.33
+    },
+    {
+      "issue_time_utc": "2024-08-23T02:00:00+00:00",
+      "nmae_pct": 16.25,
+      "bias_pct": -15.38
+    },
+    {
+      "issue_time_utc": "2024-08-24T02:00:00+00:00",
+      "nmae_pct": 14.1,
+      "bias_pct": -12.05
+    },
+    {
+      "issue_time_utc": "2024-08-25T02:00:00+00:00",
+      "nmae_pct": 11.28,
+      "bias_pct": -8.23
+    },
+    {
+      "issue_time_utc": "2024-08-31T02:00:00+00:00",
+      "nmae_pct": 67.37,
+      "bias_pct": -67.37
+    },
+    {
+      "issue_time_utc": "2024-09-01T02:00:00+00:00",
+      "nmae_pct": 21.81,
+      "bias_pct": -21.45
+    },
+    {
+      "issue_time_utc": "2024-09-02T02:00:00+00:00",
+      "nmae_pct": 17.72,
+      "bias_pct": -17.26
+    },
+    {
+      "issue_time_utc": "2024-09-06T02:00:00+00:00",
+      "nmae_pct": 27.92,
+      "bias_pct": -27.92
+    },
+    {
+      "issue_time_utc": "2024-09-07T02:00:00+00:00",
+      "nmae_pct": 13.17,
+      "bias_pct": -7.34
+    },
+    {
+      "issue_time_utc": "2024-09-08T02:00:00+00:00",
+      "nmae_pct": 12.9,
+      "bias_pct": -9.45
+    },
+    {
+      "issue_time_utc": "2024-09-09T02:00:00+00:00",
+      "nmae_pct": 12.55,
+      "bias_pct": 1.33
+    },
+    {
+      "issue_time_utc": "2024-09-10T02:00:00+00:00",
+      "nmae_pct": 10.91,
+      "bias_pct": 10.12
+    },
+    {
+      "issue_time_utc": "2024-09-11T02:00:00+00:00",
+      "nmae_pct": 12.1,
+      "bias_pct": -9.82
+    },
+    {
+      "issue_time_utc": "2024-09-12T02:00:00+00:00",
+      "nmae_pct": 9.53,
+      "bias_pct": -5.69
+    },
+    {
+      "issue_time_utc": "2024-09-13T02:00:00+00:00",
+      "nmae_pct": 10.61,
+      "bias_pct": -7.19
+    },
+    {
+      "issue_time_utc": "2024-09-15T02:00:00+00:00",
+      "nmae_pct": 11.65,
+      "bias_pct": -11.65
+    },
+    {
+      "issue_time_utc": "2024-09-16T02:00:00+00:00",
+      "nmae_pct": 8.42,
+      "bias_pct": -6.1
+    },
+    {
+      "issue_time_utc": "2024-09-17T02:00:00+00:00",
+      "nmae_pct": 8.83,
+      "bias_pct": 7.83
+    },
+    {
+      "issue_time_utc": "2024-09-18T02:00:00+00:00",
+      "nmae_pct": 3.73,
+      "bias_pct": -2.89
+    },
+    {
+      "issue_time_utc": "2024-09-19T02:00:00+00:00",
+      "nmae_pct": 22.82,
+      "bias_pct": -15.02
+    },
+    {
+      "issue_time_utc": "2024-09-20T02:00:00+00:00",
+      "nmae_pct": 17.45,
+      "bias_pct": -6.66
+    },
+    {
+      "issue_time_utc": "2024-09-21T02:00:00+00:00",
+      "nmae_pct": 14.77,
+      "bias_pct": -8.21
+    },
+    {
+      "issue_time_utc": "2024-09-22T02:00:00+00:00",
+      "nmae_pct": 19.75,
+      "bias_pct": -17.99
+    },
+    {
+      "issue_time_utc": "2024-10-15T02:00:00+00:00",
+      "nmae_pct": 83.49,
+      "bias_pct": -83.49
+    },
+    {
+      "issue_time_utc": "2024-10-16T02:00:00+00:00",
+      "nmae_pct": 20.74,
+      "bias_pct": -18.55
+    },
+    {
+      "issue_time_utc": "2024-10-17T02:00:00+00:00",
+      "nmae_pct": 17.2,
+      "bias_pct": -7.99
+    },
+    {
+      "issue_time_utc": "2024-10-21T02:00:00+00:00",
+      "nmae_pct": 12.06,
+      "bias_pct": -12.06
+    },
+    {
+      "issue_time_utc": "2024-10-22T02:00:00+00:00",
+      "nmae_pct": 15.39,
+      "bias_pct": 5.67
+    },
+    {
+      "issue_time_utc": "2024-10-23T02:00:00+00:00",
+      "nmae_pct": 21.61,
+      "bias_pct": -3.95
+    },
+    {
+      "issue_time_utc": "2024-10-24T02:00:00+00:00",
+      "nmae_pct": 15.86,
+      "bias_pct": 4.06
+    },
+    {
+      "issue_time_utc": "2024-10-25T02:00:00+00:00",
+      "nmae_pct": 11.89,
+      "bias_pct": 2.17
+    },
+    {
+      "issue_time_utc": "2024-10-26T02:00:00+00:00",
+      "nmae_pct": 12.96,
+      "bias_pct": 6.83
+    },
+    {
+      "issue_time_utc": "2024-10-31T02:00:00+00:00",
+      "nmae_pct": 12.58,
+      "bias_pct": 12.58
+    },
+    {
+      "issue_time_utc": "2024-11-01T02:00:00+00:00",
+      "nmae_pct": 22.01,
+      "bias_pct": 1.15
+    },
+    {
+      "issue_time_utc": "2024-11-02T02:00:00+00:00",
+      "nmae_pct": 19.84,
+      "bias_pct": -4.21
+    },
+    {
+      "issue_time_utc": "2024-11-05T02:00:00+00:00",
+      "nmae_pct": 0.24,
+      "bias_pct": 0.01
+    },
+    {
+      "issue_time_utc": "2024-11-06T02:00:00+00:00",
+      "nmae_pct": 18.57,
+      "bias_pct": 12.74
+    },
+    {
+      "issue_time_utc": "2024-11-07T02:00:00+00:00",
+      "nmae_pct": 14.96,
+      "bias_pct": 8.89
+    },
+    {
+      "issue_time_utc": "2024-11-16T02:00:00+00:00",
+      "nmae_pct": 9.63,
+      "bias_pct": 8.97
+    },
+    {
+      "issue_time_utc": "2024-11-17T02:00:00+00:00",
+      "nmae_pct": 31.55,
+      "bias_pct": -24.88
+    },
+    {
+      "issue_time_utc": "2024-11-18T02:00:00+00:00",
+      "nmae_pct": 27.22,
+      "bias_pct": -20.69
+    },
+    {
+      "issue_time_utc": "2024-11-19T02:00:00+00:00",
+      "nmae_pct": 22.56,
+      "bias_pct": -17.98
+    },
+    {
+      "issue_time_utc": "2024-11-20T02:00:00+00:00",
+      "nmae_pct": 18.93,
+      "bias_pct": -8.87
+    },
+    {
+      "issue_time_utc": "2024-11-21T02:00:00+00:00",
+      "nmae_pct": 41.2,
+      "bias_pct": -41.2
+    },
+    {
+      "issue_time_utc": "2024-11-22T02:00:00+00:00",
+      "nmae_pct": 18.72,
+      "bias_pct": -17.37
+    },
+    {
+      "issue_time_utc": "2024-11-23T02:00:00+00:00",
+      "nmae_pct": 14.34,
+      "bias_pct": -12.7
+    },
+    {
+      "issue_time_utc": "2024-11-29T02:00:00+00:00",
+      "nmae_pct": 7.15,
+      "bias_pct": -7.15
+    },
+    {
+      "issue_time_utc": "2024-11-30T02:00:00+00:00",
+      "nmae_pct": 25.0,
+      "bias_pct": -24.44
+    },
+    {
+      "issue_time_utc": "2024-12-01T02:00:00+00:00",
+      "nmae_pct": 22.11,
+      "bias_pct": -21.95
+    },
+    {
+      "issue_time_utc": "2024-12-02T02:00:00+00:00",
+      "nmae_pct": 20.52,
+      "bias_pct": -20.52
+    },
+    {
+      "issue_time_utc": "2024-12-03T02:00:00+00:00",
+      "nmae_pct": 24.48,
+      "bias_pct": -20.53
+    },
+    {
+      "issue_time_utc": "2024-12-04T02:00:00+00:00",
+      "nmae_pct": 25.89,
+      "bias_pct": -23.28
+    },
+    {
+      "issue_time_utc": "2024-12-12T02:00:00+00:00",
+      "nmae_pct": 1.91,
+      "bias_pct": -1.91
+    },
+    {
+      "issue_time_utc": "2024-12-13T02:00:00+00:00",
+      "nmae_pct": 8.01,
+      "bias_pct": -1.1
+    },
+    {
+      "issue_time_utc": "2024-12-14T02:00:00+00:00",
+      "nmae_pct": 13.96,
       "bias_pct": -3.53
     },
     {
+      "issue_time_utc": "2024-12-15T02:00:00+00:00",
+      "nmae_pct": 6.58,
+      "bias_pct": -6.24
+    },
+    {
+      "issue_time_utc": "2024-12-16T02:00:00+00:00",
+      "nmae_pct": 23.67,
+      "bias_pct": -15.55
+    },
+    {
+      "issue_time_utc": "2024-12-17T02:00:00+00:00",
+      "nmae_pct": 25.75,
+      "bias_pct": -17.01
+    },
+    {
+      "issue_time_utc": "2024-12-20T02:00:00+00:00",
+      "nmae_pct": 30.66,
+      "bias_pct": -30.66
+    },
+    {
+      "issue_time_utc": "2024-12-21T02:00:00+00:00",
+      "nmae_pct": 25.77,
+      "bias_pct": -23.13
+    },
+    {
+      "issue_time_utc": "2024-12-22T02:00:00+00:00",
+      "nmae_pct": 20.57,
+      "bias_pct": -20.46
+    },
+    {
+      "issue_time_utc": "2024-12-23T02:00:00+00:00",
+      "nmae_pct": 3.78,
+      "bias_pct": -2.11
+    },
+    {
+      "issue_time_utc": "2024-12-24T02:00:00+00:00",
+      "nmae_pct": 5.14,
+      "bias_pct": 4.12
+    },
+    {
+      "issue_time_utc": "2024-12-25T02:00:00+00:00",
+      "nmae_pct": 13.89,
+      "bias_pct": -7.72
+    },
+    {
+      "issue_time_utc": "2024-12-26T02:00:00+00:00",
+      "nmae_pct": 13.99,
+      "bias_pct": -9.41
+    },
+    {
+      "issue_time_utc": "2024-12-31T02:00:00+00:00",
+      "nmae_pct": 0.99,
+      "bias_pct": 0.99
+    },
+    {
+      "issue_time_utc": "2025-01-01T02:00:00+00:00",
+      "nmae_pct": 2.01,
+      "bias_pct": -0.67
+    },
+    {
+      "issue_time_utc": "2025-01-02T02:00:00+00:00",
+      "nmae_pct": 1.9,
+      "bias_pct": -1.33
+    },
+    {
+      "issue_time_utc": "2025-01-06T02:00:00+00:00",
+      "nmae_pct": 52.94,
+      "bias_pct": -52.94
+    },
+    {
+      "issue_time_utc": "2025-01-07T02:00:00+00:00",
+      "nmae_pct": 21.34,
+      "bias_pct": -1.44
+    },
+    {
+      "issue_time_utc": "2025-01-08T02:00:00+00:00",
+      "nmae_pct": 18.52,
+      "bias_pct": -3.99
+    },
+    {
+      "issue_time_utc": "2025-01-10T02:00:00+00:00",
+      "nmae_pct": 16.84,
+      "bias_pct": 16.84
+    },
+    {
+      "issue_time_utc": "2025-01-11T02:00:00+00:00",
+      "nmae_pct": 3.71,
+      "bias_pct": 1.78
+    },
+    {
+      "issue_time_utc": "2025-01-12T02:00:00+00:00",
+      "nmae_pct": 2.81,
+      "bias_pct": 1.87
+    },
+    {
+      "issue_time_utc": "2025-01-13T02:00:00+00:00",
+      "nmae_pct": 4.55,
+      "bias_pct": 4.55
+    },
+    {
+      "issue_time_utc": "2025-01-14T02:00:00+00:00",
+      "nmae_pct": 17.06,
+      "bias_pct": -11.57
+    },
+    {
+      "issue_time_utc": "2025-01-15T02:00:00+00:00",
+      "nmae_pct": 13.1,
+      "bias_pct": -10.81
+    },
+    {
+      "issue_time_utc": "2025-01-16T02:00:00+00:00",
+      "nmae_pct": 10.27,
+      "bias_pct": -4.96
+    },
+    {
+      "issue_time_utc": "2025-01-17T02:00:00+00:00",
+      "nmae_pct": 2.58,
+      "bias_pct": 2.58
+    },
+    {
+      "issue_time_utc": "2025-01-18T02:00:00+00:00",
+      "nmae_pct": 6.07,
+      "bias_pct": 5.66
+    },
+    {
+      "issue_time_utc": "2025-01-19T02:00:00+00:00",
+      "nmae_pct": 11.67,
+      "bias_pct": -2.57
+    },
+    {
+      "issue_time_utc": "2025-01-20T02:00:00+00:00",
+      "nmae_pct": 13.24,
+      "bias_pct": -8.88
+    },
+    {
+      "issue_time_utc": "2025-02-03T02:00:00+00:00",
+      "nmae_pct": 0.7,
+      "bias_pct": 0.03
+    },
+    {
+      "issue_time_utc": "2025-02-04T02:00:00+00:00",
+      "nmae_pct": 2.83,
+      "bias_pct": -1.45
+    },
+    {
+      "issue_time_utc": "2025-02-05T02:00:00+00:00",
+      "nmae_pct": 6.13,
+      "bias_pct": 1.53
+    },
+    {
+      "issue_time_utc": "2025-02-15T02:00:00+00:00",
+      "nmae_pct": 3.69,
+      "bias_pct": -3.69
+    },
+    {
+      "issue_time_utc": "2025-02-16T02:00:00+00:00",
+      "nmae_pct": 5.35,
+      "bias_pct": -0.01
+    },
+    {
+      "issue_time_utc": "2025-02-17T02:00:00+00:00",
+      "nmae_pct": 6.11,
+      "bias_pct": 0.6
+    },
+    {
+      "issue_time_utc": "2025-02-18T02:00:00+00:00",
+      "nmae_pct": 6.11,
+      "bias_pct": 4.87
+    },
+    {
+      "issue_time_utc": "2025-02-19T02:00:00+00:00",
+      "nmae_pct": 3.55,
+      "bias_pct": 2.85
+    },
+    {
+      "issue_time_utc": "2025-02-23T02:00:00+00:00",
+      "nmae_pct": 10.73,
+      "bias_pct": -10.12
+    },
+    {
+      "issue_time_utc": "2025-02-24T02:00:00+00:00",
+      "nmae_pct": 30.41,
+      "bias_pct": -21.22
+    },
+    {
+      "issue_time_utc": "2025-02-25T02:00:00+00:00",
+      "nmae_pct": 17.46,
+      "bias_pct": -8.67
+    },
+    {
+      "issue_time_utc": "2025-02-26T02:00:00+00:00",
+      "nmae_pct": 5.82,
+      "bias_pct": -3.55
+    },
+    {
+      "issue_time_utc": "2025-02-27T02:00:00+00:00",
+      "nmae_pct": 6.17,
+      "bias_pct": -5.06
+    },
+    {
+      "issue_time_utc": "2025-03-04T02:00:00+00:00",
+      "nmae_pct": 19.98,
+      "bias_pct": -19.98
+    },
+    {
+      "issue_time_utc": "2025-03-05T02:00:00+00:00",
+      "nmae_pct": 20.43,
+      "bias_pct": -19.82
+    },
+    {
+      "issue_time_utc": "2025-03-06T02:00:00+00:00",
+      "nmae_pct": 21.38,
+      "bias_pct": -20.05
+    },
+    {
+      "issue_time_utc": "2025-03-07T02:00:00+00:00",
+      "nmae_pct": 34.93,
+      "bias_pct": -34.93
+    },
+    {
+      "issue_time_utc": "2025-03-08T02:00:00+00:00",
+      "nmae_pct": 16.65,
+      "bias_pct": -11.08
+    },
+    {
+      "issue_time_utc": "2025-03-09T02:00:00+00:00",
+      "nmae_pct": 13.9,
+      "bias_pct": -6.56
+    },
+    {
+      "issue_time_utc": "2025-03-10T02:00:00+00:00",
+      "nmae_pct": 22.82,
+      "bias_pct": -20.13
+    },
+    {
+      "issue_time_utc": "2025-03-11T02:00:00+00:00",
+      "nmae_pct": 22.16,
+      "bias_pct": -21.79
+    },
+    {
+      "issue_time_utc": "2025-03-12T02:00:00+00:00",
+      "nmae_pct": 23.86,
+      "bias_pct": -23.55
+    },
+    {
+      "issue_time_utc": "2025-03-13T02:00:00+00:00",
+      "nmae_pct": 21.28,
+      "bias_pct": -19.96
+    },
+    {
+      "issue_time_utc": "2025-03-14T02:00:00+00:00",
+      "nmae_pct": 21.61,
+      "bias_pct": -21.61
+    },
+    {
+      "issue_time_utc": "2025-03-15T02:00:00+00:00",
+      "nmae_pct": 33.07,
+      "bias_pct": -33.07
+    },
+    {
+      "issue_time_utc": "2025-03-16T02:00:00+00:00",
+      "nmae_pct": 21.54,
+      "bias_pct": -17.59
+    },
+    {
+      "issue_time_utc": "2025-03-17T02:00:00+00:00",
+      "nmae_pct": 20.34,
+      "bias_pct": -14.94
+    },
+    {
+      "issue_time_utc": "2025-03-21T02:00:00+00:00",
+      "nmae_pct": 6.07,
+      "bias_pct": -3.99
+    },
+    {
+      "issue_time_utc": "2025-03-22T02:00:00+00:00",
+      "nmae_pct": 18.51,
+      "bias_pct": -10.51
+    },
+    {
+      "issue_time_utc": "2025-03-23T02:00:00+00:00",
+      "nmae_pct": 15.5,
+      "bias_pct": -7.41
+    },
+    {
+      "issue_time_utc": "2025-03-24T02:00:00+00:00",
+      "nmae_pct": 1.19,
+      "bias_pct": 1.05
+    },
+    {
+      "issue_time_utc": "2025-03-25T02:00:00+00:00",
+      "nmae_pct": 1.31,
+      "bias_pct": 1.31
+    },
+    {
+      "issue_time_utc": "2025-03-26T02:00:00+00:00",
+      "nmae_pct": 23.9,
+      "bias_pct": -23.9
+    },
+    {
+      "issue_time_utc": "2025-03-27T02:00:00+00:00",
+      "nmae_pct": 21.02,
+      "bias_pct": 11.3
+    },
+    {
+      "issue_time_utc": "2025-03-28T02:00:00+00:00",
+      "nmae_pct": 9.79,
+      "bias_pct": 7.11
+    },
+    {
+      "issue_time_utc": "2025-03-29T02:00:00+00:00",
+      "nmae_pct": 2.46,
+      "bias_pct": -1.93
+    },
+    {
+      "issue_time_utc": "2025-04-02T02:00:00+00:00",
+      "nmae_pct": 30.21,
+      "bias_pct": -30.21
+    },
+    {
+      "issue_time_utc": "2025-04-03T02:00:00+00:00",
+      "nmae_pct": 17.1,
+      "bias_pct": -9.77
+    },
+    {
+      "issue_time_utc": "2025-04-04T02:00:00+00:00",
+      "nmae_pct": 11.72,
+      "bias_pct": -5.6
+    },
+    {
+      "issue_time_utc": "2025-04-05T02:00:00+00:00",
+      "nmae_pct": 17.41,
+      "bias_pct": -1.95
+    },
+    {
+      "issue_time_utc": "2025-04-06T02:00:00+00:00",
+      "nmae_pct": 17.97,
+      "bias_pct": -14.97
+    },
+    {
+      "issue_time_utc": "2025-04-07T02:00:00+00:00",
+      "nmae_pct": 20.38,
+      "bias_pct": -19.7
+    },
+    {
+      "issue_time_utc": "2025-04-11T02:00:00+00:00",
+      "nmae_pct": 24.22,
+      "bias_pct": 24.22
+    },
+    {
+      "issue_time_utc": "2025-04-12T02:00:00+00:00",
+      "nmae_pct": 28.24,
+      "bias_pct": 12.44
+    },
+    {
+      "issue_time_utc": "2025-04-13T02:00:00+00:00",
+      "nmae_pct": 24.4,
+      "bias_pct": 10.11
+    },
+    {
+      "issue_time_utc": "2025-04-21T02:00:00+00:00",
+      "nmae_pct": 39.15,
+      "bias_pct": -39.15
+    },
+    {
+      "issue_time_utc": "2025-04-22T02:00:00+00:00",
+      "nmae_pct": 23.24,
+      "bias_pct": 14.36
+    },
+    {
+      "issue_time_utc": "2025-04-23T02:00:00+00:00",
+      "nmae_pct": 27.05,
+      "bias_pct": 25.0
+    },
+    {
+      "issue_time_utc": "2025-04-26T02:00:00+00:00",
+      "nmae_pct": 29.77,
+      "bias_pct": -26.71
+    },
+    {
+      "issue_time_utc": "2025-04-27T02:00:00+00:00",
+      "nmae_pct": 18.93,
+      "bias_pct": -15.05
+    },
+    {
+      "issue_time_utc": "2025-04-28T02:00:00+00:00",
+      "nmae_pct": 14.72,
+      "bias_pct": -10.43
+    },
+    {
+      "issue_time_utc": "2025-04-29T02:00:00+00:00",
+      "nmae_pct": 11.04,
+      "bias_pct": 3.58
+    },
+    {
+      "issue_time_utc": "2025-04-30T02:00:00+00:00",
+      "nmae_pct": 19.91,
+      "bias_pct": 12.65
+    },
+    {
+      "issue_time_utc": "2025-05-01T02:00:00+00:00",
+      "nmae_pct": 17.66,
+      "bias_pct": 16.18
+    },
+    {
+      "issue_time_utc": "2025-05-03T02:00:00+00:00",
+      "nmae_pct": 1.39,
+      "bias_pct": 1.39
+    },
+    {
+      "issue_time_utc": "2025-05-04T02:00:00+00:00",
+      "nmae_pct": 34.29,
+      "bias_pct": -21.92
+    },
+    {
+      "issue_time_utc": "2025-05-05T02:00:00+00:00",
+      "nmae_pct": 29.89,
+      "bias_pct": -19.59
+    },
+    {
+      "issue_time_utc": "2025-05-06T02:00:00+00:00",
+      "nmae_pct": 28.17,
+      "bias_pct": -24.84
+    },
+    {
+      "issue_time_utc": "2025-05-07T02:00:00+00:00",
+      "nmae_pct": 15.98,
+      "bias_pct": -3.18
+    },
+    {
+      "issue_time_utc": "2025-05-08T02:00:00+00:00",
+      "nmae_pct": 34.78,
+      "bias_pct": 19.66
+    },
+    {
+      "issue_time_utc": "2025-05-09T02:00:00+00:00",
+      "nmae_pct": 39.17,
+      "bias_pct": 20.98
+    },
+    {
+      "issue_time_utc": "2025-05-15T02:00:00+00:00",
+      "nmae_pct": 26.82,
+      "bias_pct": -11.64
+    },
+    {
+      "issue_time_utc": "2025-05-16T02:00:00+00:00",
+      "nmae_pct": 21.1,
+      "bias_pct": -2.35
+    },
+    {
+      "issue_time_utc": "2025-05-17T02:00:00+00:00",
+      "nmae_pct": 20.75,
+      "bias_pct": -0.26
+    },
+    {
+      "issue_time_utc": "2025-05-21T02:00:00+00:00",
+      "nmae_pct": 5.65,
+      "bias_pct": 5.65
+    },
+    {
+      "issue_time_utc": "2025-05-22T02:00:00+00:00",
+      "nmae_pct": 38.18,
+      "bias_pct": -19.04
+    },
+    {
+      "issue_time_utc": "2025-05-23T02:00:00+00:00",
+      "nmae_pct": 37.03,
+      "bias_pct": -28.39
+    },
+    {
+      "issue_time_utc": "2025-05-24T02:00:00+00:00",
+      "nmae_pct": 27.31,
+      "bias_pct": -11.83
+    },
+    {
+      "issue_time_utc": "2025-05-25T02:00:00+00:00",
+      "nmae_pct": 25.68,
+      "bias_pct": -13.23
+    },
+    {
+      "issue_time_utc": "2025-06-03T02:00:00+00:00",
+      "nmae_pct": 18.86,
+      "bias_pct": 18.86
+    },
+    {
+      "issue_time_utc": "2025-06-04T02:00:00+00:00",
+      "nmae_pct": 10.44,
+      "bias_pct": 1.81
+    },
+    {
+      "issue_time_utc": "2025-06-05T02:00:00+00:00",
+      "nmae_pct": 10.01,
+      "bias_pct": -1.89
+    },
+    {
+      "issue_time_utc": "2025-06-08T02:00:00+00:00",
+      "nmae_pct": 2.74,
+      "bias_pct": 2.74
+    },
+    {
+      "issue_time_utc": "2025-06-09T02:00:00+00:00",
+      "nmae_pct": 21.73,
+      "bias_pct": -18.26
+    },
+    {
+      "issue_time_utc": "2025-06-10T02:00:00+00:00",
+      "nmae_pct": 29.67,
+      "bias_pct": -21.2
+    },
+    {
+      "issue_time_utc": "2025-06-11T02:00:00+00:00",
+      "nmae_pct": 28.33,
+      "bias_pct": -20.08
+    },
+    {
+      "issue_time_utc": "2025-06-12T02:00:00+00:00",
+      "nmae_pct": 5.98,
+      "bias_pct": 0.45
+    },
+    {
+      "issue_time_utc": "2025-06-13T02:00:00+00:00",
+      "nmae_pct": 20.75,
+      "bias_pct": -19.82
+    },
+    {
+      "issue_time_utc": "2025-06-14T02:00:00+00:00",
+      "nmae_pct": 20.77,
+      "bias_pct": -19.95
+    },
+    {
+      "issue_time_utc": "2025-06-16T02:00:00+00:00",
+      "nmae_pct": 7.09,
+      "bias_pct": -5.72
+    },
+    {
+      "issue_time_utc": "2025-06-17T02:00:00+00:00",
+      "nmae_pct": 15.14,
+      "bias_pct": -10.57
+    },
+    {
+      "issue_time_utc": "2025-06-18T02:00:00+00:00",
+      "nmae_pct": 15.02,
+      "bias_pct": -11.77
+    },
+    {
+      "issue_time_utc": "2025-06-22T02:00:00+00:00",
+      "nmae_pct": 23.08,
+      "bias_pct": -12.52
+    },
+    {
+      "issue_time_utc": "2025-06-23T02:00:00+00:00",
+      "nmae_pct": 27.96,
+      "bias_pct": -21.82
+    },
+    {
+      "issue_time_utc": "2025-06-24T02:00:00+00:00",
+      "nmae_pct": 28.09,
+      "bias_pct": -26.62
+    },
+    {
+      "issue_time_utc": "2025-06-25T02:00:00+00:00",
+      "nmae_pct": 27.52,
+      "bias_pct": -23.03
+    },
+    {
+      "issue_time_utc": "2025-07-01T02:00:00+00:00",
+      "nmae_pct": 2.92,
+      "bias_pct": 2.92
+    },
+    {
+      "issue_time_utc": "2025-07-02T02:00:00+00:00",
+      "nmae_pct": 8.58,
+      "bias_pct": -0.16
+    },
+    {
+      "issue_time_utc": "2025-07-03T02:00:00+00:00",
+      "nmae_pct": 12.34,
+      "bias_pct": -9.04
+    },
+    {
+      "issue_time_utc": "2025-07-04T02:00:00+00:00",
+      "nmae_pct": 13.65,
+      "bias_pct": -12.56
+    },
+    {
+      "issue_time_utc": "2025-07-09T02:00:00+00:00",
+      "nmae_pct": 5.45,
+      "bias_pct": 3.35
+    },
+    {
+      "issue_time_utc": "2025-07-10T02:00:00+00:00",
+      "nmae_pct": 14.88,
+      "bias_pct": 6.79
+    },
+    {
+      "issue_time_utc": "2025-07-11T02:00:00+00:00",
+      "nmae_pct": 10.71,
+      "bias_pct": 0.54
+    },
+    {
+      "issue_time_utc": "2025-07-21T02:00:00+00:00",
+      "nmae_pct": 1.13,
+      "bias_pct": -0.88
+    },
+    {
+      "issue_time_utc": "2025-07-22T02:00:00+00:00",
+      "nmae_pct": 10.93,
+      "bias_pct": -5.03
+    },
+    {
+      "issue_time_utc": "2025-07-23T02:00:00+00:00",
+      "nmae_pct": 10.05,
+      "bias_pct": -2.2
+    },
+    {
+      "issue_time_utc": "2025-07-27T02:00:00+00:00",
+      "nmae_pct": 23.32,
+      "bias_pct": -23.32
+    },
+    {
+      "issue_time_utc": "2025-07-28T02:00:00+00:00",
+      "nmae_pct": 15.68,
+      "bias_pct": 8.48
+    },
+    {
+      "issue_time_utc": "2025-07-29T02:00:00+00:00",
+      "nmae_pct": 10.85,
+      "bias_pct": 10.1
+    },
+    {
+      "issue_time_utc": "2025-08-03T02:00:00+00:00",
+      "nmae_pct": 5.31,
+      "bias_pct": 5.31
+    },
+    {
+      "issue_time_utc": "2025-08-04T02:00:00+00:00",
+      "nmae_pct": 12.0,
+      "bias_pct": 3.49
+    },
+    {
+      "issue_time_utc": "2025-08-05T02:00:00+00:00",
+      "nmae_pct": 11.4,
+      "bias_pct": -0.85
+    },
+    {
+      "issue_time_utc": "2025-08-06T02:00:00+00:00",
+      "nmae_pct": 17.19,
+      "bias_pct": 4.17
+    },
+    {
+      "issue_time_utc": "2025-08-07T02:00:00+00:00",
+      "nmae_pct": 15.84,
+      "bias_pct": 7.13
+    },
+    {
+      "issue_time_utc": "2025-08-08T02:00:00+00:00",
+      "nmae_pct": 3.17,
+      "bias_pct": 3.17
+    },
+    {
+      "issue_time_utc": "2025-08-09T02:00:00+00:00",
+      "nmae_pct": 24.87,
+      "bias_pct": -24.78
+    },
+    {
+      "issue_time_utc": "2025-08-10T02:00:00+00:00",
+      "nmae_pct": 17.29,
+      "bias_pct": -16.53
+    },
+    {
+      "issue_time_utc": "2025-08-29T02:00:00+00:00",
+      "nmae_pct": 4.14,
+      "bias_pct": 2.95
+    },
+    {
+      "issue_time_utc": "2025-08-30T02:00:00+00:00",
+      "nmae_pct": 8.03,
+      "bias_pct": 2.85
+    },
+    {
+      "issue_time_utc": "2025-08-31T02:00:00+00:00",
+      "nmae_pct": 8.68,
+      "bias_pct": 3.53
+    },
+    {
+      "issue_time_utc": "2025-09-10T02:00:00+00:00",
+      "nmae_pct": 13.39,
+      "bias_pct": 13.39
+    },
+    {
+      "issue_time_utc": "2025-09-11T02:00:00+00:00",
+      "nmae_pct": 5.62,
+      "bias_pct": 0.89
+    },
+    {
+      "issue_time_utc": "2025-09-12T02:00:00+00:00",
+      "nmae_pct": 5.33,
+      "bias_pct": -3.19
+    },
+    {
+      "issue_time_utc": "2025-09-14T02:00:00+00:00",
+      "nmae_pct": 4.78,
+      "bias_pct": 4.23
+    },
+    {
+      "issue_time_utc": "2025-09-15T02:00:00+00:00",
+      "nmae_pct": 17.97,
+      "bias_pct": -2.26
+    },
+    {
+      "issue_time_utc": "2025-09-16T02:00:00+00:00",
+      "nmae_pct": 22.43,
+      "bias_pct": 0.17
+    },
+    {
+      "issue_time_utc": "2025-09-17T02:00:00+00:00",
+      "nmae_pct": 37.5,
+      "bias_pct": 37.5
+    },
+    {
+      "issue_time_utc": "2025-09-18T02:00:00+00:00",
+      "nmae_pct": 17.03,
+      "bias_pct": 2.58
+    },
+    {
+      "issue_time_utc": "2025-09-19T02:00:00+00:00",
+      "nmae_pct": 11.43,
+      "bias_pct": -3.38
+    },
+    {
+      "issue_time_utc": "2025-10-15T02:00:00+00:00",
+      "nmae_pct": 20.96,
+      "bias_pct": 20.96
+    },
+    {
+      "issue_time_utc": "2025-10-16T02:00:00+00:00",
+      "nmae_pct": 6.87,
+      "bias_pct": 6.82
+    },
+    {
+      "issue_time_utc": "2025-10-17T02:00:00+00:00",
+      "nmae_pct": 4.88,
+      "bias_pct": 4.87
+    },
+    {
+      "issue_time_utc": "2025-10-18T02:00:00+00:00",
+      "nmae_pct": 16.57,
+      "bias_pct": -12.99
+    },
+    {
+      "issue_time_utc": "2025-10-19T02:00:00+00:00",
+      "nmae_pct": 17.34,
+      "bias_pct": -15.09
+    },
+    {
+      "issue_time_utc": "2025-10-28T02:00:00+00:00",
+      "nmae_pct": 3.5,
+      "bias_pct": 3.5
+    },
+    {
+      "issue_time_utc": "2025-10-29T02:00:00+00:00",
+      "nmae_pct": 10.65,
+      "bias_pct": 1.27
+    },
+    {
+      "issue_time_utc": "2025-10-30T02:00:00+00:00",
+      "nmae_pct": 7.95,
+      "bias_pct": 1.54
+    },
+    {
+      "issue_time_utc": "2025-10-31T02:00:00+00:00",
+      "nmae_pct": 17.9,
+      "bias_pct": -17.7
+    },
+    {
+      "issue_time_utc": "2025-11-01T02:00:00+00:00",
+      "nmae_pct": 14.47,
+      "bias_pct": -9.73
+    },
+    {
+      "issue_time_utc": "2025-11-02T02:00:00+00:00",
+      "nmae_pct": 13.33,
+      "bias_pct": -6.28
+    },
+    {
+      "issue_time_utc": "2025-11-03T02:00:00+00:00",
+      "nmae_pct": 9.02,
+      "bias_pct": 2.06
+    },
+    {
+      "issue_time_utc": "2025-11-04T02:00:00+00:00",
+      "nmae_pct": 10.21,
+      "bias_pct": 9.16
+    },
+    {
+      "issue_time_utc": "2025-11-05T02:00:00+00:00",
+      "nmae_pct": 9.15,
+      "bias_pct": 6.28
+    },
+    {
+      "issue_time_utc": "2025-11-08T02:00:00+00:00",
+      "nmae_pct": 2.55,
+      "bias_pct": -2.48
+    },
+    {
+      "issue_time_utc": "2025-11-09T02:00:00+00:00",
+      "nmae_pct": 13.72,
+      "bias_pct": -8.66
+    },
+    {
+      "issue_time_utc": "2025-11-10T02:00:00+00:00",
+      "nmae_pct": 21.43,
+      "bias_pct": -18.24
+    },
+    {
+      "issue_time_utc": "2025-11-11T02:00:00+00:00",
+      "nmae_pct": 31.09,
+      "bias_pct": -29.6
+    },
+    {
+      "issue_time_utc": "2025-11-17T02:00:00+00:00",
+      "nmae_pct": 12.13,
+      "bias_pct": -12.13
+    },
+    {
+      "issue_time_utc": "2025-11-18T02:00:00+00:00",
+      "nmae_pct": 6.15,
+      "bias_pct": -3.37
+    },
+    {
       "issue_time_utc": "2025-11-19T02:00:00+00:00",
-      "nmae_pct": 3.89,
-      "bias_pct": -2.54
+      "nmae_pct": 3.96,
+      "bias_pct": -2.26
     },
     {
       "issue_time_utc": "2025-12-03T02:00:00+00:00",
       "nmae_pct": 1.39,
-      "bias_pct": -1.12
+      "bias_pct": -1.07
     },
     {
       "issue_time_utc": "2025-12-04T02:00:00+00:00",
-      "nmae_pct": 10.01,
-      "bias_pct": 9.68
+      "nmae_pct": 10.24,
+      "bias_pct": 9.92
     },
     {
       "issue_time_utc": "2025-12-05T02:00:00+00:00",
-      "nmae_pct": 5.39,
-      "bias_pct": 4.61
+      "nmae_pct": 5.52,
+      "bias_pct": 4.85
     },
     {
       "issue_time_utc": "2025-12-07T02:00:00+00:00",
-      "nmae_pct": 0.1,
-      "bias_pct": 0.01
+      "nmae_pct": 0.32,
+      "bias_pct": 0.29
     },
     {
       "issue_time_utc": "2025-12-08T02:00:00+00:00",
-      "nmae_pct": 31.98,
-      "bias_pct": -31.92
+      "nmae_pct": 31.74,
+      "bias_pct": -31.64
     },
     {
       "issue_time_utc": "2025-12-09T02:00:00+00:00",
-      "nmae_pct": 28.59,
-      "bias_pct": -28.57
+      "nmae_pct": 28.29,
+      "bias_pct": -28.22
     },
     {
       "issue_time_utc": "2025-12-10T02:00:00+00:00",
-      "nmae_pct": 7.89,
-      "bias_pct": 0.62
+      "nmae_pct": 7.96,
+      "bias_pct": 0.52
     },
     {
       "issue_time_utc": "2025-12-11T02:00:00+00:00",
-      "nmae_pct": 6.66,
-      "bias_pct": 5.11
+      "nmae_pct": 6.84,
+      "bias_pct": 4.84
     },
     {
       "issue_time_utc": "2025-12-12T02:00:00+00:00",
-      "nmae_pct": 2.34,
-      "bias_pct": -0.17
+      "nmae_pct": 2.63,
+      "bias_pct": -0.45
     },
     {
       "issue_time_utc": "2025-12-18T02:00:00+00:00",
-      "nmae_pct": 39.5,
-      "bias_pct": 39.5
+      "nmae_pct": 39.93,
+      "bias_pct": 39.93
     },
     {
       "issue_time_utc": "2025-12-19T02:00:00+00:00",
-      "nmae_pct": 14.66,
-      "bias_pct": 12.58
+      "nmae_pct": 15.03,
+      "bias_pct": 12.87
     },
     {
       "issue_time_utc": "2025-12-20T02:00:00+00:00",
-      "nmae_pct": 10.58,
-      "bias_pct": 7.66
+      "nmae_pct": 10.95,
+      "bias_pct": 7.89
     },
     {
       "issue_time_utc": "2025-12-25T02:00:00+00:00",
@@ -1759,251 +1759,251 @@
     },
     {
       "issue_time_utc": "2025-12-26T02:00:00+00:00",
-      "nmae_pct": 22.44,
-      "bias_pct": -18.16
+      "nmae_pct": 22.52,
+      "bias_pct": -18.24
     },
     {
       "issue_time_utc": "2025-12-27T02:00:00+00:00",
-      "nmae_pct": 23.87,
-      "bias_pct": -18.45
+      "nmae_pct": 24.06,
+      "bias_pct": -18.61
     },
     {
       "issue_time_utc": "2026-01-10T02:00:00+00:00",
-      "nmae_pct": 3.25,
-      "bias_pct": 3.25
+      "nmae_pct": 3.39,
+      "bias_pct": 3.39
     },
     {
       "issue_time_utc": "2026-01-11T02:00:00+00:00",
       "nmae_pct": 12.75,
-      "bias_pct": -8.32
+      "bias_pct": -8.26
     },
     {
       "issue_time_utc": "2026-01-12T02:00:00+00:00",
-      "nmae_pct": 10.58,
-      "bias_pct": -10.02
+      "nmae_pct": 10.6,
+      "bias_pct": -9.98
     },
     {
       "issue_time_utc": "2026-01-14T02:00:00+00:00",
-      "nmae_pct": 6.59,
-      "bias_pct": 6.59
+      "nmae_pct": 6.91,
+      "bias_pct": 6.91
     },
     {
       "issue_time_utc": "2026-01-15T02:00:00+00:00",
-      "nmae_pct": 15.55,
-      "bias_pct": 11.69
+      "nmae_pct": 15.92,
+      "bias_pct": 11.62
     },
     {
       "issue_time_utc": "2026-01-16T02:00:00+00:00",
-      "nmae_pct": 7.45,
-      "bias_pct": 3.52
+      "nmae_pct": 7.25,
+      "bias_pct": 3.4
     }
   ],
   "by_lead": [
     {
       "lead_h": 1,
-      "nmae_pct": 13.39
+      "nmae_pct": 13.48
     },
     {
       "lead_h": 2,
-      "nmae_pct": 13.83
+      "nmae_pct": 13.93
     },
     {
       "lead_h": 3,
-      "nmae_pct": 13.9
+      "nmae_pct": 14.01
     },
     {
       "lead_h": 4,
-      "nmae_pct": 14.36
+      "nmae_pct": 14.44
     },
     {
       "lead_h": 5,
-      "nmae_pct": 13.46
+      "nmae_pct": 13.54
     },
     {
       "lead_h": 6,
-      "nmae_pct": 12.69
+      "nmae_pct": 12.72
     },
     {
       "lead_h": 7,
-      "nmae_pct": 13.35
+      "nmae_pct": 13.33
     },
     {
       "lead_h": 8,
-      "nmae_pct": 15.02
+      "nmae_pct": 15.0
     },
     {
       "lead_h": 9,
-      "nmae_pct": 17.01
+      "nmae_pct": 17.02
     },
     {
       "lead_h": 10,
-      "nmae_pct": 17.83
+      "nmae_pct": 17.85
     },
     {
       "lead_h": 11,
-      "nmae_pct": 18.88
+      "nmae_pct": 18.87
     },
     {
       "lead_h": 12,
-      "nmae_pct": 17.64
+      "nmae_pct": 17.63
     },
     {
       "lead_h": 13,
-      "nmae_pct": 16.66
+      "nmae_pct": 16.68
     },
     {
       "lead_h": 14,
-      "nmae_pct": 16.0
+      "nmae_pct": 16.04
     },
     {
       "lead_h": 15,
-      "nmae_pct": 16.52
+      "nmae_pct": 16.54
     },
     {
       "lead_h": 16,
-      "nmae_pct": 17.89
+      "nmae_pct": 17.9
     },
     {
       "lead_h": 17,
-      "nmae_pct": 17.37
+      "nmae_pct": 17.39
     },
     {
       "lead_h": 18,
-      "nmae_pct": 15.57
+      "nmae_pct": 15.65
     },
     {
       "lead_h": 19,
-      "nmae_pct": 15.79
+      "nmae_pct": 15.84
     },
     {
       "lead_h": 20,
-      "nmae_pct": 14.05
+      "nmae_pct": 14.1
     },
     {
       "lead_h": 21,
-      "nmae_pct": 14.93
+      "nmae_pct": 14.97
     },
     {
       "lead_h": 22,
-      "nmae_pct": 15.48
+      "nmae_pct": 15.55
     },
     {
       "lead_h": 23,
-      "nmae_pct": 15.48
+      "nmae_pct": 15.53
     },
     {
       "lead_h": 24,
-      "nmae_pct": 13.58
+      "nmae_pct": 13.64
     },
     {
       "lead_h": 25,
-      "nmae_pct": 14.93
+      "nmae_pct": 14.96
     },
     {
       "lead_h": 26,
-      "nmae_pct": 14.79
+      "nmae_pct": 14.87
     },
     {
       "lead_h": 27,
-      "nmae_pct": 15.69
+      "nmae_pct": 15.77
     },
     {
       "lead_h": 28,
-      "nmae_pct": 15.92
+      "nmae_pct": 15.96
     },
     {
       "lead_h": 29,
-      "nmae_pct": 15.27
+      "nmae_pct": 15.35
     },
     {
       "lead_h": 30,
-      "nmae_pct": 15.5
+      "nmae_pct": 15.56
     },
     {
       "lead_h": 31,
-      "nmae_pct": 14.8
+      "nmae_pct": 14.82
     },
     {
       "lead_h": 32,
-      "nmae_pct": 16.64
+      "nmae_pct": 16.61
     },
     {
       "lead_h": 33,
-      "nmae_pct": 19.5
+      "nmae_pct": 19.45
     },
     {
       "lead_h": 34,
-      "nmae_pct": 18.97
+      "nmae_pct": 18.93
     },
     {
       "lead_h": 35,
-      "nmae_pct": 20.5
+      "nmae_pct": 20.48
     },
     {
       "lead_h": 36,
-      "nmae_pct": 19.61
+      "nmae_pct": 19.65
     },
     {
       "lead_h": 37,
-      "nmae_pct": 18.49
+      "nmae_pct": 18.52
     },
     {
       "lead_h": 38,
-      "nmae_pct": 17.7
+      "nmae_pct": 17.76
     },
     {
       "lead_h": 39,
-      "nmae_pct": 17.59
+      "nmae_pct": 17.62
     },
     {
       "lead_h": 40,
-      "nmae_pct": 19.0
+      "nmae_pct": 19.08
     },
     {
       "lead_h": 41,
-      "nmae_pct": 19.17
+      "nmae_pct": 19.26
     },
     {
       "lead_h": 42,
-      "nmae_pct": 18.44
+      "nmae_pct": 18.52
     },
     {
       "lead_h": 43,
-      "nmae_pct": 19.38
+      "nmae_pct": 19.4
     },
     {
       "lead_h": 44,
-      "nmae_pct": 16.41
+      "nmae_pct": 16.54
     },
     {
       "lead_h": 45,
-      "nmae_pct": 15.25
+      "nmae_pct": 15.35
     },
     {
       "lead_h": 46,
-      "nmae_pct": 16.87
+      "nmae_pct": 16.9
     },
     {
       "lead_h": 47,
-      "nmae_pct": 16.71
+      "nmae_pct": 16.79
     },
     {
       "lead_h": 48,
-      "nmae_pct": 16.28
+      "nmae_pct": 16.32
     }
   ],
   "by_turbine": [
     {
       "turbine": "T1",
-      "nmae_d1_pct": 15.31,
-      "nmae_d2_pct": 17.16,
-      "coverage_p10_p90_pct": 80.3
+      "nmae_d1_pct": 15.33,
+      "nmae_d2_pct": 17.18,
+      "coverage_p10_p90_pct": 80.4
     },
     {
       "turbine": "T2",
-      "nmae_d1_pct": 15.57,
-      "nmae_d2_pct": 17.29,
-      "coverage_p10_p90_pct": 80.3
+      "nmae_d1_pct": 15.63,
+      "nmae_d2_pct": 17.36,
+      "coverage_p10_p90_pct": 80.4
     }
   ],
   "series": []

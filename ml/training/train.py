@@ -32,7 +32,7 @@ from src.forecast.weather.asof import AsOfStore  # noqa: E402
 from ml_service.features import DESCRIPTIONS, FEATURES, build_features  # noqa: E402
 from ml_service.frame import build_frame_from_rows  # noqa: E402
 from ml_service.predictors.baseline import passport_curve  # noqa: E402
-from ml_service.predictors.lgbm import Calibration  # noqa: E402
+from ml_service.predictors.lgbm import Calibration, load_members  # noqa: E402
 
 ARTIFACTS = ML / "artifacts"
 SOURCES = ["ifs", "ifs025", "gfs", "icon", "gem"]
@@ -57,7 +57,7 @@ PARAMS = dict(
     num_threads=4,
 )
 ROUNDS = 500
-VERSION = "lgbm-scada-2026-01-31-v1"
+VERSION = "ensemble-scada-2026-01-31-v2"
 
 
 def load_hours() -> pd.DataFrame:
@@ -86,11 +86,14 @@ def fit(hours: pd.DataFrame) -> list[lgb.Booster]:
     return [lgb.train({**PARAMS, "seed": seed}, lgb.Dataset(x, y, feature_name=FEATURES), num_boost_round=ROUNDS) for seed in SEEDS]
 
 
-def p50(models, x: pd.DataFrame) -> np.ndarray:
-    return np.clip(np.mean([m.predict(x[FEATURES].to_numpy(dtype=float)) for m in models], axis=0), 0, 1)
+def p50(models, x: pd.DataFrame, members: dict | None = None) -> np.ndarray:
+    """P50 ансамбля так же, как в сервисе: среднее LightGBM и подключенных моделей из members."""
+    predictions = [np.mean([m.predict(x[FEATURES].to_numpy(dtype=float)) for m in models], axis=0)]
+    predictions += [np.asarray(member.predict_p50(x[FEATURES]), dtype=float) for member in (members or {}).values()]
+    return np.clip(np.mean(np.clip(predictions, 0, 1), axis=0), 0, 1)
 
 
-def issues_frame(models, hours: pd.DataFrame, days: list) -> pd.DataFrame:
+def issues_frame(models, hours: pd.DataFrame, days: list, members: dict | None = None) -> pd.DataFrame:
     """Для каждого выпуска: прогноз по погоде, доступной на 02:00 UTC, и факт SCADA."""
     store = AsOfStore(REPO / "data" / "nwp")
     sources = [s for s in SOURCES if (REPO / "data" / "nwp" / s).exists()]
@@ -113,7 +116,7 @@ def issues_frame(models, hours: pd.DataFrame, days: list) -> pd.DataFrame:
                     "valid_time_utc": s.index,
                     "lead_h": s["lead_h"].to_numpy(),
                     "turbine": turbine,
-                    "p50": p50(models, x),
+                    "p50": p50(models, x, members),
                     "spread": s["wind_spread_ms"].to_numpy(dtype=float),
                     "wind": s["wind_speed_hub_ms"].to_numpy(),
                 }
@@ -197,13 +200,15 @@ def main() -> None:
     print(f"часов: train {len(train)}, check {len(check)}; дней в check {len(check_days)}")
 
     models = fit(train)
+    members = load_members(ARTIFACTS)
+    print("ансамбль: lightgbm +", ", ".join(members) or "без других моделей")
     xa = features_of(check)
     for turbine in ("T1", "T2"):
         m = (check["turbine"] == turbine).to_numpy()
-        print(f"проверка А {turbine}: nMAE {nmae(p50(models, xa[m]) - check['power_norm'].to_numpy()[m])}% (измеренный ветер)")
+        print(f"проверка А {turbine}: nMAE {nmae(p50(models, xa[m], members) - check['power_norm'].to_numpy()[m])}% (измеренный ветер)")
 
     all_days = sorted(hours["day"].unique())
-    issues = issues_frame(models, hours, all_days)
+    issues = issues_frame(models, hours, all_days, members)
     issues["day"] = issues["valid_time_utc"].dt.normalize()
     train_issues = issues[~issues["day"].isin(check_days)]
     check_issues = issues[issues["day"].isin(check_days)].copy()
@@ -233,9 +238,11 @@ def main() -> None:
 
     gain = np.mean([m.feature_importance("gain") for m in final], axis=0)
     curve_ws = np.arange(0, 25.5, 0.5)
-    curve = p50(final, build_features(curve_ws, np.full(len(curve_ws), 5.0), pd.DatetimeIndex(["2025-01-15 12:00"] * len(curve_ws)), "T1"))
+    curve = p50(
+        final, members=members, x=build_features(curve_ws, np.full(len(curve_ws), 5.0), pd.DatetimeIndex(["2025-01-15 12:00"] * len(curve_ws)), "T1")
+    )
     info = {
-        "name": "LightGBM на SCADA, 5 бустеров",
+        "name": "Ансамбль на SCADA: LightGBM, ExtraTrees, MLP",
         "version": VERSION,
         "kind": "lightgbm_quantile",
         "quantiles": [0.1, 0.5, 0.9],
@@ -263,7 +270,7 @@ def main() -> None:
             {"name": f, "importance": round(float(g / gain.sum()), 4), "description": DESCRIPTIONS[f]} for f, g in zip(FEATURES, gain, strict=True)
         ],
         "power_curve": [{"wind_ms": float(w), "power_norm": round(float(p), 4)} for w, p in zip(curve_ws, curve, strict=True)],
-        "notes": "P50 — среднее 5 бустеров LightGBM (квантиль 0,5), обучены на ветре и температуре SCADA. "
+        "notes": "P50 — среднее трех моделей: 5 бустеров LightGBM (квантиль 0,5), ExtraTrees и MLP, все обучены на ветре и температуре SCADA. "
         "В бою на вход идет ветер ступицы и температура, усредненные по пришедшим моделям погоды. "
         "P10/P90 — P50 плюс поправки из calibration.json по уровню прогноза, разбросу моделей погоды и заблаговременности.",
     }
