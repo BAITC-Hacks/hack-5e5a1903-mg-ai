@@ -79,17 +79,29 @@ GET /scada?until=2026-01-31T02:00:00Z
 
 ## Что нужно от dev2: сервис модели
 
-Адрес из `ML_SERVICE_URL`, таймаут из `ML_SERVICE_TIMEOUT`.
-Контракт обещан командой dev2, ниже наше предложение как отправная точка:
+Адрес из `ML_SERVICE_URL`, таймаут из `ML_SERVICE_TIMEOUT`. Контракт dev2 принят на основе
+предложения выше, полностью описан в [../ml/openapi.json](../ml/openapi.json), Swagger
+на `http://localhost:8010/docs`, пояснения в [../ml/README.md](../ml/README.md).
 
 ```
 POST /predict
-    {"issue_time_utc": "...", "rows": [ <строки погоды из /nwp> ]}
-    -> [{valid_time_utc, turbine, p10, p50, p90}]
+    {"issue_time_utc": "...", "rows": [ <строки погоды из /nwp как есть> ],
+     "options": {"turbines": ["T1", "T2"], "interval_scale": 1.0, "wind_shift_ms": 0.0}}
+    -> {"model": {...}, "capacity_mw": {...}, "degraded": false, "warnings": [...],
+        "forecast": [{valid_time_utc, lead_h, turbine, p10, p50, p90}],
+        "hourly_inputs": [{valid_time_utc, wind_speed_hub_ms, wind_spread_ms, t2m, sources}]}
 
-GET /model-info   -> имя модели, квантили, признаки, кривая мощности, окно обучения
-GET /metrics      -> nMAE D+1 и D+2, nRMSE, skill против бейзлайнов, покрытие P10–P90
+GET /model-info   -> ModelInfo: имя, квантили, окно обучения, train_rows, признаки с важностью,
+                     кривая мощности {wind_ms, power_norm}, walk_forward
+GET /metrics      -> ModelMetrics: nmae_d1_pct, nmae_d2_pct, nrmse_48_pct, skill_vs_persistence_pct,
+                     coverage_p10_p90_pct, baselines, by_day, by_lead, series
+GET /health       -> ok, если загружена обученная модель; degraded, пока работает кривая мощности
 ```
+
+Ответ — объект, а не список: в нем версия модели, признак `degraded` и предупреждения
+для журнала агента. Ползунок «что если» на «Обзоре» — тот же `POST /predict`
+с `wind_shift_ms`, пересчет с широким интервалом — с `interval_scale`. Ошибки в общем
+конверте, `422` означает ошибку во входных данных, например `LEAKAGE_DETECTED`.
 
 ## Правила для обеих границ
 

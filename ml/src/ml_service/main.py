@@ -11,17 +11,18 @@ from ml_service import service
 from ml_service.config import get_settings
 from ml_service.errors import MLServiceError
 from ml_service.predictors import LoadedModel, load_model
-from ml_service.schemas import BacktestReport, ErrorResponse, HealthResponse, ModelCard, PredictRequest, PredictResponse
+from ml_service.schemas import ErrorResponse, HealthResponse, ModelInfo, ModelMetrics, PredictRequest, PredictResponse
 
 logger = logging.getLogger("ml_service")
 
 DESCRIPTION = """
 Почасовой вероятностный прогноз выработки двух турбин ВЭС «Шелек» и станции целиком.
 
-**Кто вызывает.** Только backend: агент собирает прогнозы погоды, доступные на момент T,
-и отправляет их в `POST /v1/predict`. Frontend к сервису напрямую не ходит.
+**Кто вызывает.** Только backend: берет строки погоды, доступные на момент T, из `GET /nwp`
+сервиса погоды и отправляет их как есть в `POST /predict`. Frontend к сервису напрямую не ходит.
+Общая схема: `docs/api-contract.md`.
 
-**Единицы.** `p10`, `p50`, `p90` — доля от номинальной мощности цели (0…1). Номиналы в `capacity_mw`.
+**Единицы.** `p10`, `p50`, `p90` — доля от номинальной мощности (0…1). Номиналы в `capacity_mw`.
 Скорости ветра — м/с: у Open-Meteo нужно запрашивать `wind_speed_unit=ms`, по умолчанию там км/ч.
 
 **Ошибки.** Всегда конверт `{"error": {"code", "message", "details"}}`, как в backend.
@@ -40,8 +41,8 @@ async def lifespan(app: FastAPI):
     logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     # Модель загружается один раз и дальше только читается: между запросами состояния нет.
     app.state.model = load_model(settings.artifacts_dir)
-    card = app.state.model.predictor.card
-    logger.info("Модель %s (%s) загружена, артефакты: %s", card.version, card.kind, settings.artifacts_dir)
+    info = app.state.model.predictor.info
+    logger.info("Модель %s (%s) загружена, артефакты: %s", info.version, info.kind, settings.artifacts_dir)
     yield
 
 
@@ -55,31 +56,33 @@ def _model(request: Request) -> LoadedModel:
 @app.get("/health", response_model=HealthResponse, tags=["System"], summary="Жив ли сервис и какая модель загружена")
 def health(request: Request) -> HealthResponse:
     model = _model(request)
-    card = model.predictor.card
-    return HealthResponse(status="ok" if model.trained else "degraded", model_loaded=model.trained, model_version=card.version, model_kind=card.kind)
-
-
-@app.get("/v1/model", response_model=ModelCard, tags=["Model"], summary="Паспорт модели: входы, признаки, важность, кривая мощности, метрики")
-def model_card(request: Request) -> ModelCard:
-    return _model(request).predictor.card
+    info = model.predictor.info
+    return HealthResponse(status="ok" if model.trained else "degraded", model_loaded=model.trained, model_version=info.version, model_kind=info.kind)
 
 
 @app.get(
-    "/v1/model/backtest",
-    response_model=BacktestReport,
-    tags=["Model"],
-    summary="Проверка модели на отложенном периоде: выпуски, прогноз и факт по часам",
-    responses={404: {"model": ErrorResponse, "description": "Отчет еще не собран: BACKTEST_NOT_AVAILABLE"}},
+    "/model-info", response_model=ModelInfo, tags=["Model"], summary="Паспорт модели: входы, признаки с важностью, кривая мощности, окно обучения"
 )
-def backtest(request: Request) -> BacktestReport:
-    report = _model(request).backtest
+def model_info(request: Request) -> ModelInfo:
+    return _model(request).predictor.info
+
+
+@app.get(
+    "/metrics",
+    response_model=ModelMetrics,
+    tags=["Model"],
+    summary="Качество на отложенном периоде: nMAE D+1 и D+2, nRMSE, skill, покрытие P10–P90, по дням и по часам горизонта",
+    responses={404: {"model": ErrorResponse, "description": "Метрики еще не посчитаны: METRICS_NOT_AVAILABLE"}},
+)
+def metrics(request: Request) -> ModelMetrics:
+    report = _model(request).metrics
     if report is None:
-        raise MLServiceError(404, "BACKTEST_NOT_AVAILABLE", "Отчет о проверке модели еще не собран")
+        raise MLServiceError(404, "METRICS_NOT_AVAILABLE", "Метрики модели еще не посчитаны")
     return report
 
 
 @app.post(
-    "/v1/predict",
+    "/predict",
     response_model=PredictResponse,
     tags=["Forecast"],
     summary="Прогноз P10/P50/P90 на часы T+1 … T+48 по прогнозам погоды, доступным к T",

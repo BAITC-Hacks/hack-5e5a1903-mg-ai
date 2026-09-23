@@ -13,19 +13,19 @@ import pandas as pd
 
 from ml_service.frame import Frame
 from ml_service.predictors.baseline import BaselinePredictor
-from ml_service.schemas import BacktestReport, ModelCard, Target
+from ml_service.schemas import ModelInfo, ModelMetrics, Turbine
 
 logger = logging.getLogger(__name__)
 
-MODEL_CARD_FILE = "model_card.json"
-BACKTEST_FILE = "backtest.json"
+MODEL_INFO_FILE = "model_info.json"
+METRICS_FILE = "metrics.json"
 
 
 class Predictor(Protocol):
-    card: ModelCard
+    info: ModelInfo
 
-    def predict(self, frame: Frame, targets: list[Target]) -> pd.DataFrame:
-        """Строка на час и цель: valid_time_utc, target, p10, p50, p90 — доли от номинала.
+    def predict(self, frame: Frame, turbines: list[Turbine]) -> pd.DataFrame:
+        """Строка на час и турбину: valid_time_utc, turbine, p10, p50, p90 — доли от номинала.
 
         Сортировку квантилей, обрезку в [0, 1] и расширение интервала делает сервис.
         """
@@ -35,31 +35,31 @@ class Predictor(Protocol):
 @dataclass(frozen=True)
 class LoadedModel:
     predictor: Predictor
-    backtest: BacktestReport | None
+    metrics: ModelMetrics | None
     trained: bool
 
 
 def load_model(artifacts_dir: Path) -> LoadedModel:
-    backtest = _read_backtest(artifacts_dir / BACKTEST_FILE)
-    card_path = artifacts_dir / MODEL_CARD_FILE
-    if card_path.exists():
+    metrics = _read_metrics(artifacts_dir / METRICS_FILE)
+    info_path = artifacts_dir / MODEL_INFO_FILE
+    if info_path.exists():
         try:
-            card = ModelCard.model_validate_json(card_path.read_text(encoding="utf-8"))
-            if card.kind == "lightgbm_quantile":
+            info = ModelInfo.model_validate_json(info_path.read_text(encoding="utf-8"))
+            if info.kind == "lightgbm_quantile":
                 # Модуль lgbm.py добавляет обучающая сессия вместе с файлами модели, см. ml/README.md.
                 from ml_service.predictors import lgbm
 
-                return LoadedModel(lgbm.load(artifacts_dir, card), backtest, trained=True)
+                return LoadedModel(lgbm.load(artifacts_dir, info), metrics, trained=True)
         except Exception:
             logger.exception("Не удалось загрузить обученную модель из %s, работаю на кривой мощности", artifacts_dir)
-    return LoadedModel(BaselinePredictor(), backtest, trained=False)
+    return LoadedModel(BaselinePredictor(), metrics, trained=False)
 
 
-def _read_backtest(path: Path) -> BacktestReport | None:
+def _read_metrics(path: Path) -> ModelMetrics | None:
     if not path.exists():
         return None
     try:
-        return BacktestReport.model_validate_json(path.read_text(encoding="utf-8"))
+        return ModelMetrics.model_validate_json(path.read_text(encoding="utf-8"))
     except Exception:
-        logger.exception("Файл %s не соответствует схеме BacktestReport", path)
+        logger.exception("Файл %s не соответствует схеме ModelMetrics", path)
         return None

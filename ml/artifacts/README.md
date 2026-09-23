@@ -5,8 +5,8 @@
 
 | Файл | Что внутри | Схема |
 |---|---|---|
-| `model_card.json` | паспорт модели, `kind: "lightgbm_quantile"` | `ModelCard` в `src/ml_service/schemas.py` |
-| `backtest.json` | проверка на отложенном периоде | `BacktestReport` в `src/ml_service/schemas.py` |
+| `model_info.json` | паспорт модели, `kind: "lightgbm_quantile"` | `ModelInfo` в `src/ml_service/schemas.py` |
+| `metrics.json` | качество на отложенном периоде | `ModelMetrics` в `src/ml_service/schemas.py` |
 | файлы LightGBM | по одному бустеру на квантиль, например `lgbm_q10.txt` | читает `src/ml_service/predictors/lgbm.py` |
 
 Подробно, как подключить обученную модель: [../README.md](../README.md).

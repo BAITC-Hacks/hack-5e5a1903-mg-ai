@@ -17,8 +17,8 @@ HUB_HEIGHT_M = 80.0
 # Степенной профиль ветра для пересчета на высоту ступицы, когда 80 м в источнике нет.
 SHEAR_EXPONENT = 0.14
 # Порядок важен: сначала высота ступицы, затем ближайшие к ней высоты.
-_HUB_SOURCES = {"wind_speed_80m": 80.0, "wind_speed_100m": 100.0, "wind_speed_120m": 120.0, "wind_speed_10m": 10.0}
-_WIND_SHIFT_COLUMNS = [*WIND_SPEED_VARIABLES, "wind_gusts_10m"]
+_HUB_SOURCES = {"ws80": 80.0, "ws100": 100.0, "ws120": 120.0, "ws10": 10.0}
+_WIND_SHIFT_COLUMNS = [*WIND_SPEED_VARIABLES, "gust10"]
 _MAX_EXAMPLES = 5
 
 
@@ -27,7 +27,7 @@ class Frame:
     issue_time: pd.Timestamp
     # Индекс valid_time_utc. Колонки: lead_h и "<source>__<переменная>", включая "<source>__hub" и "<source>__nwp_lead_h".
     wide: pd.DataFrame
-    # Индекс valid_time_utc. Колонки: lead_h, wind_speed_hub_ms, wind_spread_ms, temperature_2m, sources.
+    # Индекс valid_time_utc. Колонки: lead_h, wind_speed_hub_ms, wind_spread_ms, t2m, sources.
     summary: pd.DataFrame
     sources: list[str]
     hours_by_source: dict[str, int]
@@ -43,7 +43,7 @@ def horizon_hours(issue_time: pd.Timestamp, horizon: int) -> pd.DatetimeIndex:
 
 
 def build_frame(request: PredictRequest) -> Frame:
-    rows = pd.DataFrame([row.model_dump() for row in request.weather])
+    rows = pd.DataFrame([row.model_dump() for row in request.rows])
     return build_frame_from_rows(request.issue_time_utc, request.horizon_hours, rows, request.options.wind_shift_ms)
 
 
@@ -81,12 +81,12 @@ def build_frame_from_rows(issue_time, horizon: int, rows: pd.DataFrame, wind_shi
     wide.insert(0, "lead_h", np.arange(1, horizon + 1))
 
     hub = rows.pivot(index="valid_time_utc", columns="source", values="hub").reindex(hours)
-    temperature = rows.pivot(index="valid_time_utc", columns="source", values="temperature_2m").reindex(hours)
+    temperature = rows.pivot(index="valid_time_utc", columns="source", values="t2m").reindex(hours)
     summary = pd.DataFrame(index=hours)
     summary["lead_h"] = np.arange(1, horizon + 1)
     summary["wind_speed_hub_ms"] = hub.mean(axis=1)
     summary["wind_spread_ms"] = hub.std(axis=1, ddof=0).where(hub.notna().sum(axis=1) >= 2)
-    summary["temperature_2m"] = temperature.mean(axis=1)
+    summary["t2m"] = temperature.mean(axis=1)
     summary["sources"] = [sorted(hub.columns[hub.loc[t].notna()]) for t in hours]
 
     hours_by_source = rows[rows["hub"].notna()].groupby("source")["valid_time_utc"].nunique().to_dict()

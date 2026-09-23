@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "HackAlem ML Service",
-    "description": "\nПочасовой вероятностный прогноз выработки двух турбин ВЭС «Шелек» и станции целиком.\n\n**Кто вызывает.** Только backend: агент собирает прогнозы погоды, доступные на момент T,\nи отправляет их в `POST /v1/predict`. Frontend к сервису напрямую не ходит.\n\n**Единицы.** `p10`, `p50`, `p90` — доля от номинальной мощности цели (0…1). Номиналы в `capacity_mw`.\nСкорости ветра — м/с: у Open-Meteo нужно запрашивать `wind_speed_unit=ms`, по умолчанию там км/ч.\n\n**Ошибки.** Всегда конверт `{\"error\": {\"code\", \"message\", \"details\"}}`, как в backend.\nКлиент ставит таймаут, при таймауте или 5xx агент переходит на запасной прогноз.\n",
+    "description": "\nПочасовой вероятностный прогноз выработки двух турбин ВЭС «Шелек» и станции целиком.\n\n**Кто вызывает.** Только backend: берет строки погоды, доступные на момент T, из `GET /nwp`\nсервиса погоды и отправляет их как есть в `POST /predict`. Frontend к сервису напрямую не ходит.\nОбщая схема: `docs/api-contract.md`.\n\n**Единицы.** `p10`, `p50`, `p90` — доля от номинальной мощности (0…1). Номиналы в `capacity_mw`.\nСкорости ветра — м/с: у Open-Meteo нужно запрашивать `wind_speed_unit=ms`, по умолчанию там км/ч.\n\n**Ошибки.** Всегда конверт `{\"error\": {\"code\", \"message\", \"details\"}}`, как в backend.\nКлиент ставит таймаут, при таймауте или 5xx агент переходит на запасной прогноз.\n",
     "version": "1.0.0"
   },
   "paths": {
@@ -27,20 +27,20 @@
         }
       }
     },
-    "/v1/model": {
+    "/model-info": {
       "get": {
         "tags": [
           "Model"
         ],
-        "summary": "Паспорт модели: входы, признаки, важность, кривая мощности, метрики",
-        "operationId": "model_card_v1_model_get",
+        "summary": "Паспорт модели: входы, признаки с важностью, кривая мощности, окно обучения",
+        "operationId": "model_info_model_info_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ModelCard"
+                  "$ref": "#/components/schemas/ModelInfo"
                 }
               }
             }
@@ -48,26 +48,26 @@
         }
       }
     },
-    "/v1/model/backtest": {
+    "/metrics": {
       "get": {
         "tags": [
           "Model"
         ],
-        "summary": "Проверка модели на отложенном периоде: выпуски, прогноз и факт по часам",
-        "operationId": "backtest_v1_model_backtest_get",
+        "summary": "Качество на отложенном периоде: nMAE D+1 и D+2, nRMSE, skill, покрытие P10–P90, по дням и по часам горизонта",
+        "operationId": "metrics_metrics_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BacktestReport"
+                  "$ref": "#/components/schemas/ModelMetrics"
                 }
               }
             }
           },
           "404": {
-            "description": "Отчет еще не собран: BACKTEST_NOT_AVAILABLE",
+            "description": "Метрики еще не посчитаны: METRICS_NOT_AVAILABLE",
             "content": {
               "application/json": {
                 "schema": {
@@ -79,13 +79,13 @@
         }
       }
     },
-    "/v1/predict": {
+    "/predict": {
       "post": {
         "tags": [
           "Forecast"
         ],
         "summary": "Прогноз P10/P50/P90 на часы T+1 … T+48 по прогнозам погоды, доступным к T",
-        "operationId": "predict_v1_predict_post",
+        "operationId": "predict_predict_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -133,141 +133,6 @@
   },
   "components": {
     "schemas": {
-      "BacktestIssue": {
-        "properties": {
-          "issue_time_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Issue Time Utc"
-          },
-          "nmae_pct_lead_1_24": {
-            "type": "number",
-            "title": "Nmae Pct Lead 1 24"
-          },
-          "nmae_pct_lead_25_48": {
-            "type": "number",
-            "title": "Nmae Pct Lead 25 48"
-          },
-          "nmae_pct_48h": {
-            "type": "number",
-            "title": "Nmae Pct 48H"
-          },
-          "bias_pct": {
-            "type": "number",
-            "title": "Bias Pct"
-          }
-        },
-        "type": "object",
-        "required": [
-          "issue_time_utc",
-          "nmae_pct_lead_1_24",
-          "nmae_pct_lead_25_48",
-          "nmae_pct_48h",
-          "bias_pct"
-        ],
-        "title": "BacktestIssue"
-      },
-      "BacktestPoint": {
-        "properties": {
-          "issue_time_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Issue Time Utc"
-          },
-          "valid_time_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Valid Time Utc"
-          },
-          "lead_h": {
-            "type": "integer",
-            "maximum": 48.0,
-            "minimum": 1.0,
-            "title": "Lead H"
-          },
-          "target": {
-            "type": "string",
-            "enum": [
-              "T1",
-              "T2",
-              "station"
-            ],
-            "title": "Target"
-          },
-          "p10": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "P10"
-          },
-          "p50": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "P50"
-          },
-          "p90": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "P90"
-          },
-          "actual": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Actual"
-          }
-        },
-        "type": "object",
-        "required": [
-          "issue_time_utc",
-          "valid_time_utc",
-          "lead_h",
-          "target",
-          "p10",
-          "p50",
-          "p90",
-          "actual"
-        ],
-        "title": "BacktestPoint"
-      },
-      "BacktestReport": {
-        "properties": {
-          "model_version": {
-            "type": "string",
-            "title": "Model Version"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/MetricsSummary"
-          },
-          "issues": {
-            "items": {
-              "$ref": "#/components/schemas/BacktestIssue"
-            },
-            "type": "array",
-            "title": "Issues",
-            "description": "По строке на каждый выпуск: календарь запусков"
-          },
-          "series": {
-            "items": {
-              "$ref": "#/components/schemas/BacktestPoint"
-            },
-            "type": "array",
-            "title": "Series",
-            "description": "Прогноз и факт по часам: график «прогноз против факта» и доля недобора"
-          }
-        },
-        "type": "object",
-        "required": [
-          "model_version",
-          "summary",
-          "issues",
-          "series"
-        ],
-        "title": "BacktestReport",
-        "description": "Проверка модели на отложенном периоде: страницы «Бэктест» и «Диспетчер»."
-      },
       "BaselineScore": {
         "properties": {
           "name": {
@@ -291,7 +156,7 @@
           "code": {
             "type": "string",
             "title": "Code",
-            "description": "VALIDATION_ERROR, ISSUE_TIME_NOT_ON_HOUR, LEAKAGE_DETECTED, INCONSISTENT_RUN_TIMES, DUPLICATE_ROWS, OUT_OF_HORIZON, INSUFFICIENT_INPUTS, MISSING_REQUIRED_SOURCE, BACKTEST_NOT_AVAILABLE, INTERNAL_ERROR"
+            "description": "VALIDATION_ERROR, ISSUE_TIME_NOT_ON_HOUR, LEAKAGE_DETECTED, INCONSISTENT_RUN_TIMES, DUPLICATE_ROWS, OUT_OF_HORIZON, INSUFFICIENT_INPUTS, MISSING_REQUIRED_SOURCE, METRICS_NOT_AVAILABLE, INTERNAL_ERROR"
           },
           "message": {
             "type": "string",
@@ -324,41 +189,34 @@
       },
       "FeatureImportance": {
         "properties": {
-          "feature": {
+          "name": {
             "type": "string",
-            "title": "Feature"
+            "title": "Name"
           },
           "importance": {
             "type": "number",
             "minimum": 0.0,
             "title": "Importance",
             "description": "Доля важности, в сумме по признакам 1"
-          }
-        },
-        "type": "object",
-        "required": [
-          "feature",
-          "importance"
-        ],
-        "title": "FeatureImportance"
-      },
-      "FeatureSpec": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
           },
           "description": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Description"
           }
         },
         "type": "object",
         "required": [
           "name",
-          "description"
+          "importance"
         ],
-        "title": "FeatureSpec"
+        "title": "FeatureImportance"
       },
       "ForecastPoint": {
         "properties": {
@@ -374,14 +232,14 @@
             "title": "Lead H",
             "description": "Часы от момента прогноза"
           },
-          "target": {
+          "turbine": {
             "type": "string",
             "enum": [
               "T1",
               "T2",
               "station"
             ],
-            "title": "Target"
+            "title": "Turbine"
           },
           "p10": {
             "type": "number",
@@ -409,7 +267,7 @@
         "required": [
           "valid_time_utc",
           "lead_h",
-          "target",
+          "turbine",
           "p10",
           "p50",
           "p90"
@@ -484,7 +342,7 @@
             "title": "Wind Spread Ms",
             "description": "Разброс ветра между моделями погоды, м/с. Пусто, если модель одна"
           },
-          "temperature_2m": {
+          "t2m": {
             "anyOf": [
               {
                 "type": "number"
@@ -493,7 +351,7 @@
                 "type": "null"
               }
             ],
-            "title": "Temperature 2M",
+            "title": "T2M",
             "description": "Температура, среднее по моделям погоды, °C"
           },
           "sources": {
@@ -511,106 +369,122 @@
           "lead_h",
           "wind_speed_hub_ms",
           "wind_spread_ms",
-          "temperature_2m",
+          "t2m",
           "sources"
         ],
         "title": "HourlyInputs",
         "description": "Что модель увидела на входе в этот час: для графика ветра, проверок агента и отчета."
       },
-      "MetricsSummary": {
+      "MetricsDay": {
         "properties": {
-          "period_start_utc": {
+          "issue_time_utc": {
             "type": "string",
             "format": "date-time",
-            "title": "Period Start Utc"
+            "title": "Issue Time Utc"
           },
-          "period_end_utc": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Period End Utc"
+          "nmae_pct": {
+            "type": "number",
+            "title": "Nmae Pct"
           },
-          "nmae_pct_lead_1_24": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nmae Pct Lead 1 24"
-          },
-          "nmae_pct_lead_25_48": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nmae Pct Lead 25 48"
-          },
-          "nmae_pct_day_ahead": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nmae Pct Day Ahead",
-            "description": "Сутки D из выпуска D-1"
-          },
-          "nrmse_pct_48h": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nrmse Pct 48H"
-          },
-          "coverage_p10_p90_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Coverage P10 P90 Pct",
-            "description": "Доля часов, где факт попал в P10–P90, цель около 80"
-          },
-          "nmae_pct_by_lead": {
-            "items": {
-              "type": "number"
-            },
-            "type": "array",
-            "title": "Nmae Pct By Lead",
-            "description": "nMAE для каждого часа горизонта 1…48"
-          },
-          "baselines": {
-            "items": {
-              "$ref": "#/components/schemas/BaselineScore"
-            },
-            "type": "array",
-            "title": "Baselines",
-            "description": "Те же метрики у простых методов для сравнения"
+          "bias_pct": {
+            "type": "number",
+            "title": "Bias Pct"
           }
         },
         "type": "object",
         "required": [
-          "period_start_utc",
-          "period_end_utc"
+          "issue_time_utc",
+          "nmae_pct",
+          "bias_pct"
         ],
-        "title": "MetricsSummary"
+        "title": "MetricsDay"
       },
-      "ModelCard": {
+      "MetricsLead": {
+        "properties": {
+          "lead_h": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Lead H"
+          },
+          "nmae_pct": {
+            "type": "number",
+            "title": "Nmae Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lead_h",
+          "nmae_pct"
+        ],
+        "title": "MetricsLead"
+      },
+      "MetricsPoint": {
+        "properties": {
+          "issue_time_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Issue Time Utc"
+          },
+          "valid_time_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Time Utc"
+          },
+          "lead_h": {
+            "type": "integer",
+            "maximum": 48.0,
+            "minimum": 1.0,
+            "title": "Lead H"
+          },
+          "turbine": {
+            "type": "string",
+            "enum": [
+              "T1",
+              "T2",
+              "station"
+            ],
+            "title": "Turbine"
+          },
+          "p10": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "P10"
+          },
+          "p50": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "P50"
+          },
+          "p90": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "P90"
+          },
+          "actual": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Actual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue_time_utc",
+          "valid_time_utc",
+          "lead_h",
+          "turbine",
+          "p10",
+          "p50",
+          "p90",
+          "actual"
+        ],
+        "title": "MetricsPoint"
+      },
+      "ModelInfo": {
         "properties": {
           "name": {
             "type": "string",
@@ -628,17 +502,12 @@
             ],
             "title": "Kind"
           },
-          "created_at_utc": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At Utc"
+          "quantiles": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Quantiles"
           },
           "trained_until_utc": {
             "anyOf": [
@@ -664,14 +533,31 @@
             ],
             "title": "Training Period Start Utc"
           },
-          "quantiles": {
-            "items": {
-              "type": "number"
-            },
-            "type": "array",
-            "title": "Quantiles"
+          "train_rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Train Rows",
+            "description": "Строк в обучающей выборке"
           },
-          "targets": {
+          "walk_forward": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Walk Forward",
+            "description": "Как устроена проверка: на чем учились и на чем проверяли"
+          },
+          "turbines": {
             "items": {
               "type": "string",
               "enum": [
@@ -681,7 +567,7 @@
               ]
             },
             "type": "array",
-            "title": "Targets"
+            "title": "Turbines"
           },
           "capacity_mw": {
             "additionalProperties": {
@@ -702,17 +588,11 @@
           },
           "features": {
             "items": {
-              "$ref": "#/components/schemas/FeatureSpec"
-            },
-            "type": "array",
-            "title": "Features"
-          },
-          "feature_importance": {
-            "items": {
               "$ref": "#/components/schemas/FeatureImportance"
             },
             "type": "array",
-            "title": "Feature Importance"
+            "title": "Features",
+            "description": "Признаки модели с долей важности"
           },
           "power_curve": {
             "items": {
@@ -721,17 +601,6 @@
             "type": "array",
             "title": "Power Curve",
             "description": "Кривая мощности, которую использует модель"
-          },
-          "metrics": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MetricsSummary"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Качество на отложенном периоде. Пусто, пока модель не обучена"
           },
           "notes": {
             "anyOf": [
@@ -751,15 +620,14 @@
           "version",
           "kind",
           "quantiles",
-          "targets",
+          "turbines",
           "capacity_mw",
           "inputs",
           "features",
-          "feature_importance",
           "power_curve"
         ],
-        "title": "ModelCard",
-        "description": "Паспорт модели: страница «Модель» и строка «Ожидаемая ошибка» на дашборде."
+        "title": "ModelInfo",
+        "description": "Паспорт модели: страница «Модель». Поля совпадают с `ModelInfo` backend."
       },
       "ModelInputs": {
         "properties": {
@@ -796,6 +664,95 @@
           "max_horizon_hours"
         ],
         "title": "ModelInputs"
+      },
+      "ModelMetrics": {
+        "properties": {
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "period_start_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start Utc"
+          },
+          "period_end_utc": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End Utc"
+          },
+          "nmae_d1_pct": {
+            "type": "number",
+            "title": "Nmae D1 Pct",
+            "description": "nMAE на часах lead 1–24, % от номинала"
+          },
+          "nmae_d2_pct": {
+            "type": "number",
+            "title": "Nmae D2 Pct",
+            "description": "nMAE на часах lead 25–48, % от номинала"
+          },
+          "nrmse_48_pct": {
+            "type": "number",
+            "title": "Nrmse 48 Pct"
+          },
+          "skill_vs_persistence_pct": {
+            "type": "number",
+            "title": "Skill Vs Persistence Pct"
+          },
+          "coverage_p10_p90_pct": {
+            "type": "number",
+            "title": "Coverage P10 P90 Pct",
+            "description": "Доля часов, где факт попал в P10–P90, цель около 80"
+          },
+          "baselines": {
+            "items": {
+              "$ref": "#/components/schemas/BaselineScore"
+            },
+            "type": "array",
+            "title": "Baselines",
+            "description": "Те же метрики у простых методов для сравнения"
+          },
+          "by_day": {
+            "items": {
+              "$ref": "#/components/schemas/MetricsDay"
+            },
+            "type": "array",
+            "title": "By Day",
+            "description": "По строке на каждый выпуск: календарь запусков"
+          },
+          "by_lead": {
+            "items": {
+              "$ref": "#/components/schemas/MetricsLead"
+            },
+            "type": "array",
+            "title": "By Lead",
+            "description": "Ошибка для каждого часа горизонта 1…48"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/MetricsPoint"
+            },
+            "type": "array",
+            "title": "Series",
+            "description": "Прогноз и факт по часам: график «прогноз против факта» и доля недобора у диспетчера"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_version",
+          "period_start_utc",
+          "period_end_utc",
+          "nmae_d1_pct",
+          "nmae_d2_pct",
+          "nrmse_48_pct",
+          "skill_vs_persistence_pct",
+          "coverage_p10_p90_pct",
+          "baselines",
+          "by_day",
+          "by_lead"
+        ],
+        "title": "ModelMetrics",
+        "description": "Проверка модели на отложенном периоде: страница «Бэктест». Поля совпадают с `BacktestMetrics` backend."
       },
       "ModelRef": {
         "properties": {
@@ -839,29 +796,29 @@
       },
       "PowerCurvePoint": {
         "properties": {
-          "wind_speed_ms": {
+          "wind_ms": {
             "type": "number",
             "minimum": 0.0,
-            "title": "Wind Speed Ms"
+            "title": "Wind Ms"
           },
-          "power": {
+          "power_norm": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
-            "title": "Power",
+            "title": "Power Norm",
             "description": "Доля от номинала"
           }
         },
         "type": "object",
         "required": [
-          "wind_speed_ms",
-          "power"
+          "wind_ms",
+          "power_norm"
         ],
         "title": "PowerCurvePoint"
       },
       "PredictOptions": {
         "properties": {
-          "targets": {
+          "turbines": {
             "items": {
               "type": "string",
               "enum": [
@@ -872,8 +829,8 @@
             },
             "type": "array",
             "minItems": 1,
-            "title": "Targets",
-            "description": "Для чего нужен прогноз: турбины `T1`, `T2` и станция целиком `station`"
+            "title": "Turbines",
+            "description": "Для чего нужен прогноз: турбины `T1`, `T2`, станция целиком `station`. По умолчанию обе турбины"
           },
           "interval_scale": {
             "type": "number",
@@ -925,15 +882,15 @@
             "description": "Горизонт: прогноз на часы T+1 … T+horizon_hours",
             "default": 48
           },
-          "weather": {
+          "rows": {
             "items": {
               "$ref": "#/components/schemas/WeatherRow"
             },
             "type": "array",
             "maxItems": 5000,
             "minItems": 1,
-            "title": "Weather",
-            "description": "Строки «час × модель погоды». На каждый час горизонта нужна хотя бы одна строка со скоростью ветра"
+            "title": "Rows",
+            "description": "Строки «час × модель погоды» из `GET /nwp`. На каждый час горизонта нужна хотя бы одна строка со скоростью ветра"
           },
           "options": {
             "$ref": "#/components/schemas/PredictOptions"
@@ -943,7 +900,7 @@
         "type": "object",
         "required": [
           "issue_time_utc",
-          "weather"
+          "rows"
         ],
         "title": "PredictRequest",
         "description": "Запрос прогноза на момент T: погода, доступная к T, на часы T+1 … T+horizon_hours.",
@@ -953,56 +910,53 @@
             "issue_time_utc": "2026-01-31T02:00:00Z",
             "options": {
               "interval_scale": 1.0,
-              "targets": [
+              "turbines": [
                 "T1",
-                "T2",
-                "station"
+                "T2"
               ],
               "wind_shift_ms": 0.0
             },
             "request_id": "issue-2026-01-31T02Z-v1",
-            "weather": [
+            "rows": [
               {
                 "available_at_utc": "2026-01-31T01:30:00Z",
-                "relative_humidity_2m": 78,
+                "lead_h": 1,
                 "run_init_utc": "2026-01-30T18:00:00Z",
-                "source": "ecmwf_ifs025",
-                "surface_pressure": 912.5,
-                "temperature_2m": -6.1,
+                "source": "ecmwf_ifs",
+                "t2m": -6.1,
                 "valid_time_utc": "2026-01-31T03:00:00Z",
-                "wind_direction_100m": 255,
-                "wind_gusts_10m": 11.2,
-                "wind_speed_100m": 8.4
+                "wd100": 255,
+                "ws100": 8.4
               },
               {
                 "available_at_utc": "2026-01-31T01:00:00Z",
+                "lead_h": 1,
                 "run_init_utc": "2026-01-30T18:00:00Z",
                 "source": "gfs_global",
-                "temperature_2m": -5.4,
+                "t2m": -5.4,
                 "valid_time_utc": "2026-01-31T03:00:00Z",
-                "wind_direction_80m": 250,
-                "wind_speed_80m": 7.9
+                "wd100": 255,
+                "ws80": 7.9
               },
               {
                 "available_at_utc": "2026-01-31T01:30:00Z",
-                "relative_humidity_2m": 80,
+                "lead_h": 2,
                 "run_init_utc": "2026-01-30T18:00:00Z",
-                "source": "ecmwf_ifs025",
-                "surface_pressure": 912.8,
-                "temperature_2m": -6.4,
+                "source": "ecmwf_ifs",
+                "t2m": -6.4,
                 "valid_time_utc": "2026-01-31T04:00:00Z",
-                "wind_direction_100m": 258,
-                "wind_gusts_10m": 12.0,
-                "wind_speed_100m": 9.1
+                "wd100": 255,
+                "ws100": 9.1
               },
               {
                 "available_at_utc": "2026-01-31T01:00:00Z",
+                "lead_h": 2,
                 "run_init_utc": "2026-01-30T18:00:00Z",
                 "source": "gfs_global",
-                "temperature_2m": -5.9,
+                "t2m": -5.9,
                 "valid_time_utc": "2026-01-31T04:00:00Z",
-                "wind_direction_80m": 252,
-                "wind_speed_80m": 8.3
+                "wd100": 255,
+                "ws80": 8.3
               }
             ]
           }
@@ -1033,7 +987,7 @@
             "type": "string",
             "const": "capacity_fraction",
             "title": "Unit",
-            "description": "p10, p50, p90 — доля от номинальной мощности цели, от 0 до 1"
+            "description": "p10, p50, p90 — доля от номинальной мощности, от 0 до 1"
           },
           "capacity_mw": {
             "additionalProperties": {
@@ -1048,7 +1002,7 @@
             },
             "type": "object",
             "title": "Capacity Mw",
-            "description": "Номинальная мощность каждой цели, МВт: умножьте долю на нее"
+            "description": "Номинальная мощность каждой турбины и станции, МВт: умножьте долю на нее"
           },
           "forecast": {
             "items": {
@@ -1056,7 +1010,7 @@
             },
             "type": "array",
             "title": "Forecast",
-            "description": "По строке на каждый час и цель. Всегда P10 ≤ P50 ≤ P90"
+            "description": "По строке на каждый час и турбину. Всегда P10 ≤ P50 ≤ P90"
           },
           "hourly_inputs": {
             "items": {
@@ -1107,7 +1061,7 @@
               "BASELINE_MODEL"
             ],
             "title": "Code",
-            "description": "`SOURCE_MISSING`: нет модели погоды, на которой учились. `PARTIAL_SOURCE`: модель есть не на все часы. `BASELINE_MODEL`: обученной модели нет, работает физическая кривая мощности"
+            "description": "`SOURCE_MISSING`: нет модели погоды, на которой училась модель. `PARTIAL_SOURCE`: модель погоды есть не на все часы. `BASELINE_MODEL`: обученной модели нет, работает физическая кривая мощности"
           },
           "message": {
             "type": "string",
@@ -1163,7 +1117,7 @@
             "type": "string",
             "pattern": "^[a-z0-9_]{1,40}$",
             "title": "Source",
-            "description": "Модель погоды, например `ecmwf_ifs025` или `gfs_global`"
+            "description": "Модель погоды, например `ecmwf_ifs` или `gfs_global`"
           },
           "run_init_utc": {
             "type": "string",
@@ -1177,7 +1131,19 @@
             "title": "Available At Utc",
             "description": "Когда прогон стал доступен. Должно быть не позже `issue_time_utc`, иначе ответ 422 `LEAKAGE_DETECTED`"
           },
-          "wind_speed_10m": {
+          "lead_h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead H",
+            "description": "Не используется: сервис сам считает заблаговременность"
+          },
+          "ws10": {
             "anyOf": [
               {
                 "type": "number",
@@ -1188,10 +1154,10 @@
                 "type": "null"
               }
             ],
-            "title": "Wind Speed 10M",
+            "title": "Ws10",
             "description": "Ветер на 10 м, м/с"
           },
-          "wind_speed_80m": {
+          "ws80": {
             "anyOf": [
               {
                 "type": "number",
@@ -1202,10 +1168,10 @@
                 "type": "null"
               }
             ],
-            "title": "Wind Speed 80M",
+            "title": "Ws80",
             "description": "Ветер на 80 м, высота ступицы, м/с"
           },
-          "wind_speed_100m": {
+          "ws100": {
             "anyOf": [
               {
                 "type": "number",
@@ -1216,10 +1182,10 @@
                 "type": "null"
               }
             ],
-            "title": "Wind Speed 100M",
+            "title": "Ws100",
             "description": "Ветер на 100 м, м/с"
           },
-          "wind_speed_120m": {
+          "ws120": {
             "anyOf": [
               {
                 "type": "number",
@@ -1230,10 +1196,10 @@
                 "type": "null"
               }
             ],
-            "title": "Wind Speed 120M",
+            "title": "Ws120",
             "description": "Ветер на 120 м, м/с"
           },
-          "wind_direction_10m": {
+          "wd100": {
             "anyOf": [
               {
                 "type": "number",
@@ -1244,52 +1210,10 @@
                 "type": "null"
               }
             ],
-            "title": "Wind Direction 10M",
-            "description": "Направление ветра на 10 м, градусы, откуда дует"
-          },
-          "wind_direction_80m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 360.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wind Direction 80M",
-            "description": "Направление ветра на 80 м, градусы, откуда дует"
-          },
-          "wind_direction_100m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 360.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wind Direction 100M",
+            "title": "Wd100",
             "description": "Направление ветра на 100 м, градусы, откуда дует"
           },
-          "wind_direction_120m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 360.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wind Direction 120M",
-            "description": "Направление ветра на 120 м, градусы, откуда дует"
-          },
-          "wind_gusts_10m": {
+          "gust10": {
             "anyOf": [
               {
                 "type": "number",
@@ -1300,10 +1224,10 @@
                 "type": "null"
               }
             ],
-            "title": "Wind Gusts 10M",
+            "title": "Gust10",
             "description": "Порывы на 10 м, м/с"
           },
-          "temperature_2m": {
+          "t2m": {
             "anyOf": [
               {
                 "type": "number",
@@ -1314,10 +1238,10 @@
                 "type": "null"
               }
             ],
-            "title": "Temperature 2M",
+            "title": "T2M",
             "description": "Температура на 2 м, °C"
           },
-          "relative_humidity_2m": {
+          "rh2m": {
             "anyOf": [
               {
                 "type": "number",
@@ -1328,10 +1252,10 @@
                 "type": "null"
               }
             ],
-            "title": "Relative Humidity 2M",
+            "title": "Rh2M",
             "description": "Относительная влажность на 2 м, %"
           },
-          "surface_pressure": {
+          "psfc": {
             "anyOf": [
               {
                 "type": "number",
@@ -1342,11 +1266,10 @@
                 "type": "null"
               }
             ],
-            "title": "Surface Pressure",
+            "title": "Psfc",
             "description": "Давление у поверхности, гПа"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
           "valid_time_utc",
@@ -1355,7 +1278,7 @@
           "available_at_utc"
         ],
         "title": "WeatherRow",
-        "description": "Прогноз одной модели погоды на один час. Имена переменных как в Open-Meteo."
+        "description": "Прогноз одной модели погоды на один час: строка из `GET /nwp` сервиса погоды как есть.\n\nНезнакомые поля игнорируются, чтобы новое поле у сервиса погоды не ломало прогноз."
       }
     }
   }

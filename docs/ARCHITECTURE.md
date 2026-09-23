@@ -17,7 +17,7 @@ flowchart LR
     FE -.-> BE
     BE --> DB
     PL --> VOL
-    PL -- "POST /v1/predict" --> ML
+    BE -- "POST /predict" --> ML
 
     subgraph compose["docker compose"]
         FE
@@ -34,8 +34,8 @@ flowchart LR
 `backend`, `db` и `ml`, все описаны в `docker-compose.yml`.
 
 `ml` — модель прогноза за HTTP-контрактом `ml/openapi.json`: принимает прогнозы погоды,
-доступные на момент T, и отдает P10/P50/P90. Вызывает ее агент из `pipeline`, наружу
-опубликован только порт `ML_PORT` для Swagger. Почему отдельный сервис:
+доступные на момент T, и отдает P10/P50/P90. Вызывает ее backend, наружу опубликован
+только порт `ML_PORT` для Swagger. Почему отдельный сервис:
 [adr/0006-ml-service.md](adr/0006-ml-service.md), эндпоинты: [../ml/README.md](../ml/README.md).
 
 `pipeline` — не сервис, а разовая команда в том же образе, что и `backend`. Он лежит

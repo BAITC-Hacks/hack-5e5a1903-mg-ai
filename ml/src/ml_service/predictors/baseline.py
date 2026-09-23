@@ -9,15 +9,14 @@ import pandas as pd
 
 from ml_service.frame import HUB_HEIGHT_M, Frame
 from ml_service.schemas import (
-    ALL_TARGETS,
+    ALL_TURBINES,
     CAPACITY_MW,
     WIND_SPEED_VARIABLES,
     FeatureImportance,
-    FeatureSpec,
-    ModelCard,
+    ModelInfo,
     ModelInputs,
     PowerCurvePoint,
-    Target,
+    Turbine,
 )
 
 CUT_IN_MS = 3.0
@@ -35,22 +34,22 @@ def passport_curve(wind) -> np.ndarray:
 
 class BaselinePredictor:
     def __init__(self) -> None:
-        self.card = ModelCard(
+        self.info = ModelInfo(
             name="baseline-power-curve",
             version="baseline-gw109-v1",
             kind="baseline_power_curve",
             quantiles=[0.1, 0.5, 0.9],
-            targets=list(ALL_TARGETS),
+            walk_forward="Не обучается: паспортная кривая производителя",
+            turbines=list(ALL_TURBINES),
             capacity_mw=dict(CAPACITY_MW),
             inputs=ModelInputs(sources=[], variables=list(WIND_SPEED_VARIABLES), hub_height_m=HUB_HEIGHT_M, max_horizon_hours=48),
-            features=[FeatureSpec(name="wind_speed_hub", description="Ветер на 80 м, среднее по моделям погоды")],
-            feature_importance=[FeatureImportance(feature="wind_speed_hub", importance=1.0)],
-            power_curve=[PowerCurvePoint(wind_speed_ms=float(v), power=round(float(passport_curve(v)), 4)) for v in np.arange(0.0, 26.5, 0.5)],
+            features=[FeatureImportance(name="wind_speed_hub", importance=1.0, description="Ветер на 80 м, среднее по моделям погоды")],
+            power_curve=[PowerCurvePoint(wind_ms=float(v), power_norm=round(float(passport_curve(v)), 4)) for v in np.arange(0.0, 26.5, 0.5)],
             notes="Заглушка до появления обученной модели: паспортная кривая GW109 (3 / 10,3 / 25 м/с), "
             "интервал P10–P90 растет с заблаговременностью и разбросом моделей погоды",
         )
 
-    def predict(self, frame: Frame, targets: list[Target]) -> pd.DataFrame:
+    def predict(self, frame: Frame, turbines: list[Turbine]) -> pd.DataFrame:
         summary = frame.summary
         wind = summary["wind_speed_hub_ms"].to_numpy(dtype=float)
         sigma = 0.8 + 0.03 * summary["lead_h"].to_numpy(dtype=float) + summary["wind_spread_ms"].fillna(0.0).to_numpy(dtype=float)
@@ -62,4 +61,4 @@ class BaselinePredictor:
                 "p90": passport_curve(wind + Z_P90 * sigma),
             }
         )
-        return pd.concat([base.assign(target=target) for target in targets], ignore_index=True)
+        return pd.concat([base.assign(turbine=turbine) for turbine in turbines], ignore_index=True)
