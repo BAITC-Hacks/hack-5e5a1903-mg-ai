@@ -73,9 +73,9 @@ flowchart TD
 | Backend | FastAPI, SQLAlchemy 2.0 async, Alembic | `backend/` |
 | ML-сервис | FastAPI, LightGBM, pandas; контракт `ml/openapi.json` | `ml/`, сервис `ml` в compose |
 | БД | PostgreSQL 16 | сервис `db` в compose |
-| Пакеты Python | uv | `backend/pyproject.toml`, `backend/uv.lock` |
-| Линтер и формат | Ruff | конфиг в `backend/pyproject.toml` |
-| Тесты | pytest, pytest-asyncio, httpx | `backend/tests/` |
+| Пакеты Python | uv | `backend/pyproject.toml`, `backend/uv.lock`; `ml/pyproject.toml`, `ml/uv.lock` |
+| Линтер и формат | Ruff | конфиг в `backend/pyproject.toml` и `ml/pyproject.toml` |
+| Тесты | pytest, pytest-asyncio, httpx | `backend/tests/`, `ml/tests/` |
 | Запуск | Docker Compose | `docker-compose.yml` |
 | Пайплайн прогноза | тот же образ backend, разовый контейнер | сервис `pipeline` в compose |
 | CI | GitHub Actions | `.github/workflows/ci.yml` |
@@ -150,6 +150,8 @@ HACKALEM AI/
 - [0002](adr/0002-worktree-per-feature.md) — worktree на фичу со слотами портов.
 - [0003](adr/0003-single-compose-entrypoint.md) — один compose-файл в корне как точка запуска.
 - [0004](adr/0004-sqlite-for-tests.md) — тесты на SQLite в памяти, а приложение на PostgreSQL.
+- [0005](adr/0005-ml-stack.md) — pandas, scikit-learn и httpx в backend.
+- [0006](adr/0006-ml-service.md) — модель прогноза отдельным сервисом `ml` на LightGBM с HTTP-контрактом.
 
 ## Запуск
 

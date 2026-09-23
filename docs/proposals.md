@@ -31,8 +31,9 @@
 
 Таблицы для SCADA и прогнозов погоды, квантильный градиентный бустинг для P10/P50/P90
 и HTTP-клиент для разовой загрузки прогнозов Open-Meteo в кэш. `httpx` перенесен
-из dev-зависимостей в основные. Отклонены в том же решении: LightGBM (нужен системный
-`libgomp1` в slim-образе), LangGraph, MLflow, DuckDB, GRIB через Herbie, torch.
+из dev-зависимостей в основные. Отклонены в том же решении: LightGBM для образа backend
+(нужен системный `libgomp1` в slim-образе, в сервисе `ml` он принят, см. ниже), LangGraph,
+MLflow, DuckDB, GRIB через Herbie, torch.
 
 ### ML-сервис на LightGBM
 
